@@ -5,6 +5,7 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 use crate::map::Map;
 use crate::person::Person;
+use crate::time_updatable::TimeInfo;
 
 // 世界時間結構體
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -289,12 +290,14 @@ impl WorldMetadata {
     }
 }
 
-// 遊戲世界 - 管理多個地圖
+// 遊戲世界 - 管理多個地圖和時間
 pub struct GameWorld {
     pub maps: HashMap<String, Map>,
     pub current_map: String,
     pub metadata: WorldMetadata,
     pub world_dir: String,
+    pub time: WorldTime,
+    pub game_speed: f32,
 }
 
 impl GameWorld {
@@ -316,6 +319,8 @@ impl GameWorld {
             current_map: String::from("初始之地"),
             metadata,
             world_dir,
+            time: WorldTime::new(),
+            game_speed: 60.0,
         }
     }
 
@@ -445,5 +450,38 @@ impl GameWorld {
         }
 
         persons
+    }
+
+    // 更新世界時間
+    pub fn update_time(&mut self) {
+        self.time.advance(self.game_speed);
+    }
+
+    // 獲取當前時間信息
+    pub fn get_time_info(&self) -> TimeInfo {
+        TimeInfo::new(self.time.hour, self.time.minute, self.time.day)
+    }
+
+    // 獲取格式化的時間字符串
+    pub fn format_time(&self) -> String {
+        self.time.format_time()
+    }
+
+    // 保存世界時間
+    pub fn save_time(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let time_path = format!("{}/time.json", self.world_dir);
+        let json = serde_json::to_string_pretty(&self.time)?;
+        fs::write(time_path, json)?;
+        Ok(())
+    }
+
+    // 加載世界時間
+    pub fn load_time(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        let time_path = format!("{}/time.json", self.world_dir);
+        if Path::new(&time_path).exists() {
+            let json = fs::read_to_string(time_path)?;
+            self.time = serde_json::from_str(&json)?;
+        }
+        Ok(())
     }
 }

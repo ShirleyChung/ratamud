@@ -31,6 +31,19 @@ impl InputHandler {
                         return Some(result);
                     }
                 },
+                // 方向鍵處理
+                KeyCode::Up => {
+                    return Some(CommandResult::Move(0, -1));     // 向上
+                },
+                KeyCode::Down => {
+                    return Some(CommandResult::Move(0, 1));      // 向下
+                },
+                KeyCode::Left => {
+                    return Some(CommandResult::Move(-1, 0));     // 向左
+                },
+                KeyCode::Right => {
+                    return Some(CommandResult::Move(1, 0));      // 向右
+                },
                 _ => {}
             }
         }
@@ -61,7 +74,10 @@ impl InputHandler {
             return CommandResult::Error("No command provided".to_string());
         }
 
-        match parts[0] {
+        // 先檢查是否為 status 相關命令（這些命令不應關閉 status）
+        let is_status_command = matches!(parts[0], "status" | "show" if parts.len() > 1 && parts[1] == "status");
+        
+        let result = match parts[0] {
             "exit" | "quit" => CommandResult::Exit,
             "save" => {
                 // save [filename] 命令，預設檔名為 save.txt
@@ -94,13 +110,24 @@ impl InputHandler {
             },
             "show" => {
                 if parts.len() < 2 {
-                    CommandResult::Error("Usage: show status".to_string())
+                    CommandResult::Error("Usage: show <command>".to_string())
                 } else if parts[1] == "status" {
                     CommandResult::ShowStatus
                 } else if parts[1] == "world" {
                     CommandResult::ShowWorld
+                } else if parts[1] == "minimap" {
+                    CommandResult::ShowMinimap
                 } else {
                     CommandResult::Error(format!("Unknown show command: {}", parts[1]))
+                }
+            },
+            "hide" => {
+                if parts.len() < 2 {
+                    CommandResult::Error("Usage: hide <command>".to_string())
+                } else if parts[1] == "minimap" {
+                    CommandResult::HideMinimap
+                } else {
+                    CommandResult::Error(format!("Unknown hide command: {}", parts[1]))
                 }
             },
             "look" => {
@@ -129,7 +156,8 @@ impl InputHandler {
                 CommandResult::Move(0, 1)
             },
             _ => CommandResult::Error(format!("Unknown command: {}", parts[0])),
-        }
+        };
+        result
     }
 
     // 執行保存命令，將所有文本寫入檔案
@@ -153,15 +181,15 @@ impl InputHandler {
 
 // 命令執行結果的列舉
 pub enum CommandResult {
-    Output(String),       // 在輸出區顯示的字串
-    Ignored,             // 忽略（不顯示）
-    Error(String),       // 命令錯誤顯示在狀態列
-    Exit,                // 退出程式
-    Clear,               // 清除文本區塊
-    AddToSide(String),   // 添加到側邊面板
-    ShowStatus,          // 打開狀態面板
-    ShowWorld,           // 打開世界資訊面板
-    CloseStatus,         // 關閉狀態面板
-    Look,                // 查看當前位置
-    Move(i32, i32),      // 移動 (dx, dy)，顯示方向
+    Output(String),                  // 在輸出區顯示的字串
+    Error(String),                   // 命令錯誤顯示在狀態列
+    Exit,                            // 退出程式
+    Clear,                           // 清除文本區塊
+    AddToSide(String),               // 添加到側邊面板
+    ShowStatus,                      // 打開狀態面板
+    ShowWorld,                       // 打開世界資訊面板
+    ShowMinimap,                     // 打開小地圖面板
+    HideMinimap,                     // 關閉小地圖面板
+    Look,                            // 查看當前位置
+    Move(i32, i32),                  // 移動 (dx, dy)，顯示方向
 }

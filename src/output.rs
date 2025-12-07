@@ -15,6 +15,9 @@ pub struct OutputManager {
     side_scroll: usize,         // 側邊輸出的滾動位置
     show_side_panel: bool,      // 是否顯示側邊面板
     side_observable: Box<dyn Observable>, // 側邊面板的可觀察對象
+    current_time: String,       // 當前遊戲時間顯示
+    show_minimap: bool,         // 是否顯示小地圖
+    minimap_lines: Vec<String>, // 小地圖的行內容
 }
 
 impl OutputManager {
@@ -29,6 +32,9 @@ impl OutputManager {
             side_scroll: 0,
             show_side_panel: false,
             side_observable: Box::new(Empty),
+            current_time: String::from("Day 1 09:00"),
+            show_minimap: false,
+            minimap_lines: Vec::new(),
         }
     }
 
@@ -65,6 +71,11 @@ impl OutputManager {
         } else {
             self.status.clone()
         }
+    }
+
+    // 設置當前時間顯示
+    pub fn set_current_time(&mut self, time: String) {
+        self.current_time = time;
     }
 
     // 清除所有訊息
@@ -117,17 +128,17 @@ impl OutputManager {
     pub fn render_status(&self) -> Paragraph {
         let status_text = if let Some(time) = self.status_time {
             if time.elapsed() > Duration::from_secs(5) {
-                String::new()
+                self.current_time.clone()
             } else {
-                self.status.clone()
+                format!("{} | {}", self.status, self.current_time)
             }
         } else {
-            String::new()
+            self.current_time.clone()
         };
 
         let status_span = Span::styled(
             status_text,
-            Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)
+            Style::default().fg(Color::Cyan).add_modifier(Modifier::DIM)
         );
         Paragraph::new(Line::from(status_span))
             .alignment(Alignment::Left)
@@ -155,6 +166,11 @@ impl OutputManager {
         self.show_side_panel
     }
 
+    // 關閉側邊面板
+    pub fn close_side_panel(&mut self) {
+        self.show_side_panel = false;
+    }
+
     // 側邊面板向上滾動
     pub fn scroll_side_up(&mut self) {
         if self.side_scroll > 0 {
@@ -170,11 +186,26 @@ impl OutputManager {
         }
     }
 
-    // 渲染懸浮式側邊面板（使用 Observable）
-    pub fn render_side_panel(&self, _area: Rect) -> Paragraph {
+    // 取得minimap 的內容
+    pub fn get_minimap(&self, _area: Rect) -> Paragraph {
+        // 根據 show_minimap 狀態決定要渲染的內容
+        // 渲染小地圖
+        let lines: Vec<Line> = self.minimap_lines
+            .iter()
+            .map(|line| Line::from(line.as_str()))
+            .collect();
+
+        Paragraph::new(Text::from(lines))
+            .block(Block::default()
+                .title(" MiniMap ")
+                .borders(Borders::ALL)
+                .style(Style::default().bg(Color::DarkGray).fg(Color::Cyan)))
+            .style(Style::default().bg(Color::DarkGray).fg(Color::Cyan))
+    }
+    // 取得stats內容
+    pub fn get_side_panel(&self, area: Rect) -> Paragraph {
+            // 渲染 Status 面板
         let lines = crate::observable::observable_to_lines(self.side_observable.as_ref());
-        
-        // 使用特殊樣式使懸浮視窗更明顯
         Paragraph::new(Text::from(lines))
             .block(Block::default()
                 .title(" Status ")
@@ -186,5 +217,45 @@ impl OutputManager {
     // 設置側邊面板的 Observable 對象
     pub fn set_side_observable(&mut self, obs: Box<dyn Observable>) {
         self.side_observable = obs;
+    }
+
+    // 開啟小地圖
+    pub fn show_minimap(&mut self) {
+        self.show_minimap = true;
+    }
+
+    // 關閉小地圖
+    pub fn hide_minimap(&mut self) {
+        self.show_minimap = false;
+    }
+
+    // 切換小地圖顯示狀態
+    pub fn toggle_minimap(&mut self) {
+        self.show_minimap = !self.show_minimap;
+    }
+
+    // 獲取小地圖狀態
+    pub fn is_minimap_open(&self) -> bool {
+        self.show_minimap
+    }
+
+    // 更新小地圖內容（八方向的描述）
+    pub fn update_minimap(&mut self, minimap_data: Vec<String>) {
+        self.minimap_lines = minimap_data;
+    }
+
+    // 渲染小地圖懸浮視窗
+    pub fn render_minimap(&self, _area: Rect) -> Paragraph {
+        let lines: Vec<Line> = self.minimap_lines
+            .iter()
+            .map(|line| Line::from(line.as_str()))
+            .collect();
+
+        Paragraph::new(Text::from(lines))
+            .block(Block::default()
+                .title(" MiniMap ")
+                .borders(Borders::ALL)
+                .style(Style::default().bg(Color::DarkGray).fg(Color::Cyan)))
+            .style(Style::default().bg(Color::DarkGray).fg(Color::Cyan))
     }
 }

@@ -1,4 +1,5 @@
 use crate::observable::Observable;
+use crate::time_updatable::{TimeUpdatable, TimeInfo};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
@@ -81,7 +82,6 @@ impl Person {
     }
 }
 
-// 實現 Observable trait
 impl Observable for Person {
     fn show_title(&self) -> String {
         self.name.clone()
@@ -119,5 +119,50 @@ impl Observable for Person {
         }
 
         list
+    }
+}
+
+// 實現 TimeUpdatable trait
+impl TimeUpdatable for Person {
+    fn on_time_update(&mut self, current_time: &TimeInfo) {
+        // 根據遊戲時間更新人物狀態
+        // 例如：在特定時間改變狀態
+        match current_time.hour {
+            6..=8 => {
+                if !self.status.contains("早晨") && !self.status.contains("起床") {
+                    self.set_status("起床中".to_string());
+                }
+            },
+            9..=11 => {
+                if !self.status.contains("工作") {
+                    self.set_status("工作中".to_string());
+                }
+            },
+            12..=13 => {
+                if !self.status.contains("午餐") {
+                    self.set_status("午餐時間".to_string());
+                }
+            },
+            14..=17 => {
+                if !self.status.contains("工作") {
+                    self.set_status("工作中".to_string());
+                }
+            },
+            18..=19 => {
+                if !self.status.contains("晚餐") {
+                    self.set_status("晚餐時間".to_string());
+                }
+            },
+            20..=22 => {
+                if !self.status.contains("放鬆") {
+                    self.set_status("放鬆中".to_string());
+                }
+            },
+            _ => {
+                if !self.status.contains("睡眠") {
+                    self.set_status("睡眠中".to_string());
+                }
+            }
+        }
     }
 }
