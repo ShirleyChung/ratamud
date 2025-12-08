@@ -292,49 +292,43 @@ fn display_look(
     if let Some(current_map) = game_world.get_current_map() {
         // 顯示當前位置信息
         if let Some(point) = current_map.get_point(me.x, me.y) {
-            let mut look_output = format!("【當前位置: ({}, {})】\n【{}】\n\n", me.x, me.y, point.description);
+            output_manager.add_message( format!("【當前位置: ({}, {})】\n【{}】", me.x, me.y, point.description) );
             
             // 上方
-            look_output.push_str("↑ 北方: ");
             if me.y > 0 {
                 if let Some(p) = current_map.get_point(me.x, me.y - 1) {
-                    look_output.push_str(&format!("{}\n", p.description));
+                    output_manager.add_message(format!("↑ 北方: {}", p.description));
                 }
             } else {
-                look_output.push_str("(邊界)\n");
+                output_manager.add_message("(邊界)".to_string());
             }
             
             // 下方
-            look_output.push_str("↓ 南方: ");
             if me.y + 1 < current_map.height {
                 if let Some(p) = current_map.get_point(me.x, me.y + 1) {
-                    look_output.push_str(&format!("{}\n", p.description));
+                    output_manager.add_message(format!("↓ 南方: {}", p.description));
                 }
             } else {
-                look_output.push_str("(邊界)\n");
+                output_manager.add_message("(邊界)".to_string());
             }
             
             // 左方
-            look_output.push_str("← 西方: ");
             if me.x > 0 {
                 if let Some(p) = current_map.get_point(me.x - 1, me.y) {
-                    look_output.push_str(&format!("{}\n", p.description));
+                    output_manager.add_message(format!("← 西方: {}", p.description));
                 }
             } else {
-                look_output.push_str("(邊界)\n");
+                output_manager.add_message("(邊界)".to_string());
             }
             
             // 右方
-            look_output.push_str("→ 東方: ");
             if me.x + 1 < current_map.width {
                 if let Some(p) = current_map.get_point(me.x + 1, me.y) {
-                    look_output.push_str(&format!("{}\n", p.description));
+                    output_manager.add_message(format!("→ 東方: {}", p.description));
                 }
             } else {
-                look_output.push_str("(邊界)\n");
-            }
-            
-            output_manager.add_message(look_output);
+                output_manager.add_message("(邊界)".to_string());
+            }            
         }
     }
 }
@@ -351,7 +345,8 @@ fn update_minimap_display(
         // 上方
         if me.y > 0 {
             if let Some(point) = current_map.get_point(me.x, me.y - 1) {
-                minimap_data.push(format!("↑ {}", point.description));
+                let walkable = if point.walkable { '\u{2713}' } else { '\u{2718}' };
+                minimap_data.push(format!("↑ {} {}", point.description, walkable));
             }
         } else {
             minimap_data.push("↑ (邊界)".to_string());
@@ -360,7 +355,8 @@ fn update_minimap_display(
         // 下方
         if me.y + 1 < current_map.height {
             if let Some(point) = current_map.get_point(me.x, me.y + 1) {
-                minimap_data.push(format!("↓ {}", point.description));
+                let walkable = if point.walkable { '\u{2713}' } else { '\u{2718}' };
+                minimap_data.push(format!("↓ {} {}", point.description, walkable));
             }
         } else {
             minimap_data.push("↓ (邊界)".to_string());
@@ -369,7 +365,8 @@ fn update_minimap_display(
         // 左方
         if me.x > 0 {
             if let Some(point) = current_map.get_point(me.x - 1, me.y) {
-                minimap_data.push(format!("← {}", point.description));
+                let walkable = if point.walkable { '\u{2713}' } else { '\u{2718}' };
+                minimap_data.push(format!("← {} {}", point.description, walkable));
             }
         } else {
             minimap_data.push("← (邊界)".to_string());
@@ -378,7 +375,8 @@ fn update_minimap_display(
         // 右方
         if me.x + 1 < current_map.width {
             if let Some(point) = current_map.get_point(me.x + 1, me.y) {
-                minimap_data.push(format!("→ {}", point.description));
+                let walkable = if point.walkable { '\u{2713}' } else { '\u{2718}' };
+                minimap_data.push(format!("→ {} {}", point.description, walkable));
             }
         } else {
             minimap_data.push("→ (邊界)".to_string());
