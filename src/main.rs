@@ -102,9 +102,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             new_map
         };
         
-        output_manager.add_message(format!("地圖已加載: {}", map.name));
+        output_manager.print(format!("地圖已加載: {}", map.name));
         let (walkable, unwalkable) = map.get_stats();
-        output_manager.add_message(format!("{} - 可行走點: {}, 不可行走點: {}", map_name, walkable, unwalkable));
+        output_manager.print(format!("{} - 可行走點: {}, 不可行走點: {}", map_name, walkable, unwalkable));
         game_world.add_map(map);
     }
     
@@ -112,7 +112,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _ = game_world.save_metadata();
     
     // 顯示當前時間
-    output_manager.add_message(format!("⏰ {}", game_world.format_time()));
+    output_manager.print(format!("⏰ {}", game_world.format_time()));
     
     // 嘗試載入 Me（如果存在）
     let person_dir = format!("{}/persons", game_world.world_dir);
@@ -120,11 +120,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     if let Ok(loaded_me) = Person::load(&person_dir, "me") {
         me = loaded_me;
-        output_manager.add_message("已載入角色: Me".to_string());
+        output_manager.print("已載入角色: Me".to_string());
     } else {
         // 如果沒有存檔，保存初始化的 Me
         let _ = me.save(&person_dir, "me");
-        output_manager.add_message("已保存新角色: Me".to_string());
+        output_manager.print("已保存新角色: Me".to_string());
     }
     
     // 生成或加載 NPC
@@ -151,11 +151,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let _ = new_npc.save(&person_dir, npc_id);
                 new_npc
             };
-            output_manager.add_message(format!("已載入 NPC: {} 在位置 ({}, {})", name, npc.x, npc.y));
+            output_manager.print(format!("已載入 NPC: {} 在位置 ({}, {})", name, npc.x, npc.y));
         }
     }
     
-    output_manager.add_message(format!("已加載 {} 個地圖", game_world.map_count()));
+    output_manager.print(format!("已加載 {} 個地圖", game_world.map_count()));
 
     // 運行主迴圈
     app::run_main_loop(&mut terminal, &mut input_handler, &mut output_manager, &mut game_world, &mut me)?;

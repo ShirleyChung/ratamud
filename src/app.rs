@@ -200,7 +200,7 @@ fn handle_exit(
 
 /// 處理輸出結果
 fn handle_output(text: String, output_manager: &mut OutputManager) {
-    output_manager.add_message(text);
+    output_manager.print(text);
     // 只關閉 minimap，不關閉側邊面板（側邊面板應該保持開啟直到使用者明確關閉）
     if output_manager.is_minimap_open() {
         output_manager.hide_minimap();
@@ -292,42 +292,42 @@ fn display_look(
     if let Some(current_map) = game_world.get_current_map() {
         // 顯示當前位置信息
         if let Some(point) = current_map.get_point(me.x, me.y) {
-            output_manager.add_message( format!("【當前位置: ({}, {})】\n【{}】", me.x, me.y, point.description) );
+            output_manager.print( format!("【當前位置: ({}, {})】\n【{}】", me.x, me.y, point.description) );
             
             // 上方
             if me.y > 0 {
                 if let Some(p) = current_map.get_point(me.x, me.y - 1) {
-                    output_manager.add_message(format!("↑ 北方: {}", p.description));
+                    output_manager.print(format!("↑ 北方: {}", p.description));
                 }
             } else {
-                output_manager.add_message("(邊界)".to_string());
+                output_manager.print("(邊界)".to_string());
             }
             
             // 下方
             if me.y + 1 < current_map.height {
                 if let Some(p) = current_map.get_point(me.x, me.y + 1) {
-                    output_manager.add_message(format!("↓ 南方: {}", p.description));
+                    output_manager.print(format!("↓ 南方: {}", p.description));
                 }
             } else {
-                output_manager.add_message("(邊界)".to_string());
+                output_manager.print("(邊界)".to_string());
             }
             
             // 左方
             if me.x > 0 {
                 if let Some(p) = current_map.get_point(me.x - 1, me.y) {
-                    output_manager.add_message(format!("← 西方: {}", p.description));
+                    output_manager.print(format!("← 西方: {}", p.description));
                 }
             } else {
-                output_manager.add_message("(邊界)".to_string());
+                output_manager.print("(邊界)".to_string());
             }
             
             // 右方
             if me.x + 1 < current_map.width {
                 if let Some(p) = current_map.get_point(me.x + 1, me.y) {
-                    output_manager.add_message(format!("→ 東方: {}", p.description));
+                    output_manager.print(format!("→ 東方: {}", p.description));
                 }
             } else {
-                output_manager.add_message("(邊界)".to_string());
+                output_manager.print("(邊界)".to_string());
             }            
         }
     }
@@ -418,7 +418,7 @@ fn handle_movement(
                     
                     // 移動後顯示當前位置的描述
                     if let Some(point) = current_map.get_point(me.x, me.y) {
-                        output_manager.add_message(format!("【{}】", point.description));
+                        output_manager.print(format!("【{}】", point.description));
                     }
                     
                     // 如果小地圖已打開，更新小地圖資料

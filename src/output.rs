@@ -39,7 +39,7 @@ impl OutputManager {
     }
 
     // 添加訊息並將滾動位置移到最後（僅儲存純文本）
-    pub fn add_message(&mut self, message: String) {
+    pub fn print(&mut self, message: String) {
         self.messages.push(message);
         self.scroll = self.messages.len().saturating_sub(1);
     }
@@ -257,5 +257,19 @@ impl OutputManager {
                 .borders(Borders::ALL)
                 .style(Style::default().bg(Color::DarkGray).fg(Color::Cyan)))
             .style(Style::default().bg(Color::DarkGray).fg(Color::Cyan))
+    }
+
+    // 在Output Message印出物件
+    pub fn print_obserable(&mut self, obs: &dyn Observable) {
+        self.print(obs.show_title());
+        self.print(obs.show_description());
+        let list = obs.show_list();
+        if !list.is_empty() {
+            self.print(format!("--"));
+            for item in list {
+                self.print(format!("• {}", item));
+            }
+        }
+
     }
 }
