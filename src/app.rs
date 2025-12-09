@@ -1,6 +1,7 @@
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
 use ratatui::layout::{Layout, Constraint, Direction, Rect};
+use ratatui::widgets::Clear;
 use std::io;
 use crossterm::event::{self, KeyCode};
 use std::time::{Duration, Instant};
@@ -76,8 +77,9 @@ pub fn run_main_loop(
                 height: floating_height,
             };
             // 畫小地圖
-            if output_manager.is_minimap_open() {                
+            if output_manager.is_minimap_open() {
                 let minimap_widget = output_manager.get_minimap(minimap_area);
+                f.render_widget(Clear, minimap_area); // 清除背景
                 f.render_widget(minimap_widget, minimap_area);
             }
             let floating_area = Rect {
@@ -89,6 +91,7 @@ pub fn run_main_loop(
             // 畫側邊面板
             if output_manager.is_side_panel_open() {
                 let side_widget = output_manager.get_side_panel(floating_area);
+                f.render_widget(Clear, floating_area); // 清除背景
                 f.render_widget(side_widget, floating_area);
             }
 
