@@ -139,6 +139,17 @@ impl InputHandler {
                 // 但既然 look 優先，先檢查
                 CommandResult::Look
             },
+            "get" => {
+                // get 命令，撿起物品
+                if parts.len() < 2 {
+                    // get 沒有指定物品名稱，撿起所有物品
+                    CommandResult::Get(None)
+                } else {
+                    // get <物品名稱> 指定撿起某個物品
+                    let item_name = parts[1..].join(" ");
+                    CommandResult::Get(Some(item_name))
+                }
+            },
             "right" | "r" => {
                 // 向右移動
                 CommandResult::Move(1, 0)
@@ -192,4 +203,5 @@ pub enum CommandResult {
     HideMinimap,                     // 關閉小地圖面板
     Look,                            // 查看當前位置
     Move(i32, i32),                  // 移動 (dx, dy)，顯示方向
+    Get(Option<String>),             // 撿起物品 (可選：物品名稱)
 }

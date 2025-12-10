@@ -1,5 +1,6 @@
 use rand::Rng;
 use crate::observable::Observable;
+use crate::item::Item;
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 
@@ -302,6 +303,30 @@ impl Map {
         }
 
         (walkable, unwalkable)
+    }
+
+    // 初始化隨機 item 散落在地圖上，大概占一半的可移動地點
+    pub fn initialize_items(&mut self) {
+        let mut rng = rand::thread_rng();
+        let walkable_points = self.get_walkable_points();
+        
+        if walkable_points.is_empty() {
+            return;
+        }
+
+        // 計算要放置的 item 數量（可移動地點的一半）
+        let item_count = walkable_points.len() / 2;
+        
+        // 隨機選擇位置並放置 item
+        for _ in 0..item_count {
+            let random_idx = rng.gen_range(0..walkable_points.len());
+            let (x, y) = walkable_points[random_idx];
+            
+            if let Some(point) = self.get_point_mut(x, y) {
+                let item = Item::generate_random();
+                point.add_object(format!("[物品] {}", item.display()));
+            }
+        }
     }
 
     // 保存地圖到檔案（JSON格式）

@@ -84,7 +84,7 @@ impl Person {
 
 impl Observable for Person {
     fn show_title(&self) -> String {
-        self.name.clone()
+        format!("{}【位置: ({}, {})】", self.name, self.x, self.y)
     }
 
     fn show_description(&self) -> String {
@@ -106,16 +106,19 @@ impl Observable for Person {
 
         // 添加物品
         if !self.items.is_empty() {
-            list.push("【持有物品】".to_string());
+            list.push(format!("【持有物品】({} 個)", self.items.len()));
             for item in &self.items {
                 list.push(item.clone());
             }
+        } else {
+            list.push("【持有物品】(0 個)".to_string());
+            list.push("未持有物品".to_string());
         }
 
-        // 如果沒有能力和物品，顯示空
-        if list.is_empty() {
+        // 如果沒有能力，顯示空能力
+        if self.abilities.is_empty() {
+            list.push("【能力】".to_string());
             list.push("無特殊能力".to_string());
-            list.push("未持有物品".to_string());
         }
 
         list

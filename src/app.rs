@@ -184,6 +184,7 @@ fn handle_command_result(
         CommandResult::HideMinimap => handle_hide_minimap(output_manager),
         CommandResult::Look => display_look(output_manager, game_world, me),
         CommandResult::Move(dx, dy) => handle_movement(dx, dy, output_manager, game_world, me)?,
+        CommandResult::Get(item_name) => handle_get(item_name, output_manager, game_world, me),
     }
     Ok(())
 }
@@ -296,6 +297,16 @@ fn display_look(
         // 顯示當前位置信息
         if let Some(point) = current_map.get_point(me.x, me.y) {
             output_manager.print( format!("【當前位置: ({}, {})】\n【{}】", me.x, me.y, point.description) );
+            
+            // 顯示當前位置的 items
+            if !point.objects.is_empty() {
+                output_manager.print(format!("\n🎁 此處物品:"));
+                for obj in &point.objects {
+                    output_manager.print(format!("  • {}", obj));
+                }
+            }
+            
+            output_manager.print("".to_string());
             
             // 上方
             if me.y > 0 {
@@ -437,4 +448,52 @@ fn handle_movement(
         }
     }
     Ok(())
+}
+
+/// 處理 get 命令 - 撿起當前位置的物品
+fn handle_get(
+    item_name: Option<String>,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &mut Person,
+) {
+    if let Some(current_map) = game_world.get_current_map_mut() {
+        if let Some(point) = current_map.get_point_mut(me.x, me.y) {
+            if point.objects.is_empty() {
+                output_manager.print("此處沒有物品。".to_string());
+                return;
+            }
+            
+            match item_name {
+                None => {
+                    // 沒有指定物品名稱，撿起所有物品
+                    let items_count = point.objects.len();
+                    for obj in point.objects.drain(..) {
+                        me.add_item(obj.clone());
+                        output_manager.print(format!("✓ 撿起了: {}", obj));
+                    }
+                    output_manager.set_status(format!("撿起了 {} 個物品", items_count));
+                    
+                    // 保存角色物品
+                    let person_dir = format!("{}/persons", game_world.world_dir);
+                    let _ = me.save(&person_dir, "me");
+                }
+                Some(name) => {
+                    // 尋找指定名稱的物品
+                    if let Some(pos) = point.objects.iter().position(|obj| obj.contains(&name)) {
+                        let item = point.objects.remove(pos);
+                        me.add_item(item.clone());
+                        output_manager.print(format!("✓ 撿起了: {}", item));
+                        output_manager.set_status(format!("撿起: {}", name));
+                        
+                        // 保存角色物品
+                        let person_dir = format!("{}/persons", game_world.world_dir);
+                        let _ = me.save(&person_dir, "me");
+                    } else {
+                        output_manager.print(format!("找不到 \"{}\" 的物品。", name));
+                    }
+                }
+            }
+        }
+    }
 }

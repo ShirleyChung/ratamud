@@ -91,7 +91,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for (map_name, map_type) in maps_config {
         let map_path = format!("{}/{}.json", game_world.get_maps_dir(), map_name);
         
-        let map = if std::path::Path::new(&map_path).exists() {
+        let mut map = if std::path::Path::new(&map_path).exists() {
             // 如果檔案存在，則加載
             Map::load(&map_path)?
         } else {
@@ -101,7 +101,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             new_map.save(&map_path)?;
             new_map
         };
-        
+        map.initialize_items();
         output_manager.print(format!("地圖已加載: {}", map.name));
         let (walkable, unwalkable) = map.get_stats();
         output_manager.print(format!("{} - 可行走點: {}, 不可行走點: {}", map_name, walkable, unwalkable));
