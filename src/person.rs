@@ -39,6 +39,15 @@ impl Person {
         self.items.push(item);
     }
 
+    // 放下物品
+    pub fn drop_item(&mut self, item_name: &str) -> Option<String> {
+        if let Some(pos) = self.items.iter().position(|item| item.contains(item_name)) {
+            Some(self.items.remove(pos))
+        } else {
+            None
+        }
+    }
+
     // 設置狀態
     pub fn set_status(&mut self, status: String) {
         self.status = status;

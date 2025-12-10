@@ -185,6 +185,7 @@ fn handle_command_result(
         CommandResult::Look => display_look(output_manager, game_world, me),
         CommandResult::Move(dx, dy) => handle_movement(dx, dy, output_manager, game_world, me)?,
         CommandResult::Get(item_name) => handle_get(item_name, output_manager, game_world, me),
+        CommandResult::Drop(item_name) => handle_drop(item_name, output_manager, game_world, me),
     }
     Ok(())
 }
@@ -430,10 +431,8 @@ fn handle_movement(
                     };
                     output_manager.set_status(format!("往 {} 移動", direction));
                     
-                    // 移動後顯示當前位置的描述
-                    if let Some(point) = current_map.get_point(me.x, me.y) {
-                        output_manager.print(format!("【{}】", point.description));
-                    }
+                    // 移動後執行look
+                    display_look(output_manager, game_world, me);
                     
                     // 如果小地圖已打開，更新小地圖資料
                     if output_manager.is_minimap_open() {
@@ -495,5 +494,28 @@ fn handle_get(
                 }
             }
         }
+    }
+}
+
+fn handle_drop(
+    item_name: String,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &mut Person,
+) {
+    if let Some(item) = me.drop_item(&item_name) {
+        if let Some(current_map) = game_world.get_current_map_mut() {
+            if let Some(point) = current_map.get_point_mut(me.x, me.y) {
+                point.objects.push(item.clone());
+                output_manager.print(format!("✓ 放下了: {}", item));
+                output_manager.set_status(format!("放下: {}", item_name));
+                
+                // 保存角色物品
+                let person_dir = format!("{}/persons", game_world.world_dir);
+                let _ = me.save(&person_dir, "me");
+            }
+        }
+    } else {
+        output_manager.print(format!("身上沒有 \"{}\" 的物品。", item_name));
     }
 }

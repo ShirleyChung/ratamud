@@ -121,7 +121,7 @@ impl OutputManager {
 
         // 建立帶邊框的段落小部件
         Paragraph::new(Text::from(message_lines))
-            .block(Block::default().title("Output Area").borders(Borders::ALL))
+            .block(Block::default().title("*").borders(Borders::ALL))
     }
 
     // 渲染狀態列（不顯示邊框，只顯示文字）
@@ -197,7 +197,7 @@ impl OutputManager {
 
         Paragraph::new(Text::from(lines))
             .block(Block::default()
-                .title(" MiniMap ")
+                .title("")
                 .borders(Borders::ALL)
                 .style(Style::default().bg(Color::DarkGray).fg(Color::Cyan)))
             .style(Style::default().bg(Color::DarkGray).fg(Color::Cyan))
@@ -208,7 +208,7 @@ impl OutputManager {
         let lines = crate::observable::observable_to_lines(self.side_observable.as_ref());
         Paragraph::new(Text::from(lines))
             .block(Block::default()
-                .title(" Status ")
+                .title("")
                 .borders(Borders::ALL)
                 .style(Style::default().bg(Color::DarkGray).fg(Color::White)))
             .style(Style::default().bg(Color::DarkGray).fg(Color::White))
@@ -253,7 +253,7 @@ impl OutputManager {
 
         Paragraph::new(Text::from(lines))
             .block(Block::default()
-                .title(" MiniMap ")
+                .title("")
                 .borders(Borders::ALL)
                 .style(Style::default().bg(Color::DarkGray).fg(Color::Cyan)))
             .style(Style::default().bg(Color::DarkGray).fg(Color::Cyan))

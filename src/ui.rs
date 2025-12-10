@@ -10,7 +10,7 @@ impl InputDisplay {
     pub fn render_input(input_text: &str, _area: Rect) -> Paragraph {
         // 建立帶邊框和標題的輸入區塊
         let input_block = Block::default()
-            .title("Input Area")
+            .title("*")
             .borders(Borders::ALL);
 
         // 將輸入文本轉換為段落小部件

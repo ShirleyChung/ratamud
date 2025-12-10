@@ -150,6 +150,15 @@ impl InputHandler {
                     CommandResult::Get(Some(item_name))
                 }
             },
+            "drop" => {
+                // drop 命令，放下物品
+                if parts.len() < 2 {
+                    CommandResult::Error("Usage: drop <item name>".to_string())
+                } else {
+                    let item_name = parts[1..].join(" ");
+                    CommandResult::Drop(item_name)
+                }
+            },
             "right" | "r" => {
                 // 向右移動
                 CommandResult::Move(1, 0)
@@ -204,4 +213,5 @@ pub enum CommandResult {
     Look,                            // 查看當前位置
     Move(i32, i32),                  // 移動 (dx, dy)，顯示方向
     Get(Option<String>),             // 撿起物品 (可選：物品名稱)
+    Drop(String),                    // 放下物品 (物品名稱)
 }
