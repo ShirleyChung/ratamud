@@ -67,6 +67,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _ = game_world.load_metadata();
     let _ = game_world.load_time();  // 載入保存的世界時間
     
+    // 設置初始時間顯示
+    output_manager.set_current_time(game_world.format_time());
+    
     // 更新世界元數據，添加4個地圖名稱
     game_world.metadata.maps = vec![
         "初始之地".to_string(),

@@ -32,7 +32,7 @@ impl OutputManager {
             side_scroll: 0,
             show_side_panel: false,
             side_observable: Box::new(Empty),
-            current_time: String::from("Day 1 09:00"),
+            current_time: String::from("Day 1 09:00:00"),
             show_minimap: false,
             minimap_lines: Vec::new(),
         }

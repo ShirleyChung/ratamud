@@ -12,8 +12,9 @@ use crate::time_updatable::TimeInfo;
 pub struct WorldTime {
     pub hour: u8,      // 0-23
     pub minute: u8,    // 0-59
+    pub second: u8,    // 0-59
     pub day: u32,      // 遊戲日期
-    last_update: u64,  // 上次更新的實時時間戳
+    last_update: u64,  // 上次更新的實時時間戳（毫秒）
 }
 
 impl WorldTime {
@@ -21,27 +22,34 @@ impl WorldTime {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
-            .as_secs();
+            .as_millis() as u64;
         
         WorldTime {
             hour: 9,
             minute: 0,
+            second: 0,
             day: 1,
             last_update: now,
         }
     }
 
-    // 推進時間（以實際秒數為單位，遊戲時間按比例快進）
+    // 推進時間（1實際秒 = 60遊戲秒）
     pub fn advance(&mut self, game_speed: f32) {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap()
-            .as_secs();
+            .as_millis() as u64;
         
-        let elapsed_real_secs = now - self.last_update;
-        let elapsed_game_mins = (elapsed_real_secs as f32 * game_speed) as u32;
+        let elapsed_real_ms = now - self.last_update;
+        let elapsed_game_secs = ((elapsed_real_ms as f32 / 1000.0) * game_speed) as u32;
         
-        let total_mins = self.minute as u32 + elapsed_game_mins;
+        let total_secs = self.second as u32 + elapsed_game_secs;
+        
+        // 計算分鐘和秒
+        let mins = total_secs / 60;
+        self.second = (total_secs % 60) as u8;
+        
+        let total_mins = self.minute as u32 + mins;
         
         // 計算小時和分鐘
         let hours = total_mins / 60;
@@ -56,7 +64,7 @@ impl WorldTime {
     }
 
     pub fn format_time(&self) -> String {
-        format!("Day {} {:02}:{:02}", self.day, self.hour, self.minute)
+        format!("Day {} {:02}:{:02}:{:02}", self.day, self.hour, self.minute, self.second)
     }
 }
 
@@ -459,7 +467,7 @@ impl GameWorld {
 
     // 獲取當前時間信息
     pub fn get_time_info(&self) -> TimeInfo {
-        TimeInfo::new(self.time.hour, self.time.minute, self.time.day)
+        TimeInfo::new_with_seconds(self.time.hour, self.time.minute, self.time.second, self.time.day)
     }
 
     // 獲取格式化的時間字符串
@@ -481,6 +489,11 @@ impl GameWorld {
         if Path::new(&time_path).exists() {
             let json = fs::read_to_string(time_path)?;
             self.time = serde_json::from_str(&json)?;
+            // 重置 last_update 為當前時間，避免時間跳躍
+            self.time.last_update = SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_millis() as u64;
         }
         Ok(())
     }

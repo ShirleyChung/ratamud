@@ -26,24 +26,25 @@ pub fn run_main_loop(
     let mut should_exit = false;
     // 時間管理：記錄上次更新時間和上次顯示時間
     let mut last_time_update = Instant::now();
-    let time_update_interval = Duration::from_millis(1000);  // 每1秒更新時間
-    let mut cnt_time = 0;
+    let mut last_time_display = Instant::now();
+    let time_update_interval = Duration::from_millis(1000);  // 每1秒更新世界時間（=60遊戲秒）
+    let time_display_interval = Duration::from_secs(5);  // 每5秒顯示時間（=5遊戲分鐘）
+    
     'main_loop: loop {
         // 更新狀態列（檢查訊息是否過期）
         output_manager.update_status();
         
-        // 更新世界時間
+        // 更新世界時間（每秒更新，1實際秒 = 60遊戲秒）
         let now = Instant::now();
         if now.duration_since(last_time_update) >= time_update_interval {
             game_world.update_time();
-            cnt_time += 1;
-            // 每次更新都設置當前時間顯示
-            output_manager.set_current_time(game_world.format_time());
-            if (cnt_time % 60) == 0 {
-                // 每60秒顯示一次時間
-                output_manager.set_status(format!("時間: {}", game_world.format_time()));     
-            }
             last_time_update = now;
+            
+            // 每5秒顯示一次時間到狀態列（=5遊戲分鐘）
+            if now.duration_since(last_time_display) >= time_display_interval {
+                output_manager.set_current_time(game_world.format_time());
+                last_time_display = now;
+            }
         }
         // 繪製終端畫面
         terminal.draw(|f| {
