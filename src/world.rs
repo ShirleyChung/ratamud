@@ -76,6 +76,7 @@ pub struct Position {
 }
 
 impl Position {
+    #[allow(dead_code)]
     pub fn new(x: i32, y: i32) -> Self {
         Position { x, y }
     }
@@ -83,6 +84,7 @@ impl Position {
 
 // 物件類型
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub enum ObjectType {
     Weapon,
     Armor,
@@ -92,6 +94,7 @@ pub enum ObjectType {
 
 // 世界物件
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct WorldObject {
     pub id: String,
     pub name: String,
@@ -101,6 +104,7 @@ pub struct WorldObject {
 }
 
 impl WorldObject {
+    #[allow(dead_code)]
     pub fn new(id: String, name: String, description: String, object_type: ObjectType, position: Position) -> Self {
         WorldObject {
             id,
@@ -114,6 +118,7 @@ impl WorldObject {
 
 // NPC 結構體
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct NPC {
     pub id: String,
     pub name: String,
@@ -125,6 +130,7 @@ pub struct NPC {
 }
 
 impl NPC {
+    #[allow(dead_code)]
     pub fn new(id: String, name: String, description: String, position: Position, max_health: i32) -> Self {
         NPC {
             id,
@@ -137,14 +143,17 @@ impl NPC {
         }
     }
 
+    #[allow(dead_code)]
     pub fn add_dialogue(&mut self, text: String) {
         self.dialogue.push(text);
     }
 
+    #[allow(dead_code)]
     pub fn take_damage(&mut self, damage: i32) {
         self.health = (self.health - damage).max(0);
     }
 
+    #[allow(dead_code)]
     pub fn is_alive(&self) -> bool {
         self.health > 0
     }
@@ -152,6 +161,7 @@ impl NPC {
 
 // 世界地圖區域
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct MapArea {
     pub id: String,
     pub name: String,
@@ -161,6 +171,7 @@ pub struct MapArea {
 }
 
 impl MapArea {
+    #[allow(dead_code)]
     pub fn new(id: String, name: String, description: String, width: i32, height: i32) -> Self {
         MapArea {
             id,
@@ -171,12 +182,14 @@ impl MapArea {
         }
     }
 
+    #[allow(dead_code)]
     pub fn contains_position(&self, pos: Position) -> bool {
         pos.x >= 0 && pos.x < self.width && pos.y >= 0 && pos.y < self.height
     }
 }
 
 // 主世界結構體
+#[allow(dead_code)]
 pub struct World {
     pub time: WorldTime,
     pub game_speed: f32, // 遊戲速度（實際秒數 = 遊戲分鐘數 / game_speed）
@@ -187,6 +200,7 @@ pub struct World {
 }
 
 impl World {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         let mut world = World {
             time: WorldTime::new(),
@@ -209,22 +223,27 @@ impl World {
         world
     }
 
+    #[allow(dead_code)]
     pub fn add_area(&mut self, area: MapArea) {
         self.map_areas.insert(area.id.clone(), area);
     }
 
+    #[allow(dead_code)]
     pub fn add_object(&mut self, obj: WorldObject) {
         self.objects.insert(obj.id.clone(), obj);
     }
 
+    #[allow(dead_code)]
     pub fn add_npc(&mut self, npc: NPC) {
         self.npcs.insert(npc.id.clone(), npc);
     }
 
+    #[allow(dead_code)]
     pub fn update(&mut self) {
         self.time.advance(self.game_speed);
     }
 
+    #[allow(dead_code)]
     pub fn get_status(&self) -> String {
         let current_area = self.map_areas.get(&self.current_area)
             .map(|a| a.name.as_str())
@@ -239,6 +258,7 @@ impl World {
         )
     }
 
+    #[allow(dead_code)]
     pub fn get_npcs_at_position(&self, pos: Position) -> Vec<&NPC> {
         self.npcs
             .values()
@@ -246,6 +266,7 @@ impl World {
             .collect()
     }
 
+    #[allow(dead_code)]
     pub fn get_objects_at_position(&self, pos: Position) -> Vec<&WorldObject> {
         self.objects
             .values()
@@ -253,6 +274,7 @@ impl World {
             .collect()
     }
 
+    #[allow(dead_code)]
     pub fn move_npc(&mut self, npc_id: &str, new_pos: Position) -> bool {
         if let Some(area) = self.map_areas.get(&self.current_area) {
             if area.contains_position(new_pos) {
@@ -265,10 +287,12 @@ impl World {
         false
     }
 
+    #[allow(dead_code)]
     pub fn get_npc_mut(&mut self, npc_id: &str) -> Option<&mut NPC> {
         self.npcs.get_mut(npc_id)
     }
 
+    #[allow(dead_code)]
     pub fn get_npc(&self, npc_id: &str) -> Option<&NPC> {
         self.npcs.get(npc_id)
     }
@@ -340,6 +364,7 @@ impl GameWorld {
     }
 
     // 切換地圖
+    #[allow(dead_code)]
     pub fn change_map(&mut self, map_name: &str) -> bool {
         if self.maps.contains_key(map_name) {
             self.current_map = map_name.to_string();
@@ -360,6 +385,7 @@ impl GameWorld {
     }
 
     // 列出所有地圖
+    #[allow(dead_code)]
     pub fn list_maps(&self) -> Vec<String> {
         self.maps.keys().cloned().collect()
     }
@@ -375,6 +401,7 @@ impl GameWorld {
     }
 
     // 保存地圖到檔案
+    #[allow(dead_code)]
     pub fn save_map(&self, map: &Map) -> Result<(), Box<dyn std::error::Error>> {
         let maps_dir = self.get_maps_dir();
         std::fs::create_dir_all(&maps_dir)?;
@@ -384,6 +411,7 @@ impl GameWorld {
     }
 
     // 從檔案載入地圖
+    #[allow(dead_code)]
     pub fn load_map(&mut self, map_name: &str) -> Result<(), Box<dyn std::error::Error>> {
         let maps_dir = self.get_maps_dir();
         let map_path = format!("{}/{}.json", maps_dir, map_name);
@@ -393,6 +421,7 @@ impl GameWorld {
     }
 
     // 從元數據加載所有地圖
+    #[allow(dead_code)]
     pub fn load_all_maps_from_metadata(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         for map_name in self.metadata.maps.clone() {
             let _ = self.load_map(&map_name);
@@ -419,6 +448,7 @@ impl GameWorld {
     }
 
     // 獲取世界信息
+    #[allow(dead_code)]
     pub fn get_world_info(&self) -> String {
         format!(
             "世界: {}\n\n{}\n\n地圖列表: {}",
@@ -433,11 +463,13 @@ impl GameWorld {
     }
 
     // 獲取 persons 資料夾路徑
+    #[allow(dead_code)]
     pub fn get_persons_dir(&self) -> String {
         format!("{}/persons", self.world_dir)
     }
 
     // 加載所有 persons
+    #[allow(dead_code)]
     pub fn load_all_persons(&self) -> Vec<Person> {
         let person_dir = self.get_persons_dir();
         let mut persons = Vec::new();
@@ -466,6 +498,7 @@ impl GameWorld {
     }
 
     // 獲取當前時間信息
+    #[allow(dead_code)]
     pub fn get_time_info(&self) -> TimeInfo {
         TimeInfo::new_with_seconds(self.time.hour, self.time.minute, self.time.second, self.time.day)
     }

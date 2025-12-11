@@ -1,5 +1,6 @@
 /// TimeUpdatable trait 定義時間更新事件
 /// 實現此 trait 的物件能接收並處理時間更新事件
+#[allow(dead_code)]
 pub trait TimeUpdatable {
     /// 當世界時間更新時被調用
     fn on_time_update(&mut self, current_time: &TimeInfo);
@@ -15,14 +16,17 @@ pub struct TimeInfo {
 }
 
 impl TimeInfo {
+    #[allow(dead_code)]
     pub fn new(hour: u8, minute: u8, day: u32) -> Self {
         TimeInfo { hour, minute, second: 0, day }
     }
 
+    #[allow(dead_code)]
     pub fn new_with_seconds(hour: u8, minute: u8, second: u8, day: u32) -> Self {
         TimeInfo { hour, minute, second, day }
     }
 
+    #[allow(dead_code)]
     pub fn format_time(&self) -> String {
         format!("Day {} {:02}:{:02}:{:02}", self.day, self.hour, self.minute, self.second)
     }

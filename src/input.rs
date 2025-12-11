@@ -75,7 +75,7 @@ impl InputHandler {
         }
 
         // 先檢查是否為 status 相關命令（這些命令不應關閉 status）
-        let is_status_command = matches!(parts[0], "status" | "show" if parts.len() > 1 && parts[1] == "status");
+        let _is_status_command = matches!(parts[0], "status" | "show" if parts.len() > 1 && parts[1] == "status");
         
         let result = match parts[0] {
             "exit" | "quit" => CommandResult::Exit,

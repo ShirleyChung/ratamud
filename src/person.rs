@@ -54,6 +54,7 @@ impl Person {
     }
 
     // 設置描述
+    #[allow(dead_code)]
     pub fn set_description(&mut self, description: String) {
         self.description = description;
     }
@@ -65,6 +66,7 @@ impl Person {
     }
 
     // 獲取位置
+    #[allow(dead_code)]
     pub fn position(&self) -> (usize, usize) {
         (self.x, self.y)
     }

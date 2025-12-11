@@ -132,6 +132,7 @@ impl DescriptionDb {
         None
     }
 
+    #[allow(dead_code)]
     pub fn load_from_file(&mut self, _map_name: &str, _map_type: &MapType) -> std::io::Result<()> {
         // 預留檔案載入邏輯
         Ok(())
@@ -149,6 +150,7 @@ pub struct Point {
 }
 
 impl Point {
+    #[allow(dead_code)]
     pub fn new(x: usize, y: usize, walkable: bool, description: String) -> Self {
         Point {
             x,
@@ -180,6 +182,7 @@ impl Point {
     }
 
     // 隨機生成Point - 舊方法保留相容性
+    #[allow(dead_code)]
     pub fn random(x: usize, y: usize) -> Self {
         Self::random_for_type(x, y, &MapType::Normal)
     }
@@ -188,6 +191,7 @@ impl Point {
         self.objects.push(obj);
     }
 
+    #[allow(dead_code)]
     pub fn remove_object(&mut self, obj: &str) -> bool {
         if let Some(pos) = self.objects.iter().position(|x| x == obj) {
             self.objects.remove(pos);
@@ -209,6 +213,7 @@ pub struct Map {
 }
 
 impl Map {
+    #[allow(dead_code)]
     pub fn new(name: String, width: usize, height: usize) -> Self {
         Self::new_with_type(name, width, height, MapType::Normal)
     }
@@ -268,6 +273,7 @@ impl Map {
     }
 
     // 獲取周圍的Point（3x3範圍，包括中心點）
+    #[allow(dead_code)]
     pub fn get_surrounding_points(&self, x: usize, y: usize, radius: usize) -> Vec<&Point> {
         let mut surrounding = Vec::new();
         

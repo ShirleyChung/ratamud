@@ -283,6 +283,7 @@ fn handle_hide_minimap(output_manager: &mut OutputManager) {
 }
 
 /// 處理關閉狀態面板
+#[allow(dead_code)]
 fn handle_close_status(output_manager: &mut OutputManager) {
     if output_manager.is_side_panel_open() {
         output_manager.toggle_side_panel();

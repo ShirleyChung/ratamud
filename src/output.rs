@@ -61,6 +61,7 @@ impl OutputManager {
     }
 
     // 獲取當前狀態（如果已過期則返回空字串）
+    #[allow(dead_code)]
     pub fn get_status(&self) -> String {
         if let Some(time) = self.status_time {
             if time.elapsed() > Duration::from_secs(5) {
@@ -85,6 +86,7 @@ impl OutputManager {
     }
 
     // 向上滾動
+    #[allow(dead_code)]
     pub fn scroll_up(&mut self) {
         if self.scroll > 0 {
             self.scroll -= 1;
@@ -92,6 +94,7 @@ impl OutputManager {
     }
 
     // 向下滾動（受可見高度限制）
+    #[allow(dead_code)]
     pub fn scroll_down(&mut self, visible_height: usize) {
         let max_scroll = self.messages.len().saturating_sub(visible_height);
         if self.scroll < max_scroll {
@@ -151,6 +154,7 @@ impl OutputManager {
     }
 
     // 清除側邊訊息
+    #[allow(dead_code)]
     pub fn clear_side_messages(&mut self) {
         self.side_messages.clear();
         self.side_scroll = 0;
@@ -172,6 +176,7 @@ impl OutputManager {
     }
 
     // 側邊面板向上滾動
+    #[allow(dead_code)]
     pub fn scroll_side_up(&mut self) {
         if self.side_scroll > 0 {
             self.side_scroll -= 1;
@@ -179,6 +184,7 @@ impl OutputManager {
     }
 
     // 側邊面板向下滾動
+    #[allow(dead_code)]
     pub fn scroll_side_down(&mut self, visible_height: usize) {
         let max_scroll = self.side_messages.len().saturating_sub(visible_height);
         if self.side_scroll < max_scroll {
@@ -203,7 +209,7 @@ impl OutputManager {
             .style(Style::default().bg(Color::DarkGray).fg(Color::Cyan))
     }
     // 取得stats內容
-    pub fn get_side_panel(&self, area: Rect) -> Paragraph {
+    pub fn get_side_panel(&self, _area: Rect) -> Paragraph {
             // 渲染 Status 面板
         let lines = crate::observable::observable_to_lines(self.side_observable.as_ref());
         Paragraph::new(Text::from(lines))
@@ -230,6 +236,7 @@ impl OutputManager {
     }
 
     // 切換小地圖顯示狀態
+    #[allow(dead_code)]
     pub fn toggle_minimap(&mut self) {
         self.show_minimap = !self.show_minimap;
     }
@@ -245,6 +252,7 @@ impl OutputManager {
     }
 
     // 渲染小地圖懸浮視窗
+    #[allow(dead_code)]
     pub fn render_minimap(&self, _area: Rect) -> Paragraph {
         let lines: Vec<Line> = self.minimap_lines
             .iter()
@@ -260,6 +268,7 @@ impl OutputManager {
     }
 
     // 在Output Message印出物件
+    #[allow(dead_code)]
     pub fn print_obserable(&mut self, obs: &dyn Observable) {
         self.print(obs.show_title());
         self.print(obs.show_description());

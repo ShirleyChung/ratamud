@@ -72,6 +72,7 @@ pub struct CustomObservable {
 }
 
 impl CustomObservable {
+    #[allow(dead_code)]
     pub fn new(title: String, description: String, items: Vec<String>) -> Self {
         CustomObservable {
             title,
