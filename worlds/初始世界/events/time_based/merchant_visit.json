@@ -1,0 +1,32 @@
+{
+  "id": "merchant_visit",
+  "name": "商人到訪",
+  "description": "旅行商人定期來到城鎮廣場",
+  "trigger": {
+    "type": "time",
+    "schedule": "*/5 * * * *",
+    "time_range": ["09:00:00", "18:00:00"]
+  },
+  "where": {
+    "map": "初始之地",
+    "positions": [[50, 50]]
+  },
+  "actions": [
+    {
+      "type": "message",
+      "text": "一位商人緩緩走來，背著大包小包的貨物"
+    },
+    {
+      "type": "spawn_npc",
+      "npc_id": "merchant_01",
+      "position": [50, 50],
+      "dialogue": "歡迎光臨！看看我從遠方帶來的珍奇商品吧！"
+    }
+  ],
+  "state": {
+    "repeatable": true,
+    "cooldown": 0,
+    "max_triggers": -1,
+    "prerequisites": []
+  }
+}

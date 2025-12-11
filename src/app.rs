@@ -40,6 +40,9 @@ pub fn run_main_loop(
             game_world.update_time();
             last_time_update = now;
             
+            // 檢查並觸發事件
+            check_and_execute_events(game_world, me, output_manager);
+            
             // 每5秒顯示一次時間到狀態列（=5遊戲分鐘）
             if now.duration_since(last_time_display) >= time_display_interval {
                 output_manager.set_current_time(game_world.format_time());
@@ -520,4 +523,206 @@ fn handle_drop(
     } else {
         output_manager.print(format!("身上沒有 \"{}\" 的物品。", item_name));
     }
+}
+
+/// 檢查並執行事件
+fn check_and_execute_events(
+    game_world: &mut GameWorld,
+    me: &mut Person,
+    output_manager: &mut OutputManager,
+) {
+    // 創建一個臨時的 GameWorld 視圖用於檢查
+    let current_day = game_world.time.day;
+    let current_hour = game_world.time.hour;
+    let current_minute = game_world.time.minute;
+    let current_second = game_world.time.second;
+    let current_map = game_world.current_map.clone();
+    
+    // 先收集觸發的事件ID
+    let triggered_events = {
+        // 使用內部作用域來限制借用
+        let scheduler = &mut game_world.event_scheduler;
+        let manager = &mut game_world.event_manager;
+        
+        // 檢查時間是否變化
+        let should_check = {
+            let last_check = scheduler.last_check_time;
+            (current_day, current_hour, current_minute) != last_check
+        };
+        
+        if !should_check {
+            return;
+        }
+        
+        scheduler.last_check_time = (current_day, current_hour, current_minute);
+        
+        // 收集所有觸發的事件
+        let events: Vec<crate::event::GameEvent> = manager.list_events()
+            .iter()
+            .map(|e| (*e).clone())
+            .collect();
+        
+        let mut triggered = Vec::new();
+        
+        for event in events {
+            let event_id = event.id.clone();
+            
+            // 檢查運行時狀態
+            if let Some(runtime_state) = manager.get_runtime_state(&event_id) {
+                if !event.can_trigger(runtime_state) {
+                    continue;
+                }
+            }
+            
+            // 檢查觸發條件
+            if check_event_trigger(&event, current_minute, current_hour, current_day, current_second) {
+                // 檢查條件（人事時地物）
+                if check_event_conditions(&event, &current_map, me) {
+                    triggered.push(event.clone());
+                    manager.trigger_event(&event_id);
+                }
+            }
+        }
+        
+        triggered
+    };
+    
+    // 執行觸發的事件
+    for event in triggered_events {
+        // 顯示事件觸發訊息（帶位置信息）
+        let location_info = get_event_location_info(&event, game_world);
+        output_manager.print(format!("🎭 事件: {}{}", event.name, location_info));
+        
+        // 執行事件動作
+        if let Err(e) = crate::event_executor::EventExecutor::execute_event(
+            &event,
+            game_world,
+            me,
+            output_manager
+        ) {
+            output_manager.print(format!("⚠️  事件執行錯誤: {}", e));
+        }
+    }
+}
+
+/// 獲取事件位置信息字符串
+fn get_event_location_info(event: &crate::event::GameEvent, game_world: &GameWorld) -> String {
+    if let Some(map_name) = &event.r#where.map {
+        if let Some(positions) = &event.r#where.positions {
+            if !positions.is_empty() {
+                // 獲取該位置的描述
+                if let Some(map) = game_world.maps.get(map_name) {
+                    if let Some(point) = map.get_point(positions[0][0], positions[0][1]) {
+                        return format!(" 在 {}({}, {}) - {}", 
+                            map_name, positions[0][0], positions[0][1], point.description);
+                    }
+                }
+                return format!(" 在 {}({}, {})", map_name, positions[0][0], positions[0][1]);
+            }
+        } else if let Some(area) = &event.r#where.area {
+            return format!(" 在 {} 區域({}-{}, {}-{})", 
+                map_name, area.x[0], area.x[1], area.y[0], area.y[1]);
+        }
+        return format!(" 在 {}", map_name);
+    }
+    String::new()
+}
+
+/// 檢查事件觸發條件
+fn check_event_trigger(
+    event: &crate::event::GameEvent,
+    minute: u8,
+    hour: u8,
+    day: u32,
+    _second: u8,
+) -> bool {
+    use crate::event::TriggerType;
+    
+    match &event.trigger {
+        TriggerType::Time { schedule, random_chance, day_range, time_range } => {
+            // 檢查 crontab 時間表達式
+            if !crate::event_scheduler::CronParser::matches(schedule, minute, hour, day) {
+                return false;
+            }
+            
+            // 檢查天數範圍
+            if let Some([start_day, end_day]) = day_range {
+                if day < *start_day || day > *end_day {
+                    return false;
+                }
+            }
+            
+            // 檢查時間範圍
+            if let Some([start_time, end_time]) = time_range {
+                let current_time = format!("{:02}:{:02}:{:02}", hour, minute, _second);
+                if current_time < *start_time || current_time > *end_time {
+                    return false;
+                }
+            }
+            
+            // 檢查隨機機率
+            if let Some(chance) = random_chance {
+                use rand::Rng;
+                let mut rng = rand::thread_rng();
+                if rng.gen::<f32>() > *chance {
+                    return false;
+                }
+            }
+            
+            true
+        }
+        TriggerType::Random { chance, .. } => {
+            use rand::Rng;
+            let mut rng = rand::thread_rng();
+            rng.gen::<f32>() <= *chance
+        }
+        _ => false,
+    }
+}
+
+/// 檢查事件條件
+fn check_event_conditions(
+    event: &crate::event::GameEvent,
+    current_map: &str,
+    player: &Person,
+) -> bool {
+    // 檢查地點條件
+    if let Some(map_name) = &event.r#where.map {
+        if *current_map != *map_name {
+            return false;
+        }
+    }
+    
+    if let Some(positions) = &event.r#where.positions {
+        let player_pos = (player.x, player.y);
+        let mut found = false;
+        for pos in positions {
+            if pos[0] == player_pos.0 && pos[1] == player_pos.1 {
+                found = true;
+                break;
+            }
+        }
+        if !found {
+            return false;
+        }
+    }
+    
+    if let Some(area) = &event.r#where.area {
+        let in_x_range = player.x >= area.x[0] && player.x <= area.x[1];
+        let in_y_range = player.y >= area.y[0] && player.y <= area.y[1];
+        if !in_x_range || !in_y_range {
+            return false;
+        }
+    }
+    
+    // 檢查物品條件
+    if let Some(required_items) = &event.what.required_items {
+        for item in required_items {
+            if !player.items.contains(item) {
+                return false;
+            }
+        }
+    }
+    
+    true
 }

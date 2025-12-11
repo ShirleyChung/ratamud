@@ -1,0 +1,21 @@
+{
+  "id": "discover_shrine",
+  "name": "發現古老神殿",
+  "description": "玩家第一次到達神殿位置",
+  "trigger": {
+    "type": "location",
+    "positions": [[25, 25]]
+  },
+  "actions": [
+    {
+      "type": "message",
+      "text": "你發現了一座被藤蔓覆蓋的古老神殿！石柱上刻滿了神秘的符文..."
+    }
+  ],
+  "state": {
+    "repeatable": false,
+    "cooldown": 0,
+    "max_triggers": 1,
+    "prerequisites": []
+  }
+}

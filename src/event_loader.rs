@@ -1,0 +1,194 @@
+use crate::event::{EventManager, GameEvent};
+use std::fs;
+use std::path::Path;
+
+/// 事件加載器
+pub struct EventLoader;
+
+impl EventLoader {
+    /// 從目錄加載所有事件腳本
+    pub fn load_from_directory(
+        event_manager: &mut EventManager,
+        dir_path: &str,
+    ) -> Result<usize, Box<dyn std::error::Error>> {
+        let mut loaded_count = 0;
+        
+        if !Path::new(dir_path).exists() {
+            fs::create_dir_all(dir_path)?;
+            return Ok(0);
+        }
+        
+        // 遞迴讀取目錄
+        loaded_count += Self::load_recursive(event_manager, dir_path)?;
+        
+        Ok(loaded_count)
+    }
+    
+    fn load_recursive(
+        event_manager: &mut EventManager,
+        dir_path: &str,
+    ) -> Result<usize, Box<dyn std::error::Error>> {
+        let mut count = 0;
+        
+        for entry in fs::read_dir(dir_path)? {
+            let entry = entry?;
+            let path = entry.path();
+            
+            if path.is_dir() {
+                // 遞迴處理子目錄
+                count += Self::load_recursive(event_manager, path.to_str().unwrap())?;
+            } else if path.extension().and_then(|s| s.to_str()) == Some("json") {
+                // 加載 JSON 事件檔案
+                match Self::load_event_file(&path) {
+                    Ok(event) => {
+                        event_manager.add_event(event);
+                        count += 1;
+                    }
+                    Err(e) => {
+                        eprintln!("載入事件檔案 {:?} 失敗: {}", path, e);
+                    }
+                }
+            }
+        }
+        
+        Ok(count)
+    }
+    
+    /// 從文件加載單個事件
+    fn load_event_file(path: &Path) -> Result<GameEvent, Box<dyn std::error::Error>> {
+        let content = fs::read_to_string(path)?;
+        let event: GameEvent = serde_json::from_str(&content)?;
+        Ok(event)
+    }
+    
+    /// 保存事件到文件
+    pub fn save_event_file(
+        event: &GameEvent,
+        file_path: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        let json = serde_json::to_string_pretty(event)?;
+        
+        // 確保目錄存在
+        if let Some(parent) = Path::new(file_path).parent() {
+            fs::create_dir_all(parent)?;
+        }
+        
+        fs::write(file_path, json)?;
+        Ok(())
+    }
+    
+    /// 創建範例事件腳本
+    pub fn create_example_events(world_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
+        let events_dir = format!("{}/events", world_dir);
+        
+        // 創建目錄結構
+        fs::create_dir_all(format!("{}/time_based", events_dir))?;
+        fs::create_dir_all(format!("{}/random", events_dir))?;
+        fs::create_dir_all(format!("{}/location", events_dir))?;
+        
+        // 範例1: 每10分鐘的商人到訪
+        let merchant_event = serde_json::json!({
+            "id": "merchant_visit",
+            "name": "商人到訪",
+            "description": "旅行商人定期來到城鎮廣場",
+            "trigger": {
+                "type": "time",
+                "schedule": "*/10 * * * *",
+                "time_range": ["09:00:00", "18:00:00"]
+            },
+            "where": {
+                "map": "初始之地"
+            },
+            "actions": [
+                {
+                    "type": "message",
+                    "text": "一位商人來到了廣場"
+                },
+                {
+                    "type": "spawn_npc",
+                    "npc_id": "merchant_01",
+                    "position": [50, 50],
+                    "dialogue": "歡迎！看看我的商品吧！"
+                }
+            ],
+            "state": {
+                "repeatable": true,
+                "cooldown": 0,
+                "max_triggers": -1,
+                "prerequisites": []
+            }
+        });
+        
+        fs::write(
+            format!("{}/time_based/merchant_visit.json", events_dir),
+            serde_json::to_string_pretty(&merchant_event)?
+        )?;
+        
+        // 範例2: 隨機寶藏出現
+        let treasure_event = serde_json::json!({
+            "id": "random_treasure",
+            "name": "神秘寶藏",
+            "description": "隨機地點出現寶藏",
+            "trigger": {
+                "type": "time",
+                "schedule": "*/5 * * * *",
+                "random_chance": 0.3
+            },
+            "where": {
+                "map": "初始之地"
+            },
+            "actions": [
+                {
+                    "type": "add_item",
+                    "item": "神秘寶箱",
+                    "position": [30, 30]
+                },
+                {
+                    "type": "message",
+                    "text": "你感覺到附近有什麼特別的東西..."
+                }
+            ],
+            "state": {
+                "repeatable": true,
+                "cooldown": 300,
+                "max_triggers": -1,
+                "prerequisites": []
+            }
+        });
+        
+        fs::write(
+            format!("{}/random/treasure_spawn.json", events_dir),
+            serde_json::to_string_pretty(&treasure_event)?
+        )?;
+        
+        // 範例3: 進入特定位置觸發
+        let location_event = serde_json::json!({
+            "id": "discover_shrine",
+            "name": "發現神殿",
+            "description": "玩家發現古老的神殿",
+            "trigger": {
+                "type": "location",
+                "positions": [[25, 25]]
+            },
+            "actions": [
+                {
+                    "type": "message",
+                    "text": "你發現了一座古老的神殿！"
+                }
+            ],
+            "state": {
+                "repeatable": false,
+                "cooldown": 0,
+                "max_triggers": 1,
+                "prerequisites": []
+            }
+        });
+        
+        fs::write(
+            format!("{}/location/discover_shrine.json", events_dir),
+            serde_json::to_string_pretty(&location_event)?
+        )?;
+        
+        Ok(())
+    }
+}

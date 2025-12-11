@@ -1,0 +1,24 @@
+{
+  "id": "morning_greeting",
+  "name": "清晨問候",
+  "description": "每天早上9點的問候",
+  "trigger": {
+    "type": "time",
+    "schedule": "0 9 * * *"
+  },
+  "where": {
+    "map": "初始之地"
+  },
+  "actions": [
+    {
+      "type": "message",
+      "text": "☀️ 晨光灑落大地，新的一天開始了。鳥兒在樹梢歡快地歌唱..."
+    }
+  ],
+  "state": {
+    "repeatable": true,
+    "cooldown": 0,
+    "max_triggers": -1,
+    "prerequisites": []
+  }
+}

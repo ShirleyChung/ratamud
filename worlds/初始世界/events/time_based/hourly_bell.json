@@ -1,0 +1,24 @@
+{
+  "id": "hourly_bell",
+  "name": "整點鐘聲",
+  "description": "遠處傳來的鐘聲",
+  "trigger": {
+    "type": "time",
+    "schedule": "0 * * * *"
+  },
+  "where": {
+    "map": "初始之地"
+  },
+  "actions": [
+    {
+      "type": "message",
+      "text": "🔔 遠處傳來悠揚的鐘聲，迴盪在空氣中..."
+    }
+  ],
+  "state": {
+    "repeatable": true,
+    "cooldown": 0,
+    "max_triggers": -1,
+    "prerequisites": []
+  }
+}

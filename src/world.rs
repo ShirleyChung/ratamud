@@ -330,6 +330,8 @@ pub struct GameWorld {
     pub world_dir: String,
     pub time: WorldTime,
     pub game_speed: f32,
+    pub event_manager: crate::event::EventManager,
+    pub event_scheduler: crate::event_scheduler::EventScheduler,
 }
 
 impl GameWorld {
@@ -353,6 +355,8 @@ impl GameWorld {
             world_dir,
             time: WorldTime::new(),
             game_speed: 60.0,
+            event_manager: crate::event::EventManager::new(),
+            event_scheduler: crate::event_scheduler::EventScheduler::new(),
         }
     }
 
