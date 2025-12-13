@@ -171,7 +171,8 @@ pub fn run_main_loop(
             
             // 處理鍵盤事件
             match event {
-                crossterm::event::Event::Key(key) => match key.code {
+                crossterm::event::Event::Key(key) => {
+                    match key.code {
                     KeyCode::Esc => {
                         // ESC 鍵清除輸入
                         input_handler.clear_input();
@@ -200,8 +201,23 @@ pub fn run_main_loop(
                     },
                     // 上下左右鍵優先用於移動
                     KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right => {
+                        // 檢查是否按住 Shift 鍵 - 用於訊息捲動
+                        if key.modifiers.contains(crossterm::event::KeyModifiers::SHIFT) {
+                            match key.code {
+                                KeyCode::Up => {
+                                    output_manager.scroll_up();
+                                    output_manager.set_status("向上捲動訊息".to_string());
+                                },
+                                KeyCode::Down => {
+                                    // 需要傳入可見高度，這裡使用合理的預設值
+                                    output_manager.scroll_down(20);
+                                    output_manager.set_status("向下捲動訊息".to_string());
+                                },
+                                _ => {}
+                            }
+                        }
                         // 如果大地圖開啟，用方向鍵移動地圖視圖
-                        if output_manager.is_map_open() {
+                        else if output_manager.is_map_open() {
                             if let Some(current_map) = game_world.get_current_map() {
                                 let (dx, dy) = match key.code {
                                     KeyCode::Up => (0, -5),
@@ -225,6 +241,16 @@ pub fn run_main_loop(
                             }
                         }
                     },
+                    KeyCode::PageUp => {
+                        // PageUp 鍵向上捲動訊息
+                        output_manager.scroll_up();
+                        output_manager.set_status("向上捲動訊息".to_string());
+                    },
+                    KeyCode::PageDown => {
+                        // PageDown 鍵向下捲動訊息
+                        output_manager.scroll_down(20);
+                        output_manager.set_status("向下捲動訊息".to_string());
+                    },
                     _ => {
                         // 處理其他鍵盤輸入（字符、Enter、Backspace 等）
                         if let Some(result) = input_handler.handle_event(
@@ -236,6 +262,7 @@ pub fn run_main_loop(
                                 handle_command_result(result, output_manager, game_world, me)?;
                             }
                         }
+                    }
                     }
                 },
                 _ => {}
@@ -1034,17 +1061,12 @@ fn check_and_execute_events(
         return;
     }
     
-    // 調試訊息
-    output_manager.log(format!("🔍 [DEBUG] 檢查事件 Day {} {:02}:{:02}", current_day, current_hour, current_minute));
-    
     game_world.event_scheduler.last_check_time = (current_day, current_hour, current_minute);
     
     let events: Vec<crate::event::GameEvent> = game_world.event_manager.list_events()
         .iter()
         .map(|e| (*e).clone())
         .collect();
-    
-    output_manager.log(format!("🔍 [DEBUG] 共 {} 個事件", events.len()));
     
     let mut triggered_event_ids = Vec::new();
     
@@ -1053,7 +1075,6 @@ fn check_and_execute_events(
         
         if let Some(runtime_state) = game_world.event_manager.get_runtime_state(&event_id) {
             if !event.can_trigger(runtime_state) {
-                output_manager.log(format!("🔍 [DEBUG] {} - 冷卻中", event.name));
                 continue;
             }
         }
@@ -1063,16 +1084,11 @@ fn check_and_execute_events(
         let condition_check = crate::event_scheduler::EventScheduler::new()
             .check_conditions(&event, game_world, me);
         
-        output_manager.log(format!("🔍 [DEBUG] {} - trigger: {}, condition: {}", 
-            event.name, trigger_check, condition_check));
-        
         if trigger_check && condition_check {
             triggered_event_ids.push(event_id.clone());
             game_world.event_manager.trigger_event(&event_id);
         }
     }
-    
-    output_manager.log(format!("🔍 [DEBUG] 觸發 {} 個事件", triggered_event_ids.len()));
     
     for event_id in triggered_event_ids {
         if let Some(event) = game_world.event_manager.get_event(&event_id) {

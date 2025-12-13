@@ -10,15 +10,15 @@
         "y": 0,
         "walkable": true,
         "description": "遠方的翠綠山丘",
-        "name": "",
+        "name": "零點",
         "objects": {
-          "頭盔": 2
+          "頭盔": 1
         }
       },
       {
         "x": 1,
         "y": 0,
-        "walkable": false,
+        "walkable": true,
         "description": "清涼的泉水湧出",
         "name": "",
         "objects": {}
@@ -26,7 +26,7 @@
       {
         "x": 2,
         "y": 0,
-        "walkable": false,
+        "walkable": true,
         "description": "聳立的懸崖",
         "name": "",
         "objects": {}
@@ -34,7 +34,7 @@
       {
         "x": 3,
         "y": 0,
-        "walkable": false,
+        "walkable": true,
         "description": "鬱鬱蒼蒼的樹林",
         "name": "",
         "objects": {}
@@ -834,7 +834,7 @@
       {
         "x": 1,
         "y": 1,
-        "walkable": false,
+        "walkable": true,
         "description": "聳立的懸崖",
         "name": "",
         "objects": {}
@@ -842,7 +842,7 @@
       {
         "x": 2,
         "y": 1,
-        "walkable": false,
+        "walkable": true,
         "description": "清涼的泉水湧出",
         "name": "",
         "objects": {}
@@ -3143,8 +3143,8 @@
         "description": "連接兩岸的古老橋樑",
         "name": "",
         "objects": {
-          "木劍": 1,
-          "蘋果": 2
+          "蘋果": 2,
+          "木劍": 1
         }
       },
       {
@@ -3299,7 +3299,9 @@
         "walkable": true,
         "description": "深綠色的古老森林",
         "name": "",
-        "objects": {}
+        "objects": {
+          "匕首": 1
+        }
       },
       {
         "x": 3,
@@ -4127,7 +4129,9 @@
         "walkable": true,
         "description": "聳立的懸崖",
         "name": "",
-        "objects": {}
+        "objects": {
+          "弓": 1
+        }
       },
       {
         "x": 4,
@@ -9354,8 +9358,8 @@
         "description": "寂靜的墓地",
         "name": "",
         "objects": {
-          "毒藥": 2,
-          "頭盔": 2
+          "頭盔": 2,
+          "毒藥": 2
         }
       },
       {
@@ -13763,8 +13767,8 @@
         "description": "鬱鬱蒼蒼的樹林",
         "name": "",
         "objects": {
-          "漿果": 3,
-          "魔力藥水": 1
+          "魔力藥水": 1,
+          "漿果": 3
         }
       },
       {
@@ -14340,8 +14344,8 @@
         "description": "神秘的洞穴入口",
         "name": "",
         "objects": {
-          "樹皮": 1,
-          "治療藥水": 3
+          "治療藥水": 3,
+          "樹皮": 1
         }
       },
       {
@@ -17419,8 +17423,8 @@
         "description": "連接兩岸的古老橋樑",
         "name": "",
         "objects": {
-          "麵包": 2,
-          "木劍": 1
+          "木劍": 1,
+          "麵包": 2
         }
       },
       {
@@ -29248,8 +29252,8 @@
         "description": "神秘的洞穴入口",
         "name": "",
         "objects": {
-          "蘋果": 2,
-          "盾牌": 2
+          "盾牌": 2,
+          "蘋果": 2
         }
       },
       {
@@ -29405,8 +29409,8 @@
         "description": "白雪皚皚的地面",
         "name": "",
         "objects": {
-          "頭盔": 1,
-          "石子": 2
+          "石子": 2,
+          "頭盔": 1
         }
       },
       {
@@ -35330,8 +35334,8 @@
         "description": "宏偉的石砌城堡",
         "name": "",
         "objects": {
-          "樹皮": 2,
-          "毒藥": 1
+          "毒藥": 1,
+          "樹皮": 2
         }
       },
       {
@@ -36623,8 +36627,8 @@
         "description": "白雪皚皚的地面",
         "name": "",
         "objects": {
-          "鎬": 2,
-          "盾牌": 1
+          "盾牌": 1,
+          "鎬": 2
         }
       },
       {
@@ -39983,8 +39987,8 @@
         "description": "寬闊的綠色草地，微風吹過",
         "name": "",
         "objects": {
-          "弓": 2,
-          "盾牌": 3
+          "盾牌": 3,
+          "弓": 2
         }
       },
       {
@@ -44393,8 +44397,8 @@
         "description": "盛開的彩色花田",
         "name": "",
         "objects": {
-          "匕首": 3,
-          "鎬": 1
+          "鎬": 1,
+          "匕首": 3
         }
       },
       {
@@ -54446,7 +54450,7 @@
       {
         "x": 71,
         "y": 66,
-        "walkable": false,
+        "walkable": true,
         "description": "灰色的嶙峋岩石",
         "name": "",
         "objects": {}
@@ -60897,8 +60901,8 @@
         "description": "聳立的懸崖",
         "name": "",
         "objects": {
-          "繩索": 3,
-          "毒藥": 2
+          "毒藥": 2,
+          "繩索": 2
         }
       },
       {
@@ -62555,7 +62559,7 @@
       {
         "x": 63,
         "y": 76,
-        "walkable": false,
+        "walkable": true,
         "description": "清涼的泉水湧出",
         "name": "",
         "objects": {}
@@ -62563,7 +62567,7 @@
       {
         "x": 64,
         "y": 76,
-        "walkable": false,
+        "walkable": true,
         "description": "清澈的河流流經此地",
         "name": "",
         "objects": {}
@@ -79142,8 +79146,8 @@
         "description": "遠方的翠綠山丘",
         "name": "",
         "objects": {
-          "盾牌": 3,
-          "魔力藥水": 2
+          "魔力藥水": 2,
+          "盾牌": 3
         }
       },
       {

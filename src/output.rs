@@ -53,7 +53,8 @@ impl OutputManager {
     // 添加訊息並將滾動位置移到最後（僅儲存純文本）
     pub fn print(&mut self, message: String) {
         self.messages.push(message);
-        self.scroll = self.messages.len().saturating_sub(1);
+        // 將 scroll 設為一個很大的值，render_output 會自動限制它
+        self.scroll = usize::MAX;
     }
 
     // 設定狀態列訊息（5秒後自動清除）
@@ -100,18 +101,24 @@ impl OutputManager {
     // 向上滾動
     #[allow(dead_code)]
     pub fn scroll_up(&mut self) {
-        if self.scroll > 0 {
-            self.scroll -= 1;
+        // 先確保 scroll 不會超過合理範圍
+        if self.scroll > self.messages.len() {
+            self.scroll = self.messages.len().saturating_sub(1);
         }
+        // 一次向上捲動 5 行，讓效果更明顯
+        self.scroll = self.scroll.saturating_sub(5);
     }
 
     // 向下滾動（受可見高度限制）
     #[allow(dead_code)]
     pub fn scroll_down(&mut self, visible_height: usize) {
-        let max_scroll = self.messages.len().saturating_sub(visible_height);
-        if self.scroll < max_scroll {
-            self.scroll += 1;
+        // 先確保 scroll 不會超過合理範圍
+        if self.scroll > self.messages.len() {
+            self.scroll = self.messages.len().saturating_sub(1);
         }
+        let max_scroll = self.messages.len().saturating_sub(visible_height);
+        // 一次向下捲動 5 行，讓效果更明顯
+        self.scroll = (self.scroll + 5).min(max_scroll);
     }
 
     // 渲染輸出區域的小部件
