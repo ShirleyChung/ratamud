@@ -211,6 +211,39 @@ impl InputHandler {
                     CommandResult::Conquer(parts[1].to_string())
                 }
             },
+            "flyto" => {
+                // flyto <坐標/地圖名/地點名> 命令
+                if parts.len() < 2 {
+                    CommandResult::Error("Usage: flyto <x,y|地圖名|地點名>".to_string())
+                } else {
+                    CommandResult::FlyTo(parts[1].to_string())
+                }
+            },
+            "namehere" => {
+                // namehere <名稱> 命令，命名當前地點
+                if parts.len() < 2 {
+                    CommandResult::Error("Usage: namehere <名稱>".to_string())
+                } else {
+                    CommandResult::NameHere(parts[1..].join(" "))
+                }
+            },
+            "name" => {
+                // name <目標> <名稱> 命令
+                // name <npc> <新名稱> 或 name <x,y> <地點名稱>
+                if parts.len() < 3 {
+                    CommandResult::Error("Usage: name <npc|x,y> <新名稱>".to_string())
+                } else {
+                    CommandResult::Name(parts[1].to_string(), parts[2..].join(" "))
+                }
+            },
+            "destroy" => {
+                // destroy <npc/物品> 命令，刪除當前位置的 NPC 或物品
+                if parts.len() < 2 {
+                    CommandResult::Error("Usage: destroy <npc名稱|物品名稱>".to_string())
+                } else {
+                    CommandResult::Destroy(parts[1].to_string())
+                }
+            },
             _ => CommandResult::Error(format!("Unknown command: {}", parts[0])),
         };
         result
@@ -255,6 +288,10 @@ pub enum CommandResult {
     Drop(String, u32),               // 放下物品 (物品名稱, 數量)
     Summon(String),                  // 召喚 NPC (NPC 名稱/ID)
     Conquer(String),                 // 征服指定方向，使其可行走 (up/down/left/right/u/d/l/r)
+    FlyTo(String),                   // 飛到指定位置/地圖/地點 (坐標/地圖名/地點名)
+    NameHere(String),                // 命名當前地點
+    Name(String, String),            // 命名 NPC 或地點 (目標, 新名稱)
+    Destroy(String),                 // 刪除指定的 NPC 或物品 (NPC名稱/物品名稱)
     Help,                            // 顯示幫助訊息
 }
 
@@ -269,6 +306,9 @@ impl CommandResult {
             CommandResult::Look(..) => Some(("look [<npc>]", "查看位置或NPC", "🎮 遊戲控制")),
             CommandResult::Move(..) => Some(("↑↓←→", "移動角色", "🎮 遊戲控制")),
             CommandResult::Conquer(..) => Some(("conq <方向>", "征服方向使其可行走", "🎮 遊戲控制")),
+            CommandResult::FlyTo(..) => Some(("flyto <目標>", "傳送到位置/地圖/地點", "🎮 遊戲控制")),
+            CommandResult::NameHere(..) => Some(("namehere <名稱>", "命名當前地點", "🎮 遊戲控制")),
+            CommandResult::Name(..) => Some(("name <目標> <名稱>", "命名NPC或地點", "🎮 遊戲控制")),
             CommandResult::Get(..) => Some(("get [<物品>] [<數量>]", "撿起物品", "🎒 物品管理")),
             CommandResult::Drop(..) => Some(("drop <物品> <數量>", "放下物品", "🎒 物品管理")),
             CommandResult::Summon(..) => Some(("summon <npc>", "召喚NPC到此", "👥 NPC互動")),
@@ -279,6 +319,7 @@ impl CommandResult {
             CommandResult::ShowLog => Some(("show log", "顯示系統日誌", "🗺️  介面控制")),
             CommandResult::HideLog => Some(("hide log", "隱藏系統日誌", "🗺️  介面控制")),
             CommandResult::ShowMap => Some(("show map", "顯示大地圖 (↑↓←→移動, q退出)", "🗺️  介面控制")),
+            CommandResult::Destroy(..) => Some(("destroy <目標>", "刪除NPC或物品", "🛠️  其他")),
             _ => None,
         }
     }
@@ -292,6 +333,9 @@ impl CommandResult {
             CommandResult::Move(0, 0),
             CommandResult::Look(None),
             CommandResult::Conquer(String::new()),
+            CommandResult::FlyTo(String::new()),
+            CommandResult::NameHere(String::new()),
+            CommandResult::Name(String::new(), String::new()),
             CommandResult::Help,
             CommandResult::Exit,
             CommandResult::Get(None, 1),
@@ -305,6 +349,7 @@ impl CommandResult {
             CommandResult::ShowStatus,
             CommandResult::ShowWorld,
             CommandResult::Clear,
+            CommandResult::Destroy(String::new()),
         ];
         
         let mut categories: HashMap<&'static str, Vec<(&'static str, &'static str)>> = HashMap::new();

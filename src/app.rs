@@ -282,6 +282,10 @@ fn handle_command_result(
         CommandResult::Drop(item_name, quantity) => handle_drop(item_name, quantity, output_manager, game_world, me),
         CommandResult::Summon(npc_name) => handle_summon(npc_name, output_manager, game_world, me),
         CommandResult::Conquer(direction) => handle_conquer(direction, output_manager, game_world, me)?,
+        CommandResult::FlyTo(target) => handle_flyto(target, output_manager, game_world, me)?,
+        CommandResult::NameHere(name) => handle_namehere(name, output_manager, game_world, me)?,
+        CommandResult::Name(target, name) => handle_name(target, name, output_manager, game_world, me)?,
+        CommandResult::Destroy(target) => handle_destroy(target, output_manager, game_world, me)?,
     }
     Ok(())
 }
@@ -456,6 +460,11 @@ fn display_look(
         // 顯示當前位置信息
         if let Some(point) = current_map.get_point(me.x, me.y) {
             output_manager.print( format!("【當前位置: ({}, {})】\n【{}】", me.x, me.y, point.description) );
+            
+            // 顯示地點名稱（如果有）
+            if !point.name.is_empty() {
+                output_manager.print(format!("此處是【{}】", point.name));
+            }
             
             // 顯示當前位置的 items
             if !point.objects.is_empty() {
@@ -784,6 +793,230 @@ fn handle_conquer(
     }
     
     Ok(())
+}
+
+/// 處理飛到指令 - 傳送到指定位置/地圖/地點
+fn handle_flyto(
+    target: String,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &mut Person,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // 嘗試解析為坐標 (x,y)
+    if let Some((x, y)) = parse_coordinates(&target) {
+        // 檢查坐標是否在當前地圖範圍內
+        if let Some(current_map) = game_world.get_current_map() {
+            if x < current_map.width && y < current_map.height {
+                me.move_to(x, y);
+                output_manager.print(format!("你飛到了位置 ({}, {})", x, y));
+                output_manager.log(format!("玩家傳送到 ({}, {})", x, y));
+                
+                // 保存玩家位置
+                let person_dir = format!("{}/persons", game_world.world_dir);
+                me.save(&person_dir, "me")?;
+                
+                // 自動執行 look
+                display_look(None, output_manager, game_world, me);
+                return Ok(());
+            } else {
+                output_manager.set_status("座標超出地圖範圍".to_string());
+                return Ok(());
+            }
+        }
+    }
+    
+    // 嘗試作為地圖名稱
+    if game_world.maps.contains_key(&target) {
+        game_world.current_map = target.clone();
+        // 將玩家移動到地圖中心
+        if let Some(new_map) = game_world.get_current_map() {
+            let center_x = new_map.width / 2;
+            let center_y = new_map.height / 2;
+            me.move_to(center_x, center_y);
+            output_manager.print(format!("你飛到了地圖「{}」", target));
+            output_manager.log(format!("玩家傳送到地圖「{}」({}, {})", target, center_x, center_y));
+            
+            // 保存玩家位置和世界狀態
+            let person_dir = format!("{}/persons", game_world.world_dir);
+            me.save(&person_dir, "me")?;
+            game_world.save_metadata()?;
+            
+            // 自動執行 look
+            display_look(None, output_manager, game_world, me);
+            return Ok(());
+        }
+    }
+    
+    // 嘗試作為地點名稱
+    if let Some(current_map) = game_world.get_current_map() {
+        for row in &current_map.points {
+            for point in row {
+                if !point.name.is_empty() && point.name == target {
+                    me.move_to(point.x, point.y);
+                    output_manager.print(format!("你飛到了地點「{}」({}, {})", target, point.x, point.y));
+                    output_manager.log(format!("玩家傳送到地點「{}」({}, {})", target, point.x, point.y));
+                    
+                    // 保存玩家位置
+                    let person_dir = format!("{}/persons", game_world.world_dir);
+                    me.save(&person_dir, "me")?;
+                    
+                    // 自動執行 look
+                    display_look(None, output_manager, game_world, me);
+                    return Ok(());
+                }
+            }
+        }
+    }
+    
+    output_manager.set_status(format!("找不到目標: {}（請使用座標x,y、地圖名或地點名）", target));
+    Ok(())
+}
+
+/// 處理 namehere 指令 - 命名當前地點
+fn handle_namehere(
+    name: String,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &Person,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let map_name = game_world.current_map.clone();
+    
+    if let Some(current_map) = game_world.get_current_map_mut() {
+        if let Some(point) = current_map.get_point_mut(me.x, me.y) {
+            let old_name = if point.name.is_empty() {
+                "（無名）".to_string()
+            } else {
+                point.name.clone()
+            };
+            
+            point.name = name.clone();
+            output_manager.print(format!("你將此地命名為「{}」", name));
+            output_manager.log(format!("位置 ({}, {}) 從 {} 更名為「{}」", me.x, me.y, old_name, name));
+        }
+    }
+    
+    // 保存地圖
+    if let Some(map) = game_world.maps.get(&map_name) {
+        game_world.save_map(map)?;
+    }
+    
+    Ok(())
+}
+
+/// 處理 name 指令 - 命名 NPC 或地點
+fn handle_name(
+    target: String,
+    new_name: String,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &Person,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // 嘗試解析為坐標
+    if let Some((x, y)) = parse_coordinates(&target) {
+        let map_name = game_world.current_map.clone();
+        
+        if let Some(current_map) = game_world.get_current_map_mut() {
+            if x < current_map.width && y < current_map.height {
+                if let Some(point) = current_map.get_point_mut(x, y) {
+                    let old_name = if point.name.is_empty() {
+                        "（無名）".to_string()
+                    } else {
+                        point.name.clone()
+                    };
+                    
+                    point.name = new_name.clone();
+                    output_manager.print(format!("你將位置 ({}, {}) 命名為「{}」", x, y, new_name));
+                    output_manager.log(format!("位置 ({}, {}) 從 {} 更名為「{}」", x, y, old_name, new_name));
+                }
+            } else {
+                output_manager.set_status("座標超出地圖範圍".to_string());
+                return Ok(());
+            }
+        }
+        
+        // 保存地圖
+        if let Some(map) = game_world.maps.get(&map_name) {
+            game_world.save_map(map)?;
+        }
+        
+        return Ok(());
+    }
+    
+    // 嘗試作為 NPC
+    if let Some(npc) = game_world.npc_manager.get_npc_mut(&target) {
+        let old_name = npc.name.clone();
+        npc.name = new_name.clone();
+        output_manager.print(format!("你將「{}」改名為「{}」", old_name, new_name));
+        output_manager.log(format!("NPC 從「{}」更名為「{}」", old_name, new_name));
+        
+        // 保存 NPC
+        let person_dir = format!("{}/persons", game_world.world_dir);
+        game_world.npc_manager.save_all(&person_dir)?;
+        
+        return Ok(());
+    }
+    
+    output_manager.set_status(format!("找不到目標: {}（請使用座標x,y或NPC名稱）", target));
+    Ok(())
+}
+
+/// 處理 destroy 指令 - 刪除當前位置的 NPC 或物品
+fn handle_destroy(
+    target: String,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &Person,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // 先嘗試作為 NPC（在當前位置）
+    if let Some((id, npc)) = game_world.npc_manager.remove_npc_at(&target, me.x, me.y) {
+        let npc_name = npc.name.clone();
+        output_manager.print(format!("你摧毀了 NPC「{}」", npc_name));
+        output_manager.log(format!("NPC「{}」在 ({}, {}) 被刪除", npc_name, me.x, me.y));
+        
+        // 保存 NPC 狀態
+        let person_dir = format!("{}/persons", game_world.world_dir);
+        game_world.npc_manager.save_all(&person_dir)?;
+        
+        return Ok(());
+    }
+    
+    // 嘗試作為物品
+    let item_name = item_registry::resolve_item_name(&target);
+    let map_name = game_world.current_map.clone();
+    
+    if let Some(current_map) = game_world.get_current_map_mut() {
+        if let Some(point) = current_map.get_point_mut(me.x, me.y) {
+            if let Some(count) = point.objects.get(&item_name) {
+                let count_value = *count;
+                point.objects.remove(&item_name);
+                
+                let display_name = item_registry::get_item_display_name(&item_name);
+                output_manager.print(format!("你摧毀了物品「{}」x{}", display_name, count_value));
+                output_manager.log(format!("物品「{}」x{} 在 ({}, {}) 被刪除", display_name, count_value, me.x, me.y));
+                
+                // 保存地圖
+                if let Some(map) = game_world.maps.get(&map_name) {
+                    game_world.save_map(map)?;
+                }
+                
+                return Ok(());
+            }
+        }
+    }
+    
+    output_manager.set_status(format!("此處找不到「{}」（NPC 或物品）", target));
+    Ok(())
+}
+
+/// 解析坐標字串 "x,y"
+fn parse_coordinates(s: &str) -> Option<(usize, usize)> {
+    let parts: Vec<&str> = s.split(',').collect();
+    if parts.len() == 2 {
+        if let (Ok(x), Ok(y)) = (parts[0].trim().parse::<usize>(), parts[1].trim().parse::<usize>()) {
+            return Some((x, y));
+        }
+    }
+    None
 }
 
 /// 檢查並執行事件

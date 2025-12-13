@@ -77,6 +77,33 @@ impl NpcManager {
         self.npcs.remove(id)
     }
 
+    /// 通過名稱或別名和位置移除 NPC
+    pub fn remove_npc_at(&mut self, name_or_id: &str, x: usize, y: usize) -> Option<(String, Person)> {
+        let key = name_or_id.to_lowercase();
+        
+        // 先嘗試通過別名查找 ID
+        if let Some(id) = self.npc_aliases.get(&key) {
+            if let Some(npc) = self.npcs.get(id) {
+                if npc.x == x && npc.y == y {
+                    let id_clone = id.clone();
+                    let removed_npc = self.npcs.remove(&id_clone);
+                    return removed_npc.map(|npc| (id_clone, npc));
+                }
+            }
+        }
+        
+        // 嘗試通過名稱查找
+        if let Some((id, npc)) = self.npcs.iter().find(|(_, npc)| {
+            npc.name.to_lowercase() == key && npc.x == x && npc.y == y
+        }) {
+            let id_clone = id.clone();
+            let removed_npc = self.npcs.remove(&id_clone);
+            return removed_npc.map(|npc| (id_clone, npc));
+        }
+        
+        None
+    }
+
     /// 保存所有 NPC
     pub fn save_all(&self, person_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
         for (id, npc) in &self.npcs {

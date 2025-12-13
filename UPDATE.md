@@ -3753,4 +3753,779 @@ xx              x
 - ✅ 錯誤處理完善
 - ✅ 系統日誌記錄正確
 
+---
+
+# FlyTo 與命名系統指令
+
+## 日期
+2025-12-13
+
+## 功能說明
+
+新增三個強大的指令：`flyto`（傳送）、`namehere`（命名當前地點）、`name`（命名 NPC 或指定地點）。
+
+## 新增功能
+
+### 1. FlyTo 傳送指令
+
+**語法**：
+```
+flyto <目標>
+```
+
+**支持的目標類型**：
+1. **座標**: `flyto x,y` - 傳送到指定座標
+2. **地圖**: `flyto 地圖名` - 傳送到指定地圖的中心
+3. **地點**: `flyto 地點名` - 傳送到已命名的地點
+
+**使用範例**：
+```
+> flyto 50,50
+你飛到了位置 (50, 50)
+
+> flyto 初始之地
+你飛到了地圖「初始之地」
+
+> flyto 廣場
+你飛到了地點「廣場」(50, 50)
+```
+
+### 2. NameHere 命名當前地點
+
+**語法**：
+```
+namehere <名稱>
+```
+
+**功能**：為玩家當前所在位置命名。
+
+**使用範例**：
+```
+> namehere 城鎮廣場
+你將此地命名為「城鎮廣場」
+
+> namehere 神秘洞穴入口
+你將此地命名為「神秘洞穴入口」
+```
+
+### 3. Name 命名指令
+
+**語法**：
+```
+name <目標> <新名稱>
+```
+
+**支持的目標類型**：
+1. **座標**: `name x,y 名稱` - 命名指定座標的地點
+2. **NPC**: `name npc名稱 新名稱` - 重命名 NPC
+
+**使用範例**：
+
+**命名地點**：
+```
+> name 42,51 商業區
+你將位置 (42, 51) 命名為「商業區」
+
+> name 25,25 古老神殿
+你將位置 (25, 25) 命名為「古老神殿」
+```
+
+**重命名 NPC**：
+```
+> name merchant 老王
+你將「商人」改名為「老王」
+
+> name m 小李
+你將「老王」改名為「小李」
+```
+
+## 技術實現
+
+### Point 結構擴展
+
+**添加 name 欄位**：
+```rust
+pub struct Point {
+    pub x: usize,
+    pub y: usize,
+    pub walkable: bool,
+    pub description: String,
+    #[serde(default)]
+    pub name: String,  // ✨ 新增：地點名稱
+    pub objects: HashMap<String, u32>,
+}
+```
+
+### 新增指令枚舉
+
+**src/input.rs**：
+```rust
+pub enum CommandResult {
+    // ...
+    FlyTo(String),           // 傳送到位置/地圖/地點
+    NameHere(String),        // 命名當前地點
+    Name(String, String),    // 命名 NPC 或地點
+}
+```
+
+### 實現的處理函數
+
+**src/app.rs**：
+
+1. **handle_flyto()**
+   - 解析座標、地圖名或地點名
+   - 執行傳送並保存狀態
+   - 自動執行 look 顯示新位置
+
+2. **handle_namehere()**
+   - 命名當前位置
+   - 保存地圖變更
+
+3. **handle_name()**
+   - 區分目標類型（座標/NPC）
+   - 執行命名並保存
+
+4. **parse_coordinates()**
+   - 解析 "x,y" 格式的座標字串
+
+## 功能特點
+
+### ✅ 智能目標識別
+- 自動識別座標格式 (x,y)
+- 優先嘗試地圖名稱
+- 搜尋已命名地點
+- 清晰的錯誤提示
+
+### ✅ 完整的反饋
+- 顯示傳送結果
+- 顯示舊名稱和新名稱
+- 系統日誌記錄操作
+- 自動執行 look 查看新位置
+
+### ✅ 數據持久化
+- 地點名稱自動保存
+- NPC 名稱自動保存
+- 玩家位置自動保存
+- 重啟遊戲後保持
+
+### ✅ 向後兼容
+- name 欄位使用 `#[serde(default)]`
+- 舊地圖數據正常載入
+- 預設名稱為空字串
+
+## 使用場景
+
+### 🗺️ 建立地標系統
+```
+# 探索地圖並命名重要地點
+> namehere 城鎮入口
+你將此地命名為「城鎮入口」
+
+> flyto 60,60
+你飛到了位置 (60, 60)
+
+> namehere 森林深處
+你將此地命名為「森林深處」
+
+# 快速返回已命名地點
+> flyto 城鎮入口
+你飛到了地點「城鎮入口」(50, 50)
+```
+
+### 👤 個性化 NPC
+```
+# 給 NPC 取個性化名字
+> name merchant 李老闆
+你將「商人」改名為「李老闆」
+
+> look 李老闆
+👤 李老闆
+═══════════════════════════════════════
+📝 精明的商人，販售各種物品
+...
+```
+
+### 🎮 快速測試
+```
+# 快速移動到測試位置
+> flyto 25,25
+你飛到了位置 (25, 25)
+
+# 標記測試區域
+> namehere 測試區A
+你將此地命名為「測試區A」
+```
+
+### 📋 地圖編輯
+```
+# 批量命名地點
+> name 10,10 北門
+> name 50,90 南門
+> name 10,50 西門
+> name 90,50 東門
+
+# 建立傳送網絡
+> flyto 北門
+> flyto 南門
+> flyto 西門
+> flyto 東門
+```
+
+## 座標格式
+
+支持的座標格式：
+- `x,y` - 標準格式
+- `x, y` - 帶空格
+- 自動去除前後空白
+
+範例：
+```
+flyto 50,50
+flyto 50, 50
+name 42,51 商店
+name 42, 51 商店
+```
+
+## 錯誤處理
+
+### FlyTo 錯誤
+```
+> flyto 999,999
+座標超出地圖範圍
+
+> flyto 不存在的地圖
+找不到目標: 不存在的地圖（請使用座標x,y、地圖名或地點名）
+```
+
+### Name 錯誤
+```
+> name 999,999 測試
+座標超出地圖範圍
+
+> name 不存在的npc 新名字
+找不到目標: 不存在的npc（請使用座標x,y或NPC名稱）
+```
+
+## 系統日誌
+
+所有命名和傳送操作都會記錄：
+
+```
+[15:30:15] 玩家傳送到 (50, 50)
+[15:30:20] 位置 (50, 50) 從 （無名） 更名為「城鎮廣場」
+[15:30:45] 玩家傳送到地點「城鎮廣場」(50, 50)
+[15:31:00] NPC 從「商人」更名為「李老闆」
+```
+
+## 幫助文檔更新
+
+新指令已加入「🎮 遊戲控制」分類：
+
+```
+📖 可用指令
+═══════════════════════════════════════
+
+🎮 遊戲控制
+  ↑↓←→                 - 移動角色
+  look [<npc>]         - 查看位置或NPC
+  conq <方向>          - 征服方向使其可行走
+  flyto <目標>         - 傳送到位置/地圖/地點      ✨ 新增
+  namehere <名稱>      - 命名當前地點              ✨ 新增
+  name <目標> <名稱>   - 命名NPC或地點             ✨ 新增
+  help                 - 顯示此幫助訊息
+  exit / quit          - 退出遊戲
+```
+
+## 優勢
+
+### ✅ 建立地標系統
+- 為重要地點命名
+- 快速傳送到地標
+- 建立遊戲世界的結構
+
+### ✅ 提升導航效率
+- 不需要記住座標
+- 使用有意義的名稱
+- 減少重複移動
+
+### ✅ 增強角色扮演
+- 給 NPC 個性化名字
+- 為地點賦予意義
+- 豐富遊戲體驗
+
+### ✅ 開發測試友好
+- 快速移動到測試區域
+- 標記重要測試點
+- 提高開發效率
+
+## 實現細節
+
+### 地點名稱查找
+
+FlyTo 查找地點時會遍歷整個地圖：
+```rust
+for row in &current_map.points {
+    for point in row {
+        if !point.name.is_empty() && point.name == target {
+            // 找到匹配的地點
+        }
+    }
+}
+```
+
+### 座標解析
+
+使用專門的解析函數：
+```rust
+fn parse_coordinates(s: &str) -> Option<(usize, usize)> {
+    let parts: Vec<&str> = s.split(',').collect();
+    if parts.len() == 2 {
+        if let (Ok(x), Ok(y)) = (
+            parts[0].trim().parse::<usize>(),
+            parts[1].trim().parse::<usize>()
+        ) {
+            return Some((x, y));
+        }
+    }
+    None
+}
+```
+
+### 自動 Look
+
+傳送後自動執行 look：
+```rust
+// 自動執行 look
+display_look(None, output_manager, game_world, me);
+```
+
+## 未來改進建議
+
+1. **地點列表指令**
+   ```
+   places list        # 列出所有已命名地點
+   places search 城鎮 # 搜尋包含關鍵字的地點
+   ```
+
+2. **傳送歷史**
+   ```
+   flyto @last        # 返回上次位置
+   flyto @home        # 返回設定的家
+   ```
+
+3. **地點描述**
+   ```
+   describe here 這是一個繁忙的市集
+   ```
+
+4. **批量命名**
+   ```
+   name area 10,10 20,20 商業區  # 命名區域
+   ```
+
+## 測試結果
+- ✅ 編譯成功
+- ✅ `flyto x,y` 座標傳送正常
+- ✅ `flyto 地圖名` 地圖傳送正常
+- ✅ `flyto 地點名` 地點傳送正常
+- ✅ `namehere` 命名當前地點正常
+- ✅ `name x,y 名稱` 命名地點正常
+- ✅ `name npc 名稱` 重命名 NPC 正常
+- ✅ 座標解析正確（支持空格）
+- ✅ 數據持久化正常
+- ✅ 錯誤處理完善
+- ✅ 系統日誌記錄正確
+- ✅ 向後兼容（舊地圖正常載入）
+
+## Look 指令顯示增強
+
+### 日期
+2025-12-13
+
+### 更新內容
+
+**顯示地點名稱**：
+- `look` 指令現在會顯示地點名稱（如果有）
+- 格式：`此處是【地點名稱】`
+- 如果地點沒有名稱，則不顯示此行
+
+### 顯示範例
+
+**有名稱的地點**：
+```
+> look
+【當前位置: (50, 50)】
+【空曠的廣場】
+此處是【城鎮廣場】
+
+🎁 此處物品:
+  • 木劍 (wooden_sword) x1
+
+👥 此處的人物:
+  • 商人 - 精明的商人，販售各種物品
+```
+
+**沒有名稱的地點**：
+```
+> look
+【當前位置: (55, 55)】
+【鬱鬱蒼蒼的樹林】
+
+🎁 此處物品:
+  • 蘋果 (apple) x3
+```
+
+### 技術實現
+
+**src/app.rs**：
+```rust
+// 顯示地點名稱（如果有）
+if !point.name.is_empty() {
+    output_manager.print(format!("此處是【{}】", point.name));
+}
+```
+
+### 優勢
+
+- ✅ 清楚識別已命名地點
+- ✅ 不影響未命名地點的顯示
+- ✅ 與命名系統完美整合
+- ✅ 增強位置識別度
+
+### 測試結果
+- ✅ 編譯成功
+- ✅ 有名稱的地點正確顯示
+- ✅ 無名稱的地點不顯示該行
+- ✅ 格式美觀一致
+
+---
+
+# Destroy 摧毀指令
+
+## 日期
+2025-12-13
+
+## 功能說明
+
+新增 `destroy` 指令，可以刪除玩家當前位置的 NPC 或物品。
+
+## 使用方法
+
+### 基本語法
+```
+destroy <目標>
+```
+
+**目標類型**：
+1. **NPC 名稱或別名** - 刪除當前位置的 NPC
+2. **物品名稱** - 刪除當前位置的物品（支援中英文）
+
+### 使用範例
+
+**刪除 NPC**：
+```
+> destroy 商人
+你摧毀了 NPC「商人」
+
+> destroy m
+你摧毀了 NPC「商人」
+
+> destroy merchant
+你摧毀了 NPC「商人」
+```
+
+**刪除物品**：
+```
+> destroy apple
+你摧毀了物品「蘋果 (apple)」x5
+
+> destroy 蘋果
+你摧毀了物品「蘋果 (apple)」x5
+
+> destroy wooden_sword
+你摧毀了物品「木劍 (wooden_sword)」x1
+```
+
+## 技術實現
+
+### 新增指令枚舉
+
+**src/input.rs**：
+```rust
+pub enum CommandResult {
+    // ...
+    Destroy(String),  // 刪除指定的 NPC 或物品
+}
+```
+
+### NpcManager 新增方法
+
+**src/npc_manager.rs**：
+```rust
+/// 通過名稱或別名和位置移除 NPC
+pub fn remove_npc_at(&mut self, name_or_id: &str, x: usize, y: usize) -> Option<(String, Person)> {
+    let key = name_or_id.to_lowercase();
+    
+    // 先嘗試通過別名查找 ID
+    if let Some(id) = self.npc_aliases.get(&key) {
+        if let Some(npc) = self.npcs.get(id) {
+            if npc.x == x && npc.y == y {
+                let id_clone = id.clone();
+                let removed_npc = self.npcs.remove(&id_clone);
+                return removed_npc.map(|npc| (id_clone, npc));
+            }
+        }
+    }
+    
+    // 嘗試通過名稱查找
+    if let Some((id, npc)) = self.npcs.iter().find(|(_, npc)| {
+        npc.name.to_lowercase() == key && npc.x == x && npc.y == y
+    }) {
+        let id_clone = id.clone();
+        let removed_npc = self.npcs.remove(&id_clone);
+        return removed_npc.map(|npc| (id_clone, npc));
+    }
+    
+    None
+}
+```
+
+### 處理函數
+
+**src/app.rs**：
+```rust
+fn handle_destroy(
+    target: String,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &Person,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // 先嘗試作為 NPC（在當前位置）
+    if let Some((id, npc)) = game_world.npc_manager.remove_npc_at(&target, me.x, me.y) {
+        let npc_name = npc.name.clone();
+        output_manager.print(format!("你摧毀了 NPC「{}」", npc_name));
+        output_manager.log(format!("NPC「{}」在 ({}, {}) 被刪除", npc_name, me.x, me.y));
+        
+        // 保存 NPC 狀態
+        let person_dir = format!("{}/persons", game_world.world_dir);
+        game_world.npc_manager.save_all(&person_dir)?;
+        
+        return Ok(());
+    }
+    
+    // 嘗試作為物品
+    let item_name = item_registry::resolve_item_name(&target);
+    let map_name = game_world.current_map.clone();
+    
+    if let Some(current_map) = game_world.get_current_map_mut() {
+        if let Some(point) = current_map.get_point_mut(me.x, me.y) {
+            if let Some(count) = point.objects.get(&item_name) {
+                let count_value = *count;
+                point.objects.remove(&item_name);
+                
+                let display_name = item_registry::get_item_display_name(&item_name);
+                output_manager.print(format!("你摧毀了物品「{}」x{}", display_name, count_value));
+                output_manager.log(format!("物品「{}」x{} 在 ({}, {}) 被刪除", display_name, count_value, me.x, me.y));
+                
+                // 保存地圖
+                if let Some(map) = game_world.maps.get(&map_name) {
+                    game_world.save_map(map)?;
+                }
+                
+                return Ok(());
+            }
+        }
+    }
+    
+    output_manager.set_status(format!("此處找不到「{}」（NPC 或物品）", target));
+    Ok(())
+}
+```
+
+## 功能特點
+
+### ✅ 智能目標識別
+- 自動識別 NPC 名稱、ID 或別名
+- 支持物品的中英文名稱
+- 僅刪除當前位置的目標
+
+### ✅ 完整反饋
+- 顯示刪除的目標名稱
+- 顯示物品數量
+- 系統日誌記錄操作
+
+### ✅ 自動保存
+- NPC 刪除後自動保存狀態
+- 物品刪除後自動保存地圖
+- 數據一致性保證
+
+### ✅ 安全性
+- 只能刪除當前位置的目標
+- 不在當前位置的 NPC 不會被刪除
+- 清晰的錯誤提示
+
+## 使用場景
+
+### 🧹 清理環境
+```
+> look
+【當前位置: (50, 50)】
+【空曠的廣場】
+
+🎁 此處物品:
+  • 木劍 (wooden_sword) x1
+  • 蘋果 (apple) x10
+
+👥 此處的人物:
+  • 商人 - 精明的商人，販售各種物品
+
+> destroy apple
+你摧毀了物品「蘋果 (apple)」x10
+
+> destroy 商人
+你摧毀了 NPC「商人」
+
+> look
+【當前位置: (50, 50)】
+【空曠的廣場】
+
+🎁 此處物品:
+  • 木劍 (wooden_sword) x1
+```
+
+### 🎮 遊戲測試
+```
+# 清理測試數據
+> destroy merchant
+> destroy apple
+> destroy wooden_sword
+```
+
+### 🗺️ 地圖編輯
+```
+# 移除不需要的 NPC
+> flyto 25,25
+> destroy traveler
+
+# 移除多餘的物品
+> destroy healing_potion
+```
+
+## 錯誤處理
+
+### 目標不存在
+```
+> destroy 不存在的npc
+此處找不到「不存在的npc」（NPC 或物品）
+
+> destroy unknown_item
+此處找不到「unknown_item」（NPC 或物品）
+```
+
+### 不在當前位置
+```
+# 商人在 (42, 51)，玩家在 (50, 50)
+> destroy merchant
+此處找不到「merchant」（NPC 或物品）
+
+# 需要先移動到該位置
+> flyto 42,51
+> destroy merchant
+你摧毀了 NPC「商人」
+```
+
+## 系統日誌
+
+所有刪除操作都會記錄：
+
+```
+[15:45:10] NPC「商人」在 (50, 50) 被刪除
+[15:45:20] 物品「蘋果 (apple)」x10 在 (50, 50) 被刪除
+[15:45:30] 物品「木劍 (wooden_sword)」x1 在 (50, 50) 被刪除
+```
+
+## 幫助文檔更新
+
+新指令已加入「🛠️  其他」分類：
+
+```
+📖 可用指令
+═══════════════════════════════════════
+
+🛠️  其他
+  clear                - 清除訊息輸出
+  destroy <目標>       - 刪除NPC或物品     ✨ 新增
+```
+
+## 優勢
+
+### ✅ 便於管理
+- 快速清理不需要的 NPC
+- 移除多餘的物品
+- 保持環境整潔
+
+### ✅ 測試友好
+- 清理測試數據
+- 重置測試環境
+- 提高測試效率
+
+### ✅ 靈活的遊戲設計
+- 動態調整 NPC 分布
+- 管理物品掉落
+- 實現特殊遊戲機制
+
+### ✅ 安全可控
+- 僅影響當前位置
+- 操作可逆（需手動重新添加）
+- 完整的日誌追蹤
+
+## 注意事項
+
+⚠️ **不可逆操作**：
+- `destroy` 指令會永久刪除 NPC 或物品
+- 刪除的數據無法自動恢復
+- 建議在刪除重要 NPC 前先確認
+
+⚠️ **影響範圍**：
+- 只刪除當前位置（玩家所在點）的目標
+- NPC 的資料檔案會被保留（但從記憶體中移除）
+- 物品會從地圖數據中永久移除
+
+## 未來改進建議
+
+1. **確認提示**
+   ```
+   > destroy merchant
+   確定要刪除 NPC「商人」嗎？(y/n)
+   ```
+
+2. **批量刪除**
+   ```
+   destroy all items     # 刪除當前位置所有物品
+   destroy all npcs      # 刪除當前位置所有 NPC
+   ```
+
+3. **回收站機制**
+   ```
+   restore merchant      # 恢復最近刪除的 NPC
+   ```
+
+4. **選擇性刪除**
+   ```
+   destroy apple 5       # 只刪除 5 個蘋果
+   ```
+
+## 測試結果
+- ✅ 編譯成功
+- ✅ `destroy <npc>` 刪除 NPC 正常
+- ✅ `destroy <物品>` 刪除物品正常
+- ✅ 支持 NPC 別名查找
+- ✅ 支持物品中英文名稱
+- ✅ 僅刪除當前位置目標
+- ✅ 自動保存狀態
+- ✅ 錯誤處理完善
+- ✅ 系統日誌記錄正確
+
+
+
 

@@ -146,6 +146,8 @@ pub struct Point {
     pub y: usize,
     pub walkable: bool,           // 是否可移動
     pub description: String,      // 描述
+    #[serde(default)]
+    pub name: String,             // 地點名稱（可選）
     #[serde(default = "default_objects")]
     pub objects: HashMap<String, u32>,  // 該點上的物件名稱 -> 數量
 }
@@ -163,6 +165,7 @@ impl Point {
             y,
             walkable,
             description,
+            name: String::new(),
             objects: HashMap::new(),
         }
     }
@@ -183,6 +186,7 @@ impl Point {
             y,
             walkable,
             description,
+            name: String::new(),
             objects: HashMap::new(),
         }
     }
