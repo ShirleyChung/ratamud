@@ -341,6 +341,7 @@ pub struct GameWorld {
     pub event_manager: crate::event::EventManager,
     pub event_scheduler: crate::event_scheduler::EventScheduler,
     pub time_thread: Option<crate::time_thread::TimeThread>,
+    pub npc_manager: crate::npc_manager::NpcManager,
 }
 
 impl GameWorld {
@@ -371,6 +372,7 @@ impl GameWorld {
             event_manager: crate::event::EventManager::new(),
             event_scheduler: crate::event_scheduler::EventScheduler::new(),
             time_thread: Some(time_thread),
+            npc_manager: crate::npc_manager::NpcManager::new(),
         }
     }
 

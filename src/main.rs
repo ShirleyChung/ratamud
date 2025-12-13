@@ -5,6 +5,7 @@ mod ui;
 mod world;
 mod observable;
 mod person;
+mod npc_manager;
 mod map;
 mod time_updatable;
 mod time_thread;
@@ -166,17 +167,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // 生成或加載 NPC
     let npc_types = vec![
-        ("merchant", "商人", "精明的商人，販售各種物品"),
-        ("traveler", "路人", "友善的旅者，經過森林"),
-        ("doctor", "醫生", "熟練的醫生，治療傷口"),
-        ("worker", "工人", "努力的工人，從事建築工作"),
-        ("farmer", "農夫", "勤勞的農夫，種植農作物"),
+        ("merchant", "商人", "精明的商人，販售各種物品", vec!["m", "商", "merchant"]),
+        ("traveler", "路人", "友善的旅者，經過森林", vec!["t", "traveler", "旅"]),
+        ("doctor", "醫生", "熟練的醫生，治療傷口", vec!["d", "doc", "醫"]),
+        ("worker", "工人", "努力的工人，從事建築工作", vec!["w", "worker", "工"]),
+        ("farmer", "農夫", "勤勞的農夫，種植農作物", vec!["f", "farmer", "農"]),
     ];
     
     if let Some(forest_map) = game_world.get_current_map() {
         let walkable_points = forest_map.get_walkable_points();
         
-        for (i, (npc_id, name, desc)) in npc_types.iter().enumerate() {
+        for (i, (npc_id, name, desc, aliases)) in npc_types.iter().enumerate() {
             let npc = if let Ok(loaded_npc) = Person::load(&person_dir, npc_id) {
                 loaded_npc
             } else {
@@ -188,6 +189,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let _ = new_npc.save(&person_dir, npc_id);
                 new_npc
             };
+            
+            // 添加到 NPC 管理器
+            let aliases_vec: Vec<String> = aliases.iter().map(|s| s.to_string()).collect();
+            game_world.npc_manager.add_npc(npc_id.to_string(), npc.clone(), aliases_vec);
+            
             output_manager.log(format!("已載入 NPC: {} 在位置 ({}, {})", name, npc.x, npc.y));
         }
     }

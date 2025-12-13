@@ -130,6 +130,28 @@ pub fn run_main_loop(
                 f.render_widget(side_widget, floating_area);
             }
             
+            // 渲染大地圖（置中懸浮視窗）
+            if output_manager.is_map_open() {
+                if let Some(current_map) = game_world.get_current_map() {
+                    // 計算置中的懸浮視窗位置
+                    let map_width = (size.width as f32 * 0.8) as u16;
+                    let map_height = (size.height as f32 * 0.8) as u16;
+                    let map_x = (size.width.saturating_sub(map_width)) / 2;
+                    let map_y = (size.height.saturating_sub(map_height)) / 2;
+                    
+                    let map_area = Rect {
+                        x: map_x,
+                        y: map_y,
+                        width: map_width,
+                        height: map_height,
+                    };
+                    
+                    let map_widget = output_manager.render_big_map(map_area, current_map, me.x, me.y, &game_world.npc_manager);
+                    f.render_widget(Clear, map_area);
+                    f.render_widget(map_widget, map_area);
+                }
+            }
+            
             // 渲染輸入區域
             let input_widget = InputDisplay::render_input(input_handler.get_input(), vertical_chunks[2]);
             f.render_widget(input_widget, vertical_chunks[2]);
@@ -158,16 +180,48 @@ pub fn run_main_loop(
                         // F1 鍵切換側邊面板
                         output_manager.toggle_side_panel();
                     },
+                    KeyCode::Char('q') | KeyCode::Char('Q') => {
+                        // 如果大地圖開啟，q 鍵關閉地圖
+                        if output_manager.is_map_open() {
+                            output_manager.close_map();
+                            output_manager.set_status("大地圖已關閉".to_string());
+                        } else {
+                            // 否則當作正常輸入處理
+                            if let Some(result) = input_handler.handle_event(
+                                crossterm::event::Event::Key(key)
+                            ) {
+                                if let CommandResult::Exit = result {
+                                    should_exit = true;
+                                } else {
+                                    handle_command_result(result, output_manager, game_world, me)?;
+                                }
+                            }
+                        }
+                    },
                     // 上下左右鍵優先用於移動
                     KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right => {
-                        // 將方向鍵傳遞給 input_handler 處理移動
-                        if let Some(result) = input_handler.handle_event(
-                            crossterm::event::Event::Key(key)
-                        ) {
-                            if let CommandResult::Exit = result {
-                                should_exit = true;
-                            } else {
-                                handle_command_result(result, output_manager, game_world, me)?;
+                        // 如果大地圖開啟，用方向鍵移動地圖視圖
+                        if output_manager.is_map_open() {
+                            if let Some(current_map) = game_world.get_current_map() {
+                                let (dx, dy) = match key.code {
+                                    KeyCode::Up => (0, -5),
+                                    KeyCode::Down => (0, 5),
+                                    KeyCode::Left => (-5, 0),
+                                    KeyCode::Right => (5, 0),
+                                    _ => (0, 0),
+                                };
+                                output_manager.move_map_view(dx, dy, current_map.width, current_map.height);
+                            }
+                        } else {
+                            // 否則將方向鍵傳遞給 input_handler 處理移動
+                            if let Some(result) = input_handler.handle_event(
+                                crossterm::event::Event::Key(key)
+                            ) {
+                                if let CommandResult::Exit = result {
+                                    should_exit = true;
+                                } else {
+                                    handle_command_result(result, output_manager, game_world, me)?;
+                                }
                             }
                         }
                     },
@@ -221,10 +275,13 @@ fn handle_command_result(
         CommandResult::HideMinimap => handle_hide_minimap(output_manager),
         CommandResult::ShowLog => handle_show_log(output_manager),
         CommandResult::HideLog => handle_hide_log(output_manager),
-        CommandResult::Look => display_look(output_manager, game_world, me),
+        CommandResult::ShowMap => handle_show_map(output_manager, me),
+        CommandResult::Look(target) => display_look(target, output_manager, game_world, me),
         CommandResult::Move(dx, dy) => handle_movement(dx, dy, output_manager, game_world, me)?,
         CommandResult::Get(item_name, quantity) => handle_get(item_name, quantity, output_manager, game_world, me),
         CommandResult::Drop(item_name, quantity) => handle_drop(item_name, quantity, output_manager, game_world, me),
+        CommandResult::Summon(npc_name) => handle_summon(npc_name, output_manager, game_world, me),
+        CommandResult::Conquer(direction) => handle_conquer(direction, output_manager, game_world, me)?,
     }
     Ok(())
 }
@@ -340,6 +397,12 @@ fn handle_hide_log(output_manager: &mut OutputManager) {
     output_manager.set_status("日誌視窗已關閉".to_string());
 }
 
+/// 處理顯示大地圖
+fn handle_show_map(output_manager: &mut OutputManager, me: &Person) {
+    output_manager.show_map(me.x, me.y);
+    output_manager.set_status("大地圖已開啟 (↑↓←→移動, q退出)".to_string());
+}
+
 /// 處理關閉狀態面板
 #[allow(dead_code)]
 fn handle_close_status(output_manager: &mut OutputManager) {
@@ -350,21 +413,65 @@ fn handle_close_status(output_manager: &mut OutputManager) {
 
 /// 顯示 look 命令的結果
 fn display_look(
+    target: Option<String>,
     output_manager: &mut OutputManager,
     game_world: &GameWorld,
     me: &Person,
 ) {
+    // 如果有指定目標，則查看 NPC
+    if let Some(target_name) = target {
+        if let Some(npc) = game_world.npc_manager.get_npc(&target_name) {
+            // 顯示 NPC 資訊
+            output_manager.print("".to_string());
+            output_manager.print(format!("👤 {}", npc.name));
+            output_manager.print("═".repeat(40));
+            output_manager.print(format!("📝 {}", npc.description));
+            output_manager.print(format!("📍 位置: ({}, {})", npc.x, npc.y));
+            output_manager.print(format!("💫 狀態: {}", npc.status));
+            
+            if !npc.abilities.is_empty() {
+                output_manager.print("\n✨ 能力:".to_string());
+                for ability in &npc.abilities {
+                    output_manager.print(format!("  • {}", ability));
+                }
+            }
+            
+            if !npc.items.is_empty() {
+                output_manager.print("\n🎒 攜帶物品:".to_string());
+                for (item, count) in &npc.items {
+                    let display_name = item_registry::get_item_display_name(item);
+                    output_manager.print(format!("  • {} x{}", display_name, count));
+                }
+            }
+            
+            output_manager.print("".to_string());
+        } else {
+            output_manager.set_status(format!("找不到 NPC: {}", target_name));
+        }
+        return;
+    }
+    
+    // 否則查看當前位置
     if let Some(current_map) = game_world.get_current_map() {
         // 顯示當前位置信息
         if let Some(point) = current_map.get_point(me.x, me.y) {
             output_manager.print( format!("【當前位置: ({}, {})】\n【{}】", me.x, me.y, point.description) );
             
-            // 顯示當前位置的 items (顯示數量和英文名)
+            // 顯示當前位置的 items
             if !point.objects.is_empty() {
                 output_manager.print(format!("\n🎁 此處物品:"));
                 for (obj, count) in &point.objects {
                     let display_name = item_registry::get_item_display_name(obj);
                     output_manager.print(format!("  • {} x{}", display_name, count));
+                }
+            }
+            
+            // 顯示當前位置的 NPC
+            let npcs_here = game_world.npc_manager.get_npcs_at(me.x, me.y);
+            if !npcs_here.is_empty() {
+                output_manager.print(format!("\n👥 此處的人物:"));
+                for npc in npcs_here {
+                    output_manager.print(format!("  • {} - {}", npc.name, npc.description));
                 }
             }
             
@@ -457,7 +564,7 @@ fn handle_movement(
                     output_manager.set_status(format!("往 {} 移動", direction));
                     
                     // 移動後執行look
-                    display_look(output_manager, game_world, me);
+                    display_look(None, output_manager, game_world, me);
                     
                     // 如果小地圖已打開，更新小地圖資料
                     if output_manager.is_minimap_open() {
@@ -590,6 +697,93 @@ fn handle_drop(
             let _ = game_world.save_map(current_map);
         }
     }
+}
+
+/// 處理召喚 NPC
+fn handle_summon(
+    npc_name: String,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &Person,
+) {
+    // 先檢查 NPC 是否存在並獲取名稱
+    let npc_info = if let Some(npc) = game_world.npc_manager.get_npc(&npc_name) {
+        Some((npc.name.clone(), npc.x, npc.y))
+    } else {
+        None
+    };
+    
+    if let Some((name, old_x, old_y)) = npc_info {
+        // 移動 NPC 到玩家位置
+        if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_name) {
+            npc.move_to(me.x, me.y);
+        }
+        
+        // 保存 NPC 位置
+        let person_dir = format!("{}/persons", game_world.world_dir);
+        let _ = game_world.npc_manager.save_all(&person_dir);
+        
+        output_manager.print(format!("你召喚了 {} 到這裡", name));
+        output_manager.log(format!("{} 從 ({}, {}) 傳送到 ({}, {})", name, old_x, old_y, me.x, me.y));
+    } else {
+        output_manager.set_status(format!("找不到 NPC: {}", npc_name));
+    }
+}
+
+/// 處理征服指令 - 使指定方向可行走
+fn handle_conquer(
+    direction: String,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &Person,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // 解析方向
+    let (dx, dy, dir_name) = match direction.to_lowercase().as_str() {
+        "up" | "u" => (0, -1, "上"),
+        "down" | "d" => (0, 1, "下"),
+        "left" | "l" => (-1, 0, "左"),
+        "right" | "r" => (1, 0, "右"),
+        _ => {
+            output_manager.set_status(format!("未知方向: {}，請使用 up/down/left/right", direction));
+            return Ok(());
+        }
+    };
+    
+    // 計算目標位置
+    let target_x = (me.x as i32 + dx) as usize;
+    let target_y = (me.y as i32 + dy) as usize;
+    
+    // 先獲取地圖名稱
+    let map_name = game_world.current_map.clone();
+    
+    // 獲取當前地圖並修改
+    if let Some(current_map) = game_world.get_current_map_mut() {
+        // 檢查目標位置是否在地圖範圍內
+        if target_x >= current_map.width || target_y >= current_map.height {
+            output_manager.set_status("目標位置超出地圖範圍".to_string());
+            return Ok(());
+        }
+        
+        // 獲取目標點
+        if let Some(point) = current_map.get_point_mut(target_x, target_y) {
+            if point.walkable {
+                output_manager.set_status(format!("{} 方已經是可行走的了", dir_name));
+            } else {
+                // 設置為可行走
+                point.walkable = true;
+                output_manager.print(format!("你征服了 {} 方的障礙！", dir_name));
+                output_manager.print(format!("位置 ({}, {}) 現在可以行走了", target_x, target_y));
+                output_manager.log(format!("玩家在 ({}, {}) 征服了 {} 方 ({}, {})", me.x, me.y, dir_name, target_x, target_y));
+            }
+        }
+    }
+    
+    // 保存地圖 (使用地圖名稱)
+    if let Some(map) = game_world.maps.get(&map_name) {
+        game_world.save_map(map)?;
+    }
+    
+    Ok(())
 }
 
 /// 檢查並執行事件

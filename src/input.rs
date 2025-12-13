@@ -120,6 +120,8 @@ impl InputHandler {
                     CommandResult::ShowMinimap
                 } else if parts[1] == "log" {
                     CommandResult::ShowLog
+                } else if parts[1] == "map" {
+                    CommandResult::ShowMap
                 } else {
                     CommandResult::Error(format!("Unknown show command: {}", parts[1]))
                 }
@@ -135,14 +137,15 @@ impl InputHandler {
                     CommandResult::Error(format!("Unknown hide command: {}", parts[1]))
                 }
             },
-            "look" => {
-                // look 命令，查看當前位置
-                CommandResult::Look
-            },
-            "l" => {
-                // l 可以是 look 或 left，根據上下文判斷
-                // 但既然 look 優先，先檢查
-                CommandResult::Look
+            "look" | "l" => {
+                // look/l 命令，查看當前位置或 NPC
+                // look - 查看當前位置
+                // look <npc名稱/id> - 查看 NPC 狀態
+                if parts.len() < 2 {
+                    CommandResult::Look(None)
+                } else {
+                    CommandResult::Look(Some(parts[1].to_string()))
+                }
             },
             "get" => {
                 // get 命令，撿起物品
@@ -191,6 +194,23 @@ impl InputHandler {
                 // 向下移動
                 CommandResult::Move(0, 1)
             },
+            "summon" => {
+                // summon <npc名稱/id> 命令，召喚 NPC 到玩家位置
+                if parts.len() < 2 {
+                    CommandResult::Error("Usage: summon <npc名稱/id>".to_string())
+                } else {
+                    CommandResult::Summon(parts[1].to_string())
+                }
+            },
+            "conq" | "conquer" => {
+                // conq <方向> 命令，征服指定方向使其可行走
+                // 支持: up/down/left/right 或 u/d/l/r
+                if parts.len() < 2 {
+                    CommandResult::Error("Usage: conq <up|down|left|right>".to_string())
+                } else {
+                    CommandResult::Conquer(parts[1].to_string())
+                }
+            },
             _ => CommandResult::Error(format!("Unknown command: {}", parts[0])),
         };
         result
@@ -228,10 +248,13 @@ pub enum CommandResult {
     HideMinimap,                     // 關閉小地圖面板
     ShowLog,                         // 打開日誌視窗
     HideLog,                         // 關閉日誌視窗
-    Look,                            // 查看當前位置
+    ShowMap,                         // 打開大地圖顯示
+    Look(Option<String>),            // 查看當前位置或查看 NPC (可選：NPC 名稱/ID)
     Move(i32, i32),                  // 移動 (dx, dy)，顯示方向
     Get(Option<String>, u32),        // 撿起物品 (可選：物品名稱, 數量)
     Drop(String, u32),               // 放下物品 (物品名稱, 數量)
+    Summon(String),                  // 召喚 NPC (NPC 名稱/ID)
+    Conquer(String),                 // 征服指定方向，使其可行走 (up/down/left/right/u/d/l/r)
     Help,                            // 顯示幫助訊息
 }
 
@@ -243,16 +266,19 @@ impl CommandResult {
             CommandResult::Exit => Some(("exit / quit", "退出遊戲", "🎮 遊戲控制")),
             CommandResult::Help => Some(("help", "顯示此幫助訊息", "🎮 遊戲控制")),
             CommandResult::Clear => Some(("clear", "清除訊息輸出", "🛠️  其他")),
-            CommandResult::Look => Some(("look", "查看當前位置", "🎮 遊戲控制")),
+            CommandResult::Look(..) => Some(("look [<npc>]", "查看位置或NPC", "🎮 遊戲控制")),
             CommandResult::Move(..) => Some(("↑↓←→", "移動角色", "🎮 遊戲控制")),
+            CommandResult::Conquer(..) => Some(("conq <方向>", "征服方向使其可行走", "🎮 遊戲控制")),
             CommandResult::Get(..) => Some(("get [<物品>] [<數量>]", "撿起物品", "🎒 物品管理")),
             CommandResult::Drop(..) => Some(("drop <物品> <數量>", "放下物品", "🎒 物品管理")),
+            CommandResult::Summon(..) => Some(("summon <npc>", "召喚NPC到此", "👥 NPC互動")),
             CommandResult::ShowStatus => Some(("show status", "顯示角色狀態", "ℹ️  資訊查詢")),
             CommandResult::ShowWorld => Some(("show world", "顯示世界資訊", "ℹ️  資訊查詢")),
             CommandResult::ShowMinimap => Some(("show minimap", "顯示小地圖", "🗺️  介面控制")),
             CommandResult::HideMinimap => Some(("hide minimap", "隱藏小地圖", "🗺️  介面控制")),
             CommandResult::ShowLog => Some(("show log", "顯示系統日誌", "🗺️  介面控制")),
             CommandResult::HideLog => Some(("hide log", "隱藏系統日誌", "🗺️  介面控制")),
+            CommandResult::ShowMap => Some(("show map", "顯示大地圖 (↑↓←→移動, q退出)", "🗺️  介面控制")),
             _ => None,
         }
     }
@@ -264,15 +290,18 @@ impl CommandResult {
         // 所有指令的代表實例
         let commands = vec![
             CommandResult::Move(0, 0),
-            CommandResult::Look,
+            CommandResult::Look(None),
+            CommandResult::Conquer(String::new()),
             CommandResult::Help,
             CommandResult::Exit,
             CommandResult::Get(None, 1),
             CommandResult::Drop(String::new(), 1),
+            CommandResult::Summon(String::new()),
             CommandResult::ShowMinimap,
             CommandResult::HideMinimap,
             CommandResult::ShowLog,
             CommandResult::HideLog,
+            CommandResult::ShowMap,
             CommandResult::ShowStatus,
             CommandResult::ShowWorld,
             CommandResult::Clear,
@@ -290,6 +319,7 @@ impl CommandResult {
         let order = vec![
             "🎮 遊戲控制",
             "🎒 物品管理",
+            "👥 NPC互動",
             "🗺️  介面控制",
             "ℹ️  資訊查詢",
             "🛠️  其他",

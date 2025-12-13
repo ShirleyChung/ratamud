@@ -21,6 +21,9 @@ pub struct OutputManager {
     log_messages: Vec<String>,  // 系統日誌訊息
     log_scroll: usize,          // 日誌滾動位置
     show_log: bool,             // 是否顯示日誌視窗
+    show_map: bool,             // 是否顯示大地圖
+    map_offset_x: usize,        // 大地圖顯示的偏移量 X
+    map_offset_y: usize,        // 大地圖顯示的偏移量 Y
 }
 
 impl OutputManager {
@@ -41,6 +44,9 @@ impl OutputManager {
             log_messages: Vec::new(),
             log_scroll: 0,
             show_log: true,  // 預設顯示日誌視窗
+            show_map: false,
+            map_offset_x: 0,
+            map_offset_y: 0,
         }
     }
 
@@ -364,5 +370,118 @@ impl OutputManager {
                 .borders(Borders::ALL)
                 .style(Style::default().bg(Color::Black).fg(Color::Green)))
             .style(Style::default().bg(Color::Black).fg(Color::Green))
+    }
+
+    // === 大地圖相關方法 ===
+    
+    // 顯示大地圖
+    pub fn show_map(&mut self, player_x: usize, player_y: usize) {
+        self.show_map = true;
+        // 將地圖偏移量設為玩家位置附近
+        self.map_offset_x = player_x.saturating_sub(20);
+        self.map_offset_y = player_y.saturating_sub(10);
+    }
+    
+    // 關閉大地圖
+    pub fn close_map(&mut self) {
+        self.show_map = false;
+    }
+    
+    // 檢查是否顯示大地圖
+    pub fn is_map_open(&self) -> bool {
+        self.show_map
+    }
+    
+    // 移動大地圖視圖
+    pub fn move_map_view(&mut self, dx: i32, dy: i32, max_width: usize, max_height: usize) {
+        if dx < 0 && self.map_offset_x > 0 {
+            self.map_offset_x = self.map_offset_x.saturating_sub((-dx) as usize);
+        } else if dx > 0 {
+            self.map_offset_x = (self.map_offset_x + dx as usize).min(max_width.saturating_sub(1));
+        }
+        
+        if dy < 0 && self.map_offset_y > 0 {
+            self.map_offset_y = self.map_offset_y.saturating_sub((-dy) as usize);
+        } else if dy > 0 {
+            self.map_offset_y = (self.map_offset_y + dy as usize).min(max_height.saturating_sub(1));
+        }
+    }
+    
+    // 渲染大地圖
+    pub fn render_big_map(&self, area: Rect, map: &crate::map::Map, player_x: usize, player_y: usize, npc_manager: &crate::npc_manager::NpcManager) -> Paragraph {
+        let visible_width = area.width.saturating_sub(2) as usize;
+        let visible_height = area.height.saturating_sub(2) as usize;
+        
+        let mut lines = Vec::new();
+        
+        // 標題行
+        lines.push(Line::from(vec![
+            Span::styled(
+                format!("地圖: {} (玩家位置: {}, {})", map.name, player_x, player_y),
+                Style::default().fg(Color::Cyan).add_modifier(Modifier::BOLD)
+            )
+        ]));
+        
+        lines.push(Line::from(vec![
+            Span::styled(
+                "操作: ↑↓←→ 移動視圖 | q 退出 | P=玩家 M=商人 F=農夫 D=醫生 W=工人 T=旅者 I=物品",
+                Style::default().fg(Color::Gray)
+            )
+        ]));
+        
+        lines.push(Line::from(""));
+        
+        // 繪製地圖
+        for y in 0..visible_height.min(map.height.saturating_sub(self.map_offset_y)) {
+            let mut line_spans = Vec::new();
+            let map_y = y + self.map_offset_y;
+            
+            for x in 0..visible_width.min(map.width.saturating_sub(self.map_offset_x)) {
+                let map_x = x + self.map_offset_x;
+                
+                // 判斷是否是玩家位置
+                if map_x == player_x && map_y == player_y {
+                    line_spans.push(Span::styled("P", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)));
+                } else {
+                    // 檢查是否有 NPC
+                    let npcs_here = npc_manager.get_npcs_at(map_x, map_y);
+                    if !npcs_here.is_empty() {
+                        let npc = npcs_here[0];
+                        let npc_char = crate::npc_manager::NpcManager::get_display_char(&npc.name);
+                        line_spans.push(Span::styled(
+                            npc_char.to_string(),
+                            Style::default().fg(Color::White).add_modifier(Modifier::BOLD)
+                        ));
+                    } else if let Some(point) = map.get_point(map_x, map_y) {
+                        // 檢查是否有物品
+                        if !point.objects.is_empty() {
+                            line_spans.push(Span::styled("I", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)));
+                        } else if point.walkable {
+                            line_spans.push(Span::styled(" ", Style::default().fg(Color::White)));
+                        } else {
+                            // 根據地圖類型顯示不同字符
+                            let char_display = match map.map_type {
+                                crate::map::MapType::Forest => "🌲",
+                                crate::map::MapType::Cave => "▓",
+                                crate::map::MapType::Desert => "≈",
+                                crate::map::MapType::Mountain => "△",
+                                _ => "x",
+                            };
+                            line_spans.push(Span::styled(char_display, Style::default().fg(Color::DarkGray)));
+                        }
+                    } else {
+                        line_spans.push(Span::styled("?", Style::default().fg(Color::Red)));
+                    }
+                }
+            }
+            lines.push(Line::from(line_spans));
+        }
+        
+        Paragraph::new(Text::from(lines))
+            .block(Block::default()
+                .title("🗺️  大地圖")
+                .borders(Borders::ALL)
+                .style(Style::default().bg(Color::Black).fg(Color::White)))
+            .style(Style::default().bg(Color::Black).fg(Color::White))
     }
 }

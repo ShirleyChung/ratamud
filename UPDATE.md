@@ -2897,3 +2897,860 @@ fn handle_help(output_manager: &mut OutputManager) {
 - ✅ 分類清晰，格式對齊
 - ✅ 易於新增和修改指令
 
+---
+
+# 大地圖顯示功能
+
+## 日期
+2025-12-13
+
+## 功能說明
+
+新增了大地圖顯示功能，可以在遊戲中查看完整的地圖，並通過方向鍵移動視圖。
+
+## 使用方法
+
+### 開啟地圖
+```
+show map
+```
+
+### 地圖控制
+- **↑↓←→** - 移動地圖視圖（每次移動5格）
+- **q** - 退出地圖顯示
+
+## 地圖顯示特性
+
+1. **置中懸浮視窗**: 地圖顯示在螢幕中央的懸浮視窗（佔據80%螢幕大小）
+
+2. **玩家位置標記**: 
+   - 使用黃色粗體 **P** 標記玩家當前位置
+
+3. **地形顯示**:
+   - **空白** - 可行走的點
+   - **x** 或特殊字符 - 不可行走的點，根據地圖類型顯示：
+     - 森林: 🌲
+     - 洞穴: ▓
+     - 沙漠: ≈
+     - 山脈: △
+     - 普通: x
+
+4. **互動式視圖**:
+   - 地圖可能很大（100x100），使用方向鍵可以移動視圖查看不同區域
+   - 視圖會自動顯示玩家附近的區域
+
+5. **資訊顯示**:
+   - 標題欄顯示地圖名稱和玩家座標
+   - 操作提示行顯示控制方式
+
+## 技術實現
+
+### 修改的檔案
+
+1. **src/input.rs**
+   - 新增 `CommandResult::ShowMap` 枚舉值
+   - 在 `show` 命令處理中加入 `map` 選項
+   - 更新幫助文檔
+
+2. **src/output.rs**
+   - 新增地圖狀態欄位：`show_map`, `map_offset_x`, `map_offset_y`
+   - 新增方法：
+     - `show_map()` - 開啟地圖顯示
+     - `close_map()` - 關閉地圖顯示
+     - `is_map_open()` - 檢查地圖是否開啟
+     - `move_map_view()` - 移動地圖視圖
+     - `render_big_map()` - 渲染大地圖
+
+3. **src/app.rs**
+   - 新增 `handle_show_map()` 處理函式
+   - 在主迴圈中加入地圖渲染邏輯
+   - 在鍵盤事件處理中加入地圖導航邏輯：
+     - q 鍵關閉地圖（當地圖開啟時）
+     - 方向鍵在地圖開啟時用於移動視圖
+
+## 使用範例
+
+```
+> show map
+[大地圖顯示在螢幕中央]
+
+操作: ↑↓←→ 移動視圖 | q 退出
+
+    xxx   xxx    
+  xx   xxx   xx  
+ xx           xxP
+xx              x
+x                
+ x              x
+  xx          xx 
+    xxx   xxx    
+
+[按方向鍵移動視圖]
+[按 q 退出]
+```
+
+## 注意事項
+
+- 地圖顯示時，方向鍵用於移動視圖，不會移動玩家
+- 需要關閉地圖後才能繼續遊戲操作
+- 地圖視圖會自動限制在地圖邊界內
+- 玩家位置用黃色 P 標記，容易識別
+
+## 程式碼優化原則
+
+- ✅ 重用現有的 `render_output()` 方法渲染框架
+- ✅ 使用與 minimap、log 相同的懸浮視窗模式
+- ✅ 鍵盤事件處理集中在主迴圈中，避免重複邏輯
+
+## 測試結果
+- ✅ 編譯成功
+- ✅ `show map` 指令正確顯示大地圖
+- ✅ 方向鍵正確移動地圖視圖
+- ✅ q 鍵正確退出地圖
+- ✅ 玩家位置正確標記為黃色 P
+- ✅ 地形字符正確顯示
+
+---
+
+# NPC 管理系統與增強的 Look 指令
+
+## 日期
+2025-12-13
+
+## 功能說明
+
+實現了完整的 NPC 管理系統，並增強 `look` 指令支持查看 NPC 資訊。
+
+## 新增功能
+
+### 1. NPC 管理器 (npc_manager.rs)
+
+創建了專門的 NPC 管理模組，提供以下功能：
+- 添加/移除 NPC
+- 通過名稱、ID 或別名查找 NPC
+- 獲取指定位置的所有 NPC
+- 批量保存/載入 NPC
+- 為每種 NPC 類型分配顯示字符
+
+### 2. 增強的 Look 指令
+
+**原功能**：
+```
+look        # 查看當前位置
+```
+
+**新功能**：
+```
+look <npc>  # 查看指定 NPC 的詳細資訊
+l <npc>     # look 的別名
+```
+
+**支持的查詢方式**：
+- 完整名稱：`look 商人`、`look 農夫`
+- NPC ID：`look merchant`、`look farmer`
+- 簡短別名：`look m`、`look f`、`look d`
+
+### 3. 大地圖 NPC 與物品顯示
+
+在大地圖 (`show map`) 中新增顯示：
+
+**玩家**：
+- 紅色粗體 **P**
+
+**NPC**：
+- 商人 (Merchant)：白色粗體 **M**
+- 農夫 (Farmer)：白色粗體 **F**
+- 醫生 (Doctor)：白色粗體 **D**
+- 工人 (Worker)：白色粗體 **W**
+- 旅者 (Traveler)：白色粗體 **T**
+
+**物品**：
+- 黃色粗體 **I** (Item)
+
+### 4. 位置查看時顯示 NPC
+
+使用 `look` 查看當前位置時，會顯示：
+- 位置描述
+- 此處的物品列表
+- **此處的 NPC 列表** ✨ (新增)
+
+## 技術實現
+
+### 新增檔案
+
+**src/npc_manager.rs**：
+```rust
+pub struct NpcManager {
+    npcs: HashMap<String, Person>,
+    npc_aliases: HashMap<String, String>,
+}
+```
+
+主要方法：
+- `add_npc()` - 添加 NPC 並註冊別名
+- `get_npc()` / `get_npc_mut()` - 查找 NPC
+- `get_npcs_at()` - 獲取指定位置的 NPC
+- `save_all()` / `load_npc()` - 持久化
+- `get_display_char()` - 獲取顯示字符
+
+### 修改的檔案
+
+1. **src/lib.rs**
+   - 添加 `pub mod npc_manager`
+
+2. **src/main.rs**
+   - 添加 `mod npc_manager`
+   - 載入 NPC 時註冊到管理器並設定別名
+
+3. **src/world.rs**
+   - `GameWorld` 新增 `npc_manager: NpcManager`
+
+4. **src/input.rs**
+   - `CommandResult::Look` 改為 `Look(Option<String>)`
+   - `look` 和 `l` 指令支持參數
+   - 更新幫助文檔
+
+5. **src/app.rs**
+   - `display_look()` 支持查看 NPC 詳細資訊
+   - `look` 查看位置時顯示該處的 NPC
+   - 調用 `render_big_map()` 時傳入 `npc_manager`
+
+6. **src/output.rs**
+   - `render_big_map()` 新增 `npc_manager` 參數
+   - 地圖上顯示 NPC 字符 (優先級高於物品)
+   - 地圖上顯示物品字符 I
+   - 更新操作提示行
+
+## 使用範例
+
+### 查看 NPC 詳細資訊
+```
+> look 商人
+👤 商人
+═══════════════════════════════════════
+📝 精明的商人，販售各種物品
+📍 位置: (42, 51)
+💫 狀態: 正常
+
+🎒 攜帶物品:
+  • 蘋果 (apple) x3
+  • 治療藥水 (healing_potion) x5
+```
+
+### 使用別名查看
+```
+> look m       # 查看商人
+> l f          # 查看農夫
+> look doc     # 查看醫生
+```
+
+### 查看當前位置（包含 NPC）
+```
+> look
+【當前位置: (42, 51)】
+【空曠的廣場】
+
+🎁 此處物品:
+  • 木劍 (wooden_sword) x1
+
+👥 此處的人物:
+  • 商人 - 精明的商人，販售各種物品
+```
+
+### 大地圖顯示
+```
+> show map
+
+地圖: 初始之地 (玩家位置: 50, 50)
+操作: ↑↓←→ 移動視圖 | q 退出 | P=玩家 M=商人 F=農夫 D=醫生 W=工人 T=旅者 I=物品
+
+    xxx   M xxx    
+  xx   I xx   xx  
+ xx     F    I  xP
+xx      D      W x
+x         T        
+ x              x
+  xx          xx 
+```
+
+## NPC 別名映射
+
+| NPC | ID | 別名 |
+|-----|----|----|
+| 商人 | merchant | m, 商, merchant |
+| 農夫 | farmer | f, 農, farmer |
+| 醫生 | doctor | d, 醫, doc |
+| 工人 | worker | w, 工, worker |
+| 旅者 | traveler | t, 旅, traveler |
+
+## 優勢
+
+### ✅ 統一管理
+- 所有 NPC 集中在 NpcManager 中
+- 支持別名系統，方便快速訪問
+- 位置查詢高效
+
+### ✅ 互動性增強
+- 可以快速查看任何 NPC 的詳細資訊
+- 支持多種查詢方式（名稱/ID/別名）
+- look 指令更智能，自動顯示周圍 NPC
+
+### ✅ 視覺化改進
+- 大地圖上清晰標示 NPC 位置
+- 不同 NPC 類型有專屬字符
+- 玩家改為紅色更醒目
+- 物品用黃色 I 標示
+
+### ✅ 可擴展性
+- 易於添加新 NPC 類型
+- 別名系統支持國際化
+- 為未來的 NPC 互動功能打好基礎
+
+## 測試結果
+- ✅ 編譯成功
+- ✅ NPC 成功載入到管理器
+- ✅ `look <npc>` 指令正確顯示 NPC 資訊
+- ✅ `l` 別名正常工作
+- ✅ 大地圖正確顯示 NPC (M, F, D, W, T)
+- ✅ 大地圖正確顯示物品 (黃色 I)
+- ✅ 玩家位置改為紅色 P
+- ✅ look 查看位置時顯示 NPC 列表
+
+---
+
+# Summon 召喚指令
+
+## 日期
+2025-12-13
+
+## 功能說明
+
+新增 `summon` 指令，可以召喚指定的 NPC 傳送到玩家當前位置。
+
+## 使用方法
+
+### 基本語法
+```
+summon <npc名稱/id/別名>
+```
+
+### 使用範例
+
+**召喚商人**：
+```
+> summon 商人
+你召喚了 商人 到這裡
+```
+
+**使用 ID**：
+```
+> summon merchant
+你召喚了 商人 到這裡
+```
+
+**使用別名**：
+```
+> summon m
+你召喚了 商人 到這裡
+```
+
+### 支持的 NPC
+- 商人：`summon 商人` / `summon merchant` / `summon m`
+- 農夫：`summon 農夫` / `summon farmer` / `summon f`
+- 醫生：`summon 醫生` / `summon doctor` / `summon d`
+- 工人：`summon 工人` / `summon worker` / `summon w`
+- 旅者：`summon 路人` / `summon traveler` / `summon t`
+
+## 技術實現
+
+### 修改的檔案
+
+1. **src/input.rs**
+   - 新增 `CommandResult::Summon(String)`
+   - 添加 `summon` 指令解析
+   - 新增指令分類「👥 NPC互動」
+   - 更新幫助文檔
+
+2. **src/app.rs**
+   - 新增 `handle_summon()` 函數
+   - 實現 NPC 傳送邏輯
+   - 自動保存 NPC 位置
+
+### handle_summon 實現
+
+```rust
+fn handle_summon(
+    npc_name: String,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &Person,
+) {
+    // 檢查 NPC 是否存在
+    let npc_info = if let Some(npc) = game_world.npc_manager.get_npc(&npc_name) {
+        Some((npc.name.clone(), npc.x, npc.y))
+    } else {
+        None
+    };
+    
+    if let Some((name, old_x, old_y)) = npc_info {
+        // 移動 NPC 到玩家位置
+        if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_name) {
+            npc.move_to(me.x, me.y);
+        }
+        
+        // 保存 NPC 位置
+        let person_dir = format!("{}/persons", game_world.world_dir);
+        let _ = game_world.npc_manager.save_all(&person_dir);
+        
+        // 顯示訊息
+        output_manager.print(format!("你召喚了 {} 到這裡", name));
+        output_manager.log(format!("{} 從 ({}, {}) 傳送到 ({}, {})", 
+            name, old_x, old_y, me.x, me.y));
+    } else {
+        output_manager.set_status(format!("找不到 NPC: {}", npc_name));
+    }
+}
+```
+
+## 功能特點
+
+### ✅ 靈活的查詢方式
+- 支持中文名稱
+- 支持英文 ID
+- 支持簡短別名
+- 不區分大小寫
+
+### ✅ 完整的反饋
+- 主輸出區顯示：「你召喚了 XXX 到這裡」
+- 系統日誌記錄：NPC 從哪裡傳送到哪裡
+- 錯誤提示：找不到 NPC 時顯示錯誤訊息
+
+### ✅ 自動保存
+- NPC 位置自動保存到檔案
+- 重啟遊戲後位置仍保持
+- 避免數據丟失
+
+### ✅ 借用安全
+- 正確處理 Rust 借用規則
+- 先獲取資訊，再修改狀態
+- 避免借用衝突
+
+## 使用場景
+
+### 🎮 便利的互動
+```
+# 玩家在 (50, 50)
+> summon m
+你召喚了 商人 到這裡
+
+> look
+【當前位置: (50, 50)】
+【空曠的廣場】
+
+👥 此處的人物:
+  • 商人 - 精明的商人，販售各種物品
+```
+
+### 🗺️ 配合大地圖
+```
+# 召喚前
+> show map
+    M              # 商人在遠處
+           P       # 玩家
+
+# 召喚後
+> summon m
+> show map
+           MP      # 商人和玩家在同一位置
+```
+
+### 📋 日誌追蹤
+系統日誌會記錄 NPC 移動：
+```
+[15:10:23] 商人 從 (42, 51) 傳送到 (50, 50)
+```
+
+## 新增的指令分類
+
+幫助文檔中新增「👥 NPC互動」分類：
+
+```
+📖 可用指令
+═══════════════════════════════════════
+
+🎮 遊戲控制
+  ↑↓←→                 - 移動角色
+  look [<npc>]         - 查看位置或NPC
+  help                 - 顯示此幫助訊息
+  exit / quit          - 退出遊戲
+
+🎒 物品管理
+  get [<物品>] [<數量>] - 撿起物品
+  drop <物品> <數量>    - 放下物品
+
+👥 NPC互動                ✨ 新增
+  summon <npc>         - 召喚NPC到此
+
+🗺️  介面控制
+  show minimap         - 顯示小地圖
+  hide minimap         - 隱藏小地圖
+  show log             - 顯示系統日誌
+  hide log             - 隱藏系統日誌
+  show map             - 顯示大地圖
+
+ℹ️  資訊查詢
+  show status          - 顯示角色狀態
+  show world           - 顯示世界資訊
+
+🛠️  其他
+  clear                - 清除訊息輸出
+```
+
+## 優勢
+
+### ✅ 快速集結 NPC
+- 不需要移動到 NPC 位置
+- 一個指令即可召喚
+- 提高遊戲便利性
+
+### ✅ 為未來功能鋪路
+- 交易系統（需要 NPC 在身邊）
+- 對話系統
+- 任務系統
+- 隊伍系統
+
+### ✅ 測試友好
+- 方便測試 NPC 互動功能
+- 快速設置測試場景
+- 減少重複操作
+
+## 測試結果
+- ✅ 編譯成功
+- ✅ `summon <名稱>` 正常工作
+- ✅ `summon <id>` 正常工作
+- ✅ `summon <別名>` 正常工作
+- ✅ NPC 位置正確更新
+- ✅ 位置自動保存
+- ✅ 顯示訊息正確
+- ✅ 系統日誌記錄正確
+- ✅ 錯誤處理正常
+
+---
+
+# Conquer 征服指令
+
+## 日期
+2025-12-13
+
+## 功能說明
+
+新增 `conq` (conquer) 指令，可以征服指定方向的障礙物，使其變為可行走。
+
+## 使用方法
+
+### 基本語法
+```
+conq <方向>
+conquer <方向>
+```
+
+### 支持的方向
+- **完整名稱**: `up`, `down`, `left`, `right`
+- **簡寫**: `u`, `d`, `l`, `r`
+
+### 使用範例
+
+**征服上方**：
+```
+> conq up
+你征服了 上 方的障礙！
+位置 (50, 49) 現在可以行走了
+```
+
+**使用簡寫**：
+```
+> conq u
+你征服了 上 方的障礙！
+位置 (50, 49) 現在可以行走了
+```
+
+**征服其他方向**：
+```
+> conq down      # 征服下方
+> conq left      # 征服左方
+> conq right     # 征服右方
+> conq d         # 簡寫：下
+> conq l         # 簡寫：左
+> conq r         # 簡寫：右
+```
+
+## 技術實現
+
+### 修改的檔案
+
+1. **src/input.rs**
+   - 新增 `CommandResult::Conquer(String)`
+   - 添加 `conq` 和 `conquer` 指令解析
+   - 支持完整方向名稱和簡寫
+   - 更新幫助文檔
+
+2. **src/app.rs**
+   - 新增 `handle_conquer()` 函數
+   - 實現方向解析邏輯
+   - 修改地圖點的 walkable 屬性
+   - 自動保存地圖變更
+
+### handle_conquer 實現
+
+```rust
+fn handle_conquer(
+    direction: String,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &Person,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // 解析方向
+    let (dx, dy, dir_name) = match direction.to_lowercase().as_str() {
+        "up" | "u" => (0, -1, "上"),
+        "down" | "d" => (0, 1, "下"),
+        "left" | "l" => (-1, 0, "左"),
+        "right" | "r" => (1, 0, "右"),
+        _ => {
+            output_manager.set_status(format!("未知方向: {}，請使用 up/down/left/right", direction));
+            return Ok(());
+        }
+    };
+    
+    // 計算目標位置
+    let target_x = (me.x as i32 + dx) as usize;
+    let target_y = (me.y as i32 + dy) as usize;
+    
+    // 先獲取地圖名稱
+    let map_name = game_world.current_map.clone();
+    
+    // 獲取當前地圖並修改
+    if let Some(current_map) = game_world.get_current_map_mut() {
+        // 檢查目標位置是否在地圖範圍內
+        if target_x >= current_map.width || target_y >= current_map.height {
+            output_manager.set_status("目標位置超出地圖範圍".to_string());
+            return Ok(());
+        }
+        
+        // 獲取目標點並修改
+        if let Some(point) = current_map.get_point_mut(target_x, target_y) {
+            if point.walkable {
+                output_manager.set_status(format!("{} 方已經是可行走的了", dir_name));
+            } else {
+                // 設置為可行走
+                point.walkable = true;
+                output_manager.print(format!("你征服了 {} 方的障礙！", dir_name));
+                output_manager.print(format!("位置 ({}, {}) 現在可以行走了", target_x, target_y));
+                output_manager.log(format!("玩家在 ({}, {}) 征服了 {} 方 ({}, {})", 
+                    me.x, me.y, dir_name, target_x, target_y));
+            }
+        }
+    }
+    
+    // 保存地圖
+    if let Some(map) = game_world.maps.get(&map_name) {
+        game_world.save_map(map)?;
+    }
+    
+    Ok(())
+}
+```
+
+## 功能特點
+
+### ✅ 方向解析
+- 支持完整英文名稱（大小寫不敏感）
+- 支持單字母簡寫
+- 錯誤提示清晰
+
+### ✅ 邊界檢查
+- 檢查目標位置是否在地圖範圍內
+- 超出範圍時給予提示
+- 避免越界錯誤
+
+### ✅ 狀態檢查
+- 檢查目標位置是否已經可行走
+- 避免重複征服
+- 提供相應反饋
+
+### ✅ 完整反饋
+- 主輸出顯示征服結果
+- 顯示目標位置座標
+- 系統日誌記錄操作
+
+### ✅ 自動保存
+- 地圖變更自動持久化
+- 重啟遊戲後保持變更
+- 數據安全可靠
+
+## 使用場景
+
+### 🗺️ 開闢道路
+```
+> look
+【當前位置: (50, 50)】
+【空曠的廣場】
+
+> conq up
+你征服了 上 方的障礙！
+位置 (50, 49) 現在可以行走了
+
+> up
+往 上 移動
+【當前位置: (50, 49)】
+【剛剛開闢的通道】
+```
+
+### 🎮 配合大地圖
+```
+# 征服前
+> show map
+    xxx   xxx    
+  xx   xxx   xx  
+ xx      P    xxP
+xx              x
+
+# 征服上方
+> conq u
+
+# 征服後
+> show map
+    xxx   xxx    
+  xx   x x   xx  
+ xx      P    xxP  # 上方現在可行走
+xx              x
+```
+
+### 📋 日誌追蹤
+系統日誌會記錄每次征服操作：
+```
+[15:25:30] 玩家在 (50, 50) 征服了 上 方 (50, 49)
+[15:25:35] 玩家在 (50, 49) 征服了 右 方 (51, 49)
+```
+
+## 錯誤處理
+
+### 未知方向
+```
+> conq 左
+未知方向: 左，請使用 up/down/left/right
+```
+
+### 超出地圖範圍
+```
+> conq up
+目標位置超出地圖範圍
+```
+
+### 已經可行走
+```
+> conq down
+下 方已經是可行走的了
+```
+
+## 幫助文檔更新
+
+指令已加入「🎮 遊戲控制」分類：
+
+```
+📖 可用指令
+═══════════════════════════════════════
+
+🎮 遊戲控制
+  ↑↓←→                 - 移動角色
+  look [<npc>]         - 查看位置或NPC
+  conq <方向>          - 征服方向使其可行走  ✨ 新增
+  help                 - 顯示此幫助訊息
+  exit / quit          - 退出遊戲
+```
+
+## 遊戲平衡性
+
+### ⚠️ 注意事項
+- 此指令允許玩家改變地圖結構
+- 可能影響遊戲難度和平衡性
+- 建議在最終版本中考慮：
+  - 添加能量/資源消耗
+  - 限制使用次數
+  - 僅允許征服特定類型的障礙
+  - 添加征服失敗機率
+
+### 🎯 當前設計優勢
+- 便於測試和開發
+- 快速探索地圖
+- 靈活的遊戲體驗
+- 為關卡設計提供工具
+
+## 未來改進建議
+
+1. **資源消耗**
+   ```rust
+   // 需要消耗體力或道具
+   if me.stamina >= 10 {
+       me.stamina -= 10;
+       // 征服邏輯
+   }
+   ```
+
+2. **障礙類型**
+   ```rust
+   // 不同障礙需要不同工具
+   match obstacle_type {
+       Rock => require_tool("鎬"),
+       Tree => require_tool("斧頭"),
+       Water => require_tool("橋"),
+   }
+   ```
+
+3. **冷卻時間**
+   ```rust
+   // 限制使用頻率
+   if last_conquer_time.elapsed() > Duration::from_secs(60) {
+       // 允許征服
+   }
+   ```
+
+4. **成功率**
+   ```rust
+   // 添加隨機失敗機率
+   if random() < 0.8 {  // 80% 成功率
+       // 征服成功
+   } else {
+       // 征服失敗，消耗資源
+   }
+   ```
+
+## 優勢
+
+### ✅ 地圖編輯能力
+- 玩家可以自由塑造環境
+- 創造新的探索路徑
+- 突破設計限制
+
+### ✅ 測試友好
+- 快速訪問地圖任何區域
+- 方便測試遊戲功能
+- 加速開發流程
+
+### ✅ 玩法多樣性
+- 提供新的遊戲機制
+- 增加策略性
+- 提升可玩性
+
+## 測試結果
+- ✅ 編譯成功
+- ✅ `conq up/down/left/right` 正常工作
+- ✅ `conq u/d/l/r` 簡寫正常工作
+- ✅ 方向解析正確（不區分大小寫）
+- ✅ 地圖點 walkable 屬性正確修改
+- ✅ 地圖自動保存
+- ✅ 邊界檢查正常
+- ✅ 狀態檢查正常
+- ✅ 錯誤處理完善
+- ✅ 系統日誌記錄正確
+
+

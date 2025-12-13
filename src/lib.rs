@@ -3,6 +3,7 @@ pub mod observable;
 pub mod item;
 pub mod item_registry;
 pub mod person;
+pub mod npc_manager;
 pub mod world;
 pub mod event;
 pub mod event_loader;
