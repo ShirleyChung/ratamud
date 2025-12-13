@@ -233,29 +233,17 @@ fn handle_exit(
 /// 處理輸出結果
 fn handle_output(text: String, output_manager: &mut OutputManager) {
     output_manager.print(text);
-    // 只關閉 minimap，不關閉側邊面板（側邊面板應該保持開啟直到使用者明確關閉）
-    if output_manager.is_minimap_open() {
-        output_manager.hide_minimap();
-    }
 }
 
 /// 處理錯誤訊息
 fn handle_error(err: String, output_manager: &mut OutputManager) {
     output_manager.set_status(err);
-    // 只關閉 minimap，不關閉側邊面板
-    if output_manager.is_minimap_open() {
-        output_manager.hide_minimap();
-    }
 }
 
 /// 處理清除訊息
 fn handle_clear(output_manager: &mut OutputManager) {
     output_manager.clear_messages();
     output_manager.set_status("Text area cleared".to_string());
-    // 只關閉 minimap，不關閉側邊面板
-    if output_manager.is_minimap_open() {
-        output_manager.hide_minimap();
-    }
 }
 
 /// 處理添加到側邊面板
