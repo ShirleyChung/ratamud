@@ -13,7 +13,7 @@ use crate::settings::GameSettings;
 use crate::person::Person;
 use crate::observable::WorldInfo;
 use crate::input::CommandResult;
-use crate::ui::InputDisplay;
+use crate::ui::{InputDisplay, HeaderDisplay};
 
 /// 應用程式主迴圈 - 將 main.rs 中的事件迴圈邏輯提取到此
 pub fn run_main_loop(
@@ -24,61 +24,61 @@ pub fn run_main_loop(
     me: &mut Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut should_exit = false;
-    // 時間管理：記錄上次更新時間和上次顯示時間
-    let mut last_time_update = Instant::now();
-    let mut last_time_display = Instant::now();
-    let time_update_interval = Duration::from_millis(1000);  // 每1秒更新世界時間（=60遊戲秒）
-    let time_display_interval = Duration::from_secs(5);  // 每5秒顯示時間（=5遊戲分鐘）
+    let mut last_event_check = Instant::now();
+    let event_check_interval = Duration::from_millis(500);  // 每0.5秒檢查事件
     
     'main_loop: loop {
         // 更新狀態列（檢查訊息是否過期）
         output_manager.update_status();
         
-        // 更新世界時間（每秒更新，1實際秒 = 60遊戲秒）
+        // 從時鐘線程同步時間
+        game_world.update_time();
+        
+        // 定期檢查並觸發事件
         let now = Instant::now();
-        if now.duration_since(last_time_update) >= time_update_interval {
-            game_world.update_time();
-            last_time_update = now;
-            
-            // 檢查並觸發事件
+        if now.duration_since(last_event_check) >= event_check_interval {
             check_and_execute_events(game_world, me, output_manager);
-            
-            // 每5秒顯示一次時間到狀態列（=5遊戲分鐘）
-            if now.duration_since(last_time_display) >= time_display_interval {
-                output_manager.set_current_time(game_world.format_time());
-                last_time_display = now;
-            }
+            last_event_check = now;
         }
         // 繪製終端畫面
         terminal.draw(|f| {
             let size = f.size();
 
-            // 將螢幕分為三個垂直區域：輸出區域、輸入區域、狀態列
+            // 將螢幕分為四個垂直區域：標題列、輸出區域、輸入區域、狀態列
             let vertical_chunks = Layout::default()
                 .direction(Direction::Vertical)
-                .margin(1)
                 .constraints([
+                    Constraint::Length(1),   // 標題列
                     Constraint::Min(1),      // 輸出區域
                     Constraint::Length(3),   // 輸入區域
-                    Constraint::Length(1),   // 狀態列（只有一行）
+                    Constraint::Length(1),   // 狀態列
                 ])
                 .split(size);
 
-            // 渲染輸出區域（全寬）
-            let output_widget = output_manager.render_output(vertical_chunks[0]);
-            f.render_widget(output_widget, vertical_chunks[0]);
+            // 渲染標題列
+            let current_time_str = game_world.format_time();
+            let header_widget = HeaderDisplay::render_header(
+                "初始世界",
+                &current_time_str
+            );
+            f.render_widget(header_widget, vertical_chunks[0]);
 
-            // 計算懸浮視窗的位置和大小（右上角，寬度 40%，高度 60%）
-            let floating_width = (size.width as f32 * 0.4) as u16;
-            let floating_height = (size.height as f32 * 0.6) as u16;
-            let floating_x = size.width.saturating_sub(floating_width + 2);
-            let floating_y = 1;
+            // 渲染輸出區域
+            let output_widget = output_manager.render_output(vertical_chunks[1]);
+            f.render_widget(output_widget, vertical_chunks[1]);
+
+            // 計算小地圖的位置和大小（右上角，根據內容自動調整高度）
+            let minimap_width = (size.width as f32 * 0.35) as u16;  // 縮小寬度
+            // 小地圖固定顯示: 標題(1) + 位置(1) + 4個方向(4) + 邊框(2) = 8行
+            let minimap_height = 8u16;  
+            let minimap_x = size.width.saturating_sub(minimap_width);
+            let minimap_y = 1;  // 從標題列下方開始
             
             let minimap_area = Rect {
-                x: floating_x,
-                y: floating_y,
-                width: floating_width,
-                height: floating_height,
+                x: minimap_x,
+                y: minimap_y,
+                width: minimap_width,
+                height: minimap_height,
             };
             // 畫小地圖
             if output_manager.is_minimap_open() {
@@ -86,11 +86,13 @@ pub fn run_main_loop(
                 f.render_widget(Clear, minimap_area); // 清除背景
                 f.render_widget(minimap_widget, minimap_area);
             }
+            
+            // 側邊面板使用相同的位置和大小
             let floating_area = Rect {
-                x: floating_x,
-                y: floating_y,
-                width: floating_width,
-                height: floating_height,
+                x: minimap_x,
+                y: minimap_y,
+                width: minimap_width,
+                height: minimap_height + 10,  // 側邊面板稍大一些
             };
             // 畫側邊面板
             if output_manager.is_side_panel_open() {
@@ -99,13 +101,32 @@ pub fn run_main_loop(
                 f.render_widget(side_widget, floating_area);
             }
 
+            // 計算日誌視窗位置和大小（右側，在小地圖下方）
+            let log_width = minimap_width;  // 與小地圖同寬
+            let log_height = (size.height as f32 * 0.45) as u16;  // 增加高度
+            let log_x = size.width.saturating_sub(log_width);
+            let log_y = minimap_y + minimap_height + 1;  // 緊接著小地圖下方
+            
+            let log_area = Rect {
+                x: log_x,
+                y: log_y,
+                width: log_width,
+                height: log_height,
+            };
+            // 畫日誌視窗
+            if output_manager.is_log_open() {
+                let log_widget = output_manager.render_log(log_area);
+                f.render_widget(Clear, log_area); // 清除背景
+                f.render_widget(log_widget, log_area);
+            }
+
             // 渲染輸入區域
-            let input_widget = InputDisplay::render_input(input_handler.get_input(), vertical_chunks[1]);
-            f.render_widget(input_widget, vertical_chunks[1]);
+            let input_widget = InputDisplay::render_input(input_handler.get_input(), vertical_chunks[2]);
+            f.render_widget(input_widget, vertical_chunks[2]);
 
             // 渲染狀態列
             let status_widget = output_manager.render_status();
-            f.render_widget(status_widget, vertical_chunks[2]);
+            f.render_widget(status_widget, vertical_chunks[3]);
         })?;
 
         if should_exit {
@@ -186,6 +207,8 @@ fn handle_command_result(
         CommandResult::ShowWorld => handle_show_world(output_manager, game_world),
         CommandResult::ShowMinimap => handle_show_minimap(output_manager, game_world, me),
         CommandResult::HideMinimap => handle_hide_minimap(output_manager),
+        CommandResult::ShowLog => handle_show_log(output_manager),
+        CommandResult::HideLog => handle_hide_log(output_manager),
         CommandResult::Look => display_look(output_manager, game_world, me),
         CommandResult::Move(dx, dy) => handle_movement(dx, dy, output_manager, game_world, me)?,
         CommandResult::Get(item_name) => handle_get(item_name, output_manager, game_world, me),
@@ -285,6 +308,18 @@ fn handle_hide_minimap(output_manager: &mut OutputManager) {
     output_manager.set_status(String::new());
 }
 
+/// 處理顯示日誌視窗
+fn handle_show_log(output_manager: &mut OutputManager) {
+    output_manager.show_log_window();
+    output_manager.set_status("日誌視窗已開啟".to_string());
+}
+
+/// 處理隱藏日誌視窗
+fn handle_hide_log(output_manager: &mut OutputManager) {
+    output_manager.hide_log();
+    output_manager.set_status("日誌視窗已關閉".to_string());
+}
+
 /// 處理關閉狀態面板
 #[allow(dead_code)]
 fn handle_close_status(output_manager: &mut OutputManager) {
@@ -312,49 +347,13 @@ fn display_look(
                 }
             }
             
-            output_manager.print("".to_string());
-            
-            // 上方
-            if me.y > 0 {
-                if let Some(p) = current_map.get_point(me.x, me.y - 1) {
-                    output_manager.print(format!("↑ 北方: {}", p.description));
-                }
-            } else {
-                output_manager.print("(邊界)".to_string());
-            }
-            
-            // 下方
-            if me.y + 1 < current_map.height {
-                if let Some(p) = current_map.get_point(me.x, me.y + 1) {
-                    output_manager.print(format!("↓ 南方: {}", p.description));
-                }
-            } else {
-                output_manager.print("(邊界)".to_string());
-            }
-            
-            // 左方
-            if me.x > 0 {
-                if let Some(p) = current_map.get_point(me.x - 1, me.y) {
-                    output_manager.print(format!("← 西方: {}", p.description));
-                }
-            } else {
-                output_manager.print("(邊界)".to_string());
-            }
-            
-            // 右方
-            if me.x + 1 < current_map.width {
-                if let Some(p) = current_map.get_point(me.x + 1, me.y) {
-                    output_manager.print(format!("→ 東方: {}", p.description));
-                }
-            } else {
-                output_manager.print("(邊界)".to_string());
-            }            
+            output_manager.print("".to_string());          
         }
     }
 }
 
 /// 更新小地圖顯示
-fn update_minimap_display(
+pub fn update_minimap_display(
     output_manager: &mut OutputManager,
     game_world: &GameWorld,
     me: &Person,
@@ -531,76 +530,57 @@ fn check_and_execute_events(
     me: &mut Person,
     output_manager: &mut OutputManager,
 ) {
-    // 創建一個臨時的 GameWorld 視圖用於檢查
     let current_day = game_world.time.day;
     let current_hour = game_world.time.hour;
     let current_minute = game_world.time.minute;
-    let current_second = game_world.time.second;
-    let current_map = game_world.current_map.clone();
     
-    // 先收集觸發的事件ID
-    let triggered_events = {
-        // 使用內部作用域來限制借用
-        let scheduler = &mut game_world.event_scheduler;
-        let manager = &mut game_world.event_manager;
+    if (current_day, current_hour, current_minute) == game_world.event_scheduler.last_check_time {
+        return;
+    }
+    
+    game_world.event_scheduler.last_check_time = (current_day, current_hour, current_minute);
+    
+    let events: Vec<crate::event::GameEvent> = game_world.event_manager.list_events()
+        .iter()
+        .map(|e| (*e).clone())
+        .collect();
+    
+    let mut triggered_event_ids = Vec::new();
+    
+    for event in events {
+        let event_id = event.id.clone();
         
-        // 檢查時間是否變化
-        let should_check = {
-            let last_check = scheduler.last_check_time;
-            (current_day, current_hour, current_minute) != last_check
-        };
-        
-        if !should_check {
-            return;
-        }
-        
-        scheduler.last_check_time = (current_day, current_hour, current_minute);
-        
-        // 收集所有觸發的事件
-        let events: Vec<crate::event::GameEvent> = manager.list_events()
-            .iter()
-            .map(|e| (*e).clone())
-            .collect();
-        
-        let mut triggered = Vec::new();
-        
-        for event in events {
-            let event_id = event.id.clone();
-            
-            // 檢查運行時狀態
-            if let Some(runtime_state) = manager.get_runtime_state(&event_id) {
-                if !event.can_trigger(runtime_state) {
-                    continue;
-                }
-            }
-            
-            // 檢查觸發條件
-            if check_event_trigger(&event, current_minute, current_hour, current_day, current_second) {
-                // 檢查條件（人事時地物）
-                if check_event_conditions(&event, &current_map, me) {
-                    triggered.push(event.clone());
-                    manager.trigger_event(&event_id);
-                }
+        if let Some(runtime_state) = game_world.event_manager.get_runtime_state(&event_id) {
+            if !event.can_trigger(runtime_state) {
+                continue;
             }
         }
         
-        triggered
-    };
-    
-    // 執行觸發的事件
-    for event in triggered_events {
-        // 顯示事件觸發訊息（帶位置信息）
-        let location_info = get_event_location_info(&event, game_world);
-        output_manager.print(format!("🎭 事件: {}{}", event.name, location_info));
+        let should_trigger = crate::event_scheduler::EventScheduler::new()
+            .check_trigger(&event, game_world) &&
+            crate::event_scheduler::EventScheduler::new()
+            .check_conditions(&event, game_world, me);
         
-        // 執行事件動作
-        if let Err(e) = crate::event_executor::EventExecutor::execute_event(
-            &event,
-            game_world,
-            me,
-            output_manager
-        ) {
-            output_manager.print(format!("⚠️  事件執行錯誤: {}", e));
+        if should_trigger {
+            triggered_event_ids.push(event_id.clone());
+            game_world.event_manager.trigger_event(&event_id);
+        }
+    }
+    
+    for event_id in triggered_event_ids {
+        if let Some(event) = game_world.event_manager.get_event(&event_id) {
+            let event_clone = event.clone();
+            let location_info = get_event_location_info(&event_clone, game_world);
+            output_manager.print(format!("🎭 事件: {}{}", event_clone.name, location_info));
+            
+            if let Err(e) = crate::event_executor::EventExecutor::execute_event(
+                &event_clone,
+                game_world,
+                me,
+                output_manager
+            ) {
+                output_manager.print(format!("⚠️  事件執行錯誤: {}", e));
+            }
         }
     }
 }
@@ -610,7 +590,6 @@ fn get_event_location_info(event: &crate::event::GameEvent, game_world: &GameWor
     if let Some(map_name) = &event.r#where.map {
         if let Some(positions) = &event.r#where.positions {
             if !positions.is_empty() {
-                // 獲取該位置的描述
                 if let Some(map) = game_world.maps.get(map_name) {
                     if let Some(point) = map.get_point(positions[0][0], positions[0][1]) {
                         return format!(" 在 {}({}, {}) - {}", 
@@ -626,103 +605,4 @@ fn get_event_location_info(event: &crate::event::GameEvent, game_world: &GameWor
         return format!(" 在 {}", map_name);
     }
     String::new()
-}
-
-/// 檢查事件觸發條件
-fn check_event_trigger(
-    event: &crate::event::GameEvent,
-    minute: u8,
-    hour: u8,
-    day: u32,
-    _second: u8,
-) -> bool {
-    use crate::event::TriggerType;
-    
-    match &event.trigger {
-        TriggerType::Time { schedule, random_chance, day_range, time_range } => {
-            // 檢查 crontab 時間表達式
-            if !crate::event_scheduler::CronParser::matches(schedule, minute, hour, day) {
-                return false;
-            }
-            
-            // 檢查天數範圍
-            if let Some([start_day, end_day]) = day_range {
-                if day < *start_day || day > *end_day {
-                    return false;
-                }
-            }
-            
-            // 檢查時間範圍
-            if let Some([start_time, end_time]) = time_range {
-                let current_time = format!("{:02}:{:02}:{:02}", hour, minute, _second);
-                if current_time < *start_time || current_time > *end_time {
-                    return false;
-                }
-            }
-            
-            // 檢查隨機機率
-            if let Some(chance) = random_chance {
-                use rand::Rng;
-                let mut rng = rand::thread_rng();
-                if rng.gen::<f32>() > *chance {
-                    return false;
-                }
-            }
-            
-            true
-        }
-        TriggerType::Random { chance, .. } => {
-            use rand::Rng;
-            let mut rng = rand::thread_rng();
-            rng.gen::<f32>() <= *chance
-        }
-        _ => false,
-    }
-}
-
-/// 檢查事件條件
-fn check_event_conditions(
-    event: &crate::event::GameEvent,
-    current_map: &str,
-    player: &Person,
-) -> bool {
-    // 檢查地點條件
-    if let Some(map_name) = &event.r#where.map {
-        if *current_map != *map_name {
-            return false;
-        }
-    }
-    
-    if let Some(positions) = &event.r#where.positions {
-        let player_pos = (player.x, player.y);
-        let mut found = false;
-        for pos in positions {
-            if pos[0] == player_pos.0 && pos[1] == player_pos.1 {
-                found = true;
-                break;
-            }
-        }
-        if !found {
-            return false;
-        }
-    }
-    
-    if let Some(area) = &event.r#where.area {
-        let in_x_range = player.x >= area.x[0] && player.x <= area.x[1];
-        let in_y_range = player.y >= area.y[0] && player.y <= area.y[1];
-        if !in_x_range || !in_y_range {
-            return false;
-        }
-    }
-    
-    // 檢查物品條件
-    if let Some(required_items) = &event.what.required_items {
-        for item in required_items {
-            if !player.items.contains(item) {
-                return false;
-            }
-        }
-    }
-    
-    true
 }

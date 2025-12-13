@@ -117,7 +117,7 @@ impl EventScheduler {
     }
     
     /// 檢查觸發器是否滿足
-    fn check_trigger(&self, event: &GameEvent, game_world: &GameWorld) -> bool {
+    pub fn check_trigger(&self, event: &GameEvent, game_world: &GameWorld) -> bool {
         match &event.trigger {
             TriggerType::Time { schedule, random_chance, day_range, time_range } => {
                 // 檢查 crontab 時間表達式
@@ -176,7 +176,7 @@ impl EventScheduler {
     }
     
     /// 檢查事件條件（人事時地物）
-    fn check_conditions(&self, event: &GameEvent, game_world: &GameWorld, player: &Person) -> bool {
+    pub fn check_conditions(&self, event: &GameEvent, game_world: &GameWorld, player: &Person) -> bool {
         // 檢查地點條件（Where）
         if let Some(map_name) = &event.r#where.map {
             if game_world.current_map != *map_name {

@@ -1,6 +1,7 @@
 use ratatui::widgets::{Block, Borders, Paragraph};
-use ratatui::text::Line;
-use ratatui::layout::Rect;
+use ratatui::text::{Line, Span};
+use ratatui::layout::{Rect, Alignment};
+use ratatui::style::{Color, Style, Modifier};
 
 // 處理輸入區域顯示的結構體
 pub struct InputDisplay;
@@ -16,5 +17,25 @@ impl InputDisplay {
         // 將輸入文本轉換為段落小部件
         Paragraph::new(Line::from(input_text))
             .block(input_block)
+    }
+}
+
+// 處理標題列顯示的結構體
+pub struct HeaderDisplay;
+
+impl HeaderDisplay {
+    // 渲染標題列
+    pub fn render_header<'a>(world_name: &'a str, current_time: &'a str) -> Paragraph<'a> {
+        let header_text = format!("⚔️  {} | 🕐 {}", world_name, current_time);
+        
+        let header_span = Span::styled(
+            header_text,
+            Style::default()
+                .fg(Color::Yellow)
+                .add_modifier(Modifier::BOLD)
+        );
+        
+        Paragraph::new(Line::from(header_span))
+            .alignment(Alignment::Left)
     }
 }

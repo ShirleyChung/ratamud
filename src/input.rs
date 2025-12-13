@@ -117,6 +117,8 @@ impl InputHandler {
                     CommandResult::ShowWorld
                 } else if parts[1] == "minimap" {
                     CommandResult::ShowMinimap
+                } else if parts[1] == "log" {
+                    CommandResult::ShowLog
                 } else {
                     CommandResult::Error(format!("Unknown show command: {}", parts[1]))
                 }
@@ -126,6 +128,8 @@ impl InputHandler {
                     CommandResult::Error("Usage: hide <command>".to_string())
                 } else if parts[1] == "minimap" {
                     CommandResult::HideMinimap
+                } else if parts[1] == "log" {
+                    CommandResult::HideLog
                 } else {
                     CommandResult::Error(format!("Unknown hide command: {}", parts[1]))
                 }
@@ -210,6 +214,8 @@ pub enum CommandResult {
     ShowWorld,                       // 打開世界資訊面板
     ShowMinimap,                     // 打開小地圖面板
     HideMinimap,                     // 關閉小地圖面板
+    ShowLog,                         // 打開日誌視窗
+    HideLog,                         // 關閉日誌視窗
     Look,                            // 查看當前位置
     Move(i32, i32),                  // 移動 (dx, dy)，顯示方向
     Get(Option<String>),             // 撿起物品 (可選：物品名稱)

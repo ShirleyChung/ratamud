@@ -2,6 +2,9 @@ use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::fs;
 use std::path::Path;
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::Duration;
 use serde::{Deserialize, Serialize};
 use crate::map::Map;
 use crate::person::Person;
@@ -24,16 +27,17 @@ impl WorldTime {
             .unwrap()
             .as_millis() as u64;
         
+        // 世界自己的時間，從遊戲設定的時間開始
         WorldTime {
             hour: 9,
             minute: 0,
             second: 0,
-            day: 1,
+            day: 1,  // 遊戲世界的第1天
             last_update: now,
         }
     }
 
-    // 推進時間（1實際秒 = 60遊戲秒）
+    // 推進時間（與真實世界同步：1實際秒 = 1遊戲秒）
     pub fn advance(&mut self, game_speed: f32) {
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -41,6 +45,7 @@ impl WorldTime {
             .as_millis() as u64;
         
         let elapsed_real_ms = now - self.last_update;
+        // game_speed = 1.0 表示與真實世界同步
         let elapsed_game_secs = ((elapsed_real_ms as f32 / 1000.0) * game_speed) as u32;
         
         let total_secs = self.second as u32 + elapsed_game_secs;
@@ -332,6 +337,7 @@ pub struct GameWorld {
     pub game_speed: f32,
     pub event_manager: crate::event::EventManager,
     pub event_scheduler: crate::event_scheduler::EventScheduler,
+    pub time_thread: Option<crate::time_thread::TimeThread>,
 }
 
 impl GameWorld {
@@ -348,15 +354,20 @@ impl GameWorld {
             在這個世界中，你將探索未知的領域，與各種NPC互動，收集物品和知識。".to_string(),
         );
 
+        let time = WorldTime::new();
+        let game_speed = 1.0;  // 與真實世界同步：1實際秒 = 1遊戲秒
+        let time_thread = crate::time_thread::TimeThread::new(time.clone(), game_speed);
+
         GameWorld {
             maps: HashMap::new(),
             current_map: String::from("初始之地"),
             metadata,
             world_dir,
-            time: WorldTime::new(),
-            game_speed: 60.0,
+            time,
+            game_speed,
             event_manager: crate::event::EventManager::new(),
             event_scheduler: crate::event_scheduler::EventScheduler::new(),
+            time_thread: Some(time_thread),
         }
     }
 
@@ -496,9 +507,11 @@ impl GameWorld {
         persons
     }
 
-    // 更新世界時間
+    // 更新世界時間 (從時鐘線程同步)
     pub fn update_time(&mut self) {
-        self.time.advance(self.game_speed);
+        if let Some(ref time_thread) = self.time_thread {
+            self.time = time_thread.get_time();
+        }
     }
 
     // 獲取當前時間信息
@@ -525,12 +538,19 @@ impl GameWorld {
         let time_path = format!("{}/time.json", self.world_dir);
         if Path::new(&time_path).exists() {
             let json = fs::read_to_string(time_path)?;
-            self.time = serde_json::from_str(&json)?;
+            let mut loaded_time: WorldTime = serde_json::from_str(&json)?;
             // 重置 last_update 為當前時間，避免時間跳躍
-            self.time.last_update = SystemTime::now()
+            loaded_time.last_update = SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .unwrap()
                 .as_millis() as u64;
+            
+            self.time = loaded_time.clone();
+            
+            // 重新啟動時鐘線程
+            if let Some(ref mut time_thread) = self.time_thread {
+                time_thread.set_time(loaded_time);
+            }
         }
         Ok(())
     }

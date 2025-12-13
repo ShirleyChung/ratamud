@@ -18,6 +18,9 @@ pub struct OutputManager {
     current_time: String,       // 當前遊戲時間顯示
     show_minimap: bool,         // 是否顯示小地圖
     minimap_lines: Vec<String>, // 小地圖的行內容
+    log_messages: Vec<String>,  // 系統日誌訊息
+    log_scroll: usize,          // 日誌滾動位置
+    show_log: bool,             // 是否顯示日誌視窗
 }
 
 impl OutputManager {
@@ -35,6 +38,9 @@ impl OutputManager {
             current_time: String::from("Day 1 09:00:00"),
             show_minimap: false,
             minimap_lines: Vec::new(),
+            log_messages: Vec::new(),
+            log_scroll: 0,
+            show_log: true,  // 預設顯示日誌視窗
         }
     }
 
@@ -127,16 +133,16 @@ impl OutputManager {
             .block(Block::default().title("*").borders(Borders::ALL))
     }
 
-    // 渲染狀態列（不顯示邊框，只顯示文字）
+    // 渲染狀態列（只顯示臨時狀態訊息）
     pub fn render_status(&self) -> Paragraph {
         let status_text = if let Some(time) = self.status_time {
             if time.elapsed() > Duration::from_secs(5) {
-                self.current_time.clone()
+                String::new()  // 狀態過期後顯示空白
             } else {
-                format!("{} | {}", self.status, self.current_time)
+                self.status.clone()
             }
         } else {
-            self.current_time.clone()
+            String::new()
         };
 
         let status_span = Span::styled(
@@ -280,5 +286,70 @@ impl OutputManager {
             }
         }
 
+    }
+
+    // === 日誌視窗相關方法 ===
+    
+    // 添加系統日誌訊息
+    pub fn log(&mut self, message: String) {
+        use chrono::Local;
+        let timestamp = Local::now().format("%H:%M:%S").to_string();
+        let log_entry = format!("[{}] {}", timestamp, message);
+        self.log_messages.push(log_entry);
+        self.log_scroll = self.log_messages.len().saturating_sub(1);
+    }
+    
+    // 切換日誌視窗顯示/隱藏
+    pub fn toggle_log(&mut self) {
+        self.show_log = !self.show_log;
+    }
+    
+    // 顯示日誌視窗
+    pub fn show_log_window(&mut self) {
+        self.show_log = true;
+    }
+    
+    // 隱藏日誌視窗
+    pub fn hide_log(&mut self) {
+        self.show_log = false;
+    }
+    
+    // 獲取日誌視窗狀態
+    pub fn is_log_open(&self) -> bool {
+        self.show_log
+    }
+    
+    // 日誌視窗向上滾動
+    pub fn scroll_log_up(&mut self) {
+        if self.log_scroll > 0 {
+            self.log_scroll -= 1;
+        }
+    }
+    
+    // 日誌視窗向下滾動
+    pub fn scroll_log_down(&mut self, visible_height: usize) {
+        let max_scroll = self.log_messages.len().saturating_sub(visible_height);
+        if self.log_scroll < max_scroll {
+            self.log_scroll += 1;
+        }
+    }
+    
+    // 渲染日誌視窗
+    pub fn render_log(&self, area: Rect) -> Paragraph {
+        let visible_height = area.height.saturating_sub(2) as usize;
+        let start_idx = self.log_scroll;
+        let end_idx = (start_idx + visible_height).min(self.log_messages.len());
+        
+        let visible_messages: Vec<Line> = self.log_messages[start_idx..end_idx]
+            .iter()
+            .map(|msg| Line::from(msg.as_str()))
+            .collect();
+        
+        Paragraph::new(Text::from(visible_messages))
+            .block(Block::default()
+                .title("📋 System Log")
+                .borders(Borders::ALL)
+                .style(Style::default().bg(Color::Black).fg(Color::Green)))
+            .style(Style::default().bg(Color::Black).fg(Color::Green))
     }
 }

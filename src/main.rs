@@ -7,6 +7,7 @@ mod observable;
 mod person;
 mod map;
 mod time_updatable;
+mod time_thread;
 mod item;
 mod settings;
 mod app;
@@ -47,10 +48,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 載入遊戲設定
     use settings::GameSettings;
     let game_settings = GameSettings::load();
-    output_manager.print(format!("載入設定: show_minimap = {}", game_settings.show_minimap));
+    output_manager.log(format!("載入設定: show_minimap = {}", game_settings.show_minimap));
     if game_settings.show_minimap {
         output_manager.show_minimap();
-        output_manager.print("小地圖已開啟".to_string());
+        output_manager.log("小地圖已開啟".to_string());
     }
 
     // 初始化 Me 物件 (Player)
@@ -81,11 +82,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     match event_loader::EventLoader::load_from_directory(&mut game_world.event_manager, &events_dir) {
         Ok(count) => {
             if count > 0 {
-                output_manager.print(format!("✅ 載入了 {} 個事件", count));
+                output_manager.log(format!("✅ 載入了 {} 個事件", count));
             }
         }
         Err(e) => {
-            output_manager.print(format!("⚠️  載入事件失敗: {}", e));
+            output_manager.log(format!("⚠️  載入事件失敗: {}", e));
         }
     }
     
@@ -124,9 +125,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             new_map
         };
         map.initialize_items();
-        output_manager.print(format!("地圖已加載: {}", map.name));
+        output_manager.log(format!("地圖已加載: {}", map.name));
         let (walkable, unwalkable) = map.get_stats();
-        output_manager.print(format!("{} - 可行走點: {}, 不可行走點: {}", map_name, walkable, unwalkable));
+        output_manager.log(format!("{} - 可行走點: {}, 不可行走點: {}", map_name, walkable, unwalkable));
         game_world.add_map(map);
     }
     
@@ -134,7 +135,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let _ = game_world.save_metadata();
     
     // 顯示當前時間
-    output_manager.print(format!("⏰ {}", game_world.format_time()));
+    output_manager.log(format!("⏰ {}", game_world.format_time()));
     
     // 嘗試載入 Me（如果存在）
     let person_dir = format!("{}/persons", game_world.world_dir);
@@ -142,11 +143,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     if let Ok(loaded_me) = Person::load(&person_dir, "me") {
         me = loaded_me;
-        output_manager.print("已載入角色: Me".to_string());
+        output_manager.log("已載入角色: Me".to_string());
     } else {
         // 如果沒有存檔，保存初始化的 Me
         let _ = me.save(&person_dir, "me");
-        output_manager.print("已保存新角色: Me".to_string());
+        output_manager.log("已保存新角色: Me".to_string());
     }
     
     // 生成或加載 NPC
@@ -173,59 +174,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let _ = new_npc.save(&person_dir, npc_id);
                 new_npc
             };
-            output_manager.print(format!("已載入 NPC: {} 在位置 ({}, {})", name, npc.x, npc.y));
+            output_manager.log(format!("已載入 NPC: {} 在位置 ({}, {})", name, npc.x, npc.y));
         }
     }
     
-    output_manager.print(format!("已加載 {} 個地圖", game_world.map_count()));
+    output_manager.log(format!("已加載 {} 個地圖", game_world.map_count()));
 
     // 如果小地圖已開啟，初始化其內容
     if output_manager.is_minimap_open() {
-        if let Some(current_map) = game_world.get_current_map() {
-            let mut minimap_data = vec![format!("【位置: ({}, {})】", me.x, me.y)];
-            
-            // 上方
-            if me.y > 0 {
-                if let Some(point) = current_map.get_point(me.x, me.y - 1) {
-                    let walkable = if point.walkable { '✓' } else { '✗' };
-                    minimap_data.push(format!("↑ {} {}", point.description, walkable));
-                }
-            } else {
-                minimap_data.push("↑ (邊界)".to_string());
-            }
-            
-            // 下方
-            if me.y + 1 < current_map.height {
-                if let Some(point) = current_map.get_point(me.x, me.y + 1) {
-                    let walkable = if point.walkable { '✓' } else { '✗' };
-                    minimap_data.push(format!("↓ {} {}", point.description, walkable));
-                }
-            } else {
-                minimap_data.push("↓ (邊界)".to_string());
-            }
-            
-            // 左方
-            if me.x > 0 {
-                if let Some(point) = current_map.get_point(me.x - 1, me.y) {
-                    let walkable = if point.walkable { '✓' } else { '✗' };
-                    minimap_data.push(format!("← {} {}", point.description, walkable));
-                }
-            } else {
-                minimap_data.push("← (邊界)".to_string());
-            }
-            
-            // 右方
-            if me.x + 1 < current_map.width {
-                if let Some(point) = current_map.get_point(me.x + 1, me.y) {
-                    let walkable = if point.walkable { '✓' } else { '✗' };
-                    minimap_data.push(format!("→ {} {}", point.description, walkable));
-                }
-            } else {
-                minimap_data.push("→ (邊界)".to_string());
-            }
-            
-            output_manager.update_minimap(minimap_data);
-        }
+        app::update_minimap_display(&mut output_manager, &game_world, &me);
     }
 
     // 運行主迴圈
