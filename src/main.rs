@@ -9,6 +9,7 @@ mod map;
 mod time_updatable;
 mod time_thread;
 mod item;
+mod item_registry;
 mod settings;
 mod app;
 mod event;
@@ -48,10 +49,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 載入遊戲設定
     use settings::GameSettings;
     let game_settings = GameSettings::load();
-    output_manager.log(format!("載入設定: show_minimap = {}", game_settings.show_minimap));
+    output_manager.log(format!("載入設定: show_minimap = {}, show_log = {}", 
+        game_settings.show_minimap, game_settings.show_log));
+    
     if game_settings.show_minimap {
         output_manager.show_minimap();
         output_manager.log("小地圖已開啟".to_string());
+    }
+    
+    if !game_settings.show_log {
+        output_manager.hide_log();
+        output_manager.log("日誌視窗已關閉".to_string());
+    } else {
+        output_manager.log("日誌視窗已開啟".to_string());
     }
 
     // 初始化 Me 物件 (Player)
@@ -80,9 +90,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 載入事件腳本
     let events_dir = format!("{}/events", game_world.world_dir);
     match event_loader::EventLoader::load_from_directory(&mut game_world.event_manager, &events_dir) {
-        Ok(count) => {
+        Ok((count, event_list)) => {
             if count > 0 {
                 output_manager.log(format!("✅ 載入了 {} 個事件", count));
+                for event_name in event_list {
+                    output_manager.log(format!("  📌 {}", event_name));
+                }
             }
         }
         Err(e) => {
@@ -114,17 +127,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for (map_name, map_type) in maps_config {
         let map_path = format!("{}/{}.json", game_world.get_maps_dir(), map_name);
         
-        let mut map = if std::path::Path::new(&map_path).exists() {
-            // 如果檔案存在，則加載
+        let map = if std::path::Path::new(&map_path).exists() {
+            // 如果檔案存在，則加載（不要重新初始化物品）
             Map::load(&map_path)?
         } else {
             // 否則生成新地圖
-            let new_map = Map::new_with_type(map_name.to_string(), 100, 100, map_type);
+            let mut new_map = Map::new_with_type(map_name.to_string(), 100, 100, map_type);
+            // 只在新地圖時初始化物品
+            new_map.initialize_items();
             // 保存新地圖
             new_map.save(&map_path)?;
             new_map
         };
-        map.initialize_items();
         output_manager.log(format!("地圖已加載: {}", map.name));
         let (walkable, unwalkable) = map.get_stats();
         output_manager.log(format!("{} - 可行走點: {}, 不可行走點: {}", map_name, walkable, unwalkable));
@@ -180,6 +194,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     output_manager.log(format!("已加載 {} 個地圖", game_world.map_count()));
 
+    // 顯示歡迎訊息
+    show_welcome_message(&mut output_manager, &game_world);
+    show_current_map_info(&mut output_manager, &game_world);
+
     // 如果小地圖已開啟，初始化其內容
     if output_manager.is_minimap_open() {
         app::update_minimap_display(&mut output_manager, &game_world, &me);
@@ -193,4 +211,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     execute!(io::stdout(), LeaveAlternateScreen)?;
 
     Ok(())
+}
+
+/// 顯示世界歡迎訊息
+fn show_welcome_message(output_manager: &mut output::OutputManager, game_world: &world::GameWorld) {
+    output_manager.print("".to_string());
+    output_manager.print("═══════════════════════════════════════".to_string());
+    output_manager.print(format!("✨ 歡迎來到 {} ✨", game_world.metadata.name));
+    output_manager.print("═══════════════════════════════════════".to_string());
+    output_manager.print("".to_string());
+    output_manager.print(game_world.metadata.description.clone());
+    output_manager.print("".to_string());
+    output_manager.print("───────────────────────────────────────".to_string());
+    output_manager.print("💡 輸入 'help' 查看可用指令".to_string());
+    output_manager.print("".to_string());
+}
+
+/// 顯示當前地圖資訊
+fn show_current_map_info(output_manager: &mut output::OutputManager, game_world: &world::GameWorld) {
+    if let Some(current_map) = game_world.get_current_map() {
+        output_manager.print("".to_string());
+        output_manager.print("🗺️  ═══════════════════════════════════".to_string());
+        output_manager.print(format!("📍 當前區域: {}", current_map.name));
+        output_manager.print("🗺️  ═══════════════════════════════════".to_string());
+        output_manager.print("".to_string());
+        output_manager.print(current_map.description.clone());
+        output_manager.print("".to_string());
+    }
 }

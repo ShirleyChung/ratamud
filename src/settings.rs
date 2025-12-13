@@ -7,12 +7,15 @@ use std::path::Path;
 pub struct GameSettings {
     // 是否顯示小地圖
     pub show_minimap: bool,
+    // 是否顯示日誌視窗
+    pub show_log: bool,
 }
 
 impl Default for GameSettings {
     fn default() -> Self {
         GameSettings {
             show_minimap: false,
+            show_log: true,  // 日誌視窗預設開啟
         }
     }
 }

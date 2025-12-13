@@ -225,6 +225,12 @@ impl OutputManager {
                 .style(Style::default().bg(Color::DarkGray).fg(Color::White)))
             .style(Style::default().bg(Color::DarkGray).fg(Color::White))
     }
+    
+    // 獲取側邊面板內容的行數
+    pub fn get_side_panel_content_height(&self) -> u16 {
+        let lines = crate::observable::observable_to_lines(self.side_observable.as_ref());
+        (lines.len() + 2) as u16  // 內容行數 + 上下邊框
+    }
 
     // 設置側邊面板的 Observable 對象
     pub fn set_side_observable(&mut self, obs: Box<dyn Observable>) {
@@ -337,8 +343,15 @@ impl OutputManager {
     // 渲染日誌視窗
     pub fn render_log(&self, area: Rect) -> Paragraph {
         let visible_height = area.height.saturating_sub(2) as usize;
-        let start_idx = self.log_scroll;
-        let end_idx = (start_idx + visible_height).min(self.log_messages.len());
+        
+        // 自動滾動到底部，顯示最新的訊息
+        let total_messages = self.log_messages.len();
+        let start_idx = if total_messages > visible_height {
+            total_messages - visible_height
+        } else {
+            0
+        };
+        let end_idx = total_messages;
         
         let visible_messages: Vec<Line> = self.log_messages[start_idx..end_idx]
             .iter()

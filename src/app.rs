@@ -13,6 +13,7 @@ use crate::settings::GameSettings;
 use crate::person::Person;
 use crate::observable::WorldInfo;
 use crate::input::CommandResult;
+use crate::item_registry;
 use crate::ui::{InputDisplay, HeaderDisplay};
 
 /// 應用程式主迴圈 - 將 main.rs 中的事件迴圈邏輯提取到此
@@ -25,7 +26,7 @@ pub fn run_main_loop(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut should_exit = false;
     let mut last_event_check = Instant::now();
-    let event_check_interval = Duration::from_millis(500);  // 每0.5秒檢查事件
+    let event_check_interval = Duration::from_millis(100);  // 每0.1秒檢查事件
     
     'main_loop: loop {
         // 更新狀態列（檢查訊息是否過期）
@@ -86,20 +87,6 @@ pub fn run_main_loop(
                 f.render_widget(Clear, minimap_area); // 清除背景
                 f.render_widget(minimap_widget, minimap_area);
             }
-            
-            // 側邊面板使用相同的位置和大小
-            let floating_area = Rect {
-                x: minimap_x,
-                y: minimap_y,
-                width: minimap_width,
-                height: minimap_height + 10,  // 側邊面板稍大一些
-            };
-            // 畫側邊面板
-            if output_manager.is_side_panel_open() {
-                let side_widget = output_manager.get_side_panel(floating_area);
-                f.render_widget(Clear, floating_area); // 清除背景
-                f.render_widget(side_widget, floating_area);
-            }
 
             // 計算日誌視窗位置和大小（右側，在小地圖下方）
             let log_width = minimap_width;  // 與小地圖同寬
@@ -119,7 +106,30 @@ pub fn run_main_loop(
                 f.render_widget(Clear, log_area); // 清除背景
                 f.render_widget(log_widget, log_area);
             }
-
+            
+            // 側邊面板使用動態高度
+            let side_panel_height = if output_manager.is_side_panel_open() {
+                let content_height = output_manager.get_side_panel_content_height();
+                // 確保不超過螢幕高度，留出空間給輸入和狀態列
+                let max_height = size.height.saturating_sub(vertical_chunks[2].height + vertical_chunks[3].height + 2);
+                content_height.min(max_height)
+            } else {
+                minimap_height
+            };
+            
+            let floating_area = Rect {
+                x: minimap_x,
+                y: minimap_y,
+                width: minimap_width,
+                height: side_panel_height,
+            };
+            // 畫側邊面板
+            if output_manager.is_side_panel_open() {
+                let side_widget = output_manager.get_side_panel(floating_area);
+                f.render_widget(Clear, floating_area); // 清除背景
+                f.render_widget(side_widget, floating_area);
+            }
+            
             // 渲染輸入區域
             let input_widget = InputDisplay::render_input(input_handler.get_input(), vertical_chunks[2]);
             f.render_widget(input_widget, vertical_chunks[2]);
@@ -184,6 +194,7 @@ pub fn run_main_loop(
     game_world.save_time()?;  // 保存世界時間
     let mut game_settings = GameSettings::default();
     game_settings.show_minimap = output_manager.is_minimap_open();
+    game_settings.show_log = output_manager.is_log_open();
     let _ = game_settings.save();
 
     Ok(())
@@ -199,6 +210,7 @@ fn handle_command_result(
     output_manager.close_side_panel();
     match result {
         CommandResult::Exit => handle_exit(output_manager, game_world)?,
+        CommandResult::Help => handle_help(output_manager),
         CommandResult::Output(text) => handle_output(text, output_manager),
         CommandResult::Error(err) => handle_error(err, output_manager),
         CommandResult::Clear => handle_clear(output_manager),
@@ -211,8 +223,8 @@ fn handle_command_result(
         CommandResult::HideLog => handle_hide_log(output_manager),
         CommandResult::Look => display_look(output_manager, game_world, me),
         CommandResult::Move(dx, dy) => handle_movement(dx, dy, output_manager, game_world, me)?,
-        CommandResult::Get(item_name) => handle_get(item_name, output_manager, game_world, me),
-        CommandResult::Drop(item_name) => handle_drop(item_name, output_manager, game_world, me),
+        CommandResult::Get(item_name, quantity) => handle_get(item_name, quantity, output_manager, game_world, me),
+        CommandResult::Drop(item_name, quantity) => handle_drop(item_name, quantity, output_manager, game_world, me),
     }
     Ok(())
 }
@@ -228,6 +240,26 @@ fn handle_exit(
     game_settings.show_minimap = output_manager.is_minimap_open();
     let _ = game_settings.save();
     Ok(())
+}
+
+/// 處理幫助命令
+fn handle_help(output_manager: &mut OutputManager) {
+    output_manager.print("".to_string());
+    output_manager.print("═══════════════════════════════════════".to_string());
+    output_manager.print("📖 可用指令".to_string());
+    output_manager.print("═══════════════════════════════════════".to_string());
+    output_manager.print("".to_string());
+    
+    // 使用 CommandResult 提供的幫助資訊
+    for (category, commands) in CommandResult::get_help_info() {
+        output_manager.print(category.to_string());
+        for (command, description) in commands {
+            output_manager.print(format!("  {:<16} - {}", command, description));
+        }
+        output_manager.print("".to_string());
+    }
+    
+    output_manager.set_status("輸入任意指令開始遊戲".to_string());
 }
 
 /// 處理輸出結果
@@ -327,11 +359,12 @@ fn display_look(
         if let Some(point) = current_map.get_point(me.x, me.y) {
             output_manager.print( format!("【當前位置: ({}, {})】\n【{}】", me.x, me.y, point.description) );
             
-            // 顯示當前位置的 items
+            // 顯示當前位置的 items (顯示數量和英文名)
             if !point.objects.is_empty() {
                 output_manager.print(format!("\n🎁 此處物品:"));
-                for obj in &point.objects {
-                    output_manager.print(format!("  • {}", obj));
+                for (obj, count) in &point.objects {
+                    let display_name = item_registry::get_item_display_name(obj);
+                    output_manager.print(format!("  • {} x{}", display_name, count));
                 }
             }
             
@@ -444,10 +477,13 @@ fn handle_movement(
 /// 處理 get 命令 - 撿起當前位置的物品
 fn handle_get(
     item_name: Option<String>,
+    quantity: u32,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
     me: &mut Person,
 ) {
+    let mut should_save_map = false;
+    
     if let Some(current_map) = game_world.get_current_map_mut() {
         if let Some(point) = current_map.get_point_mut(me.x, me.y) {
             if point.objects.is_empty() {
@@ -458,57 +494,101 @@ fn handle_get(
             match item_name {
                 None => {
                     // 沒有指定物品名稱，撿起所有物品
-                    let items_count = point.objects.len();
-                    for obj in point.objects.drain(..) {
-                        me.add_item(obj.clone());
-                        output_manager.print(format!("✓ 撿起了: {}", obj));
+                    let mut total_items = 0;
+                    for (obj_name, count) in point.objects.clone() {
+                        me.add_items(obj_name.clone(), count);
+                        let display_name = item_registry::get_item_display_name(&obj_name);
+                        output_manager.print(format!("✓ 撿起了: {} x{}", display_name, count));
+                        total_items += count;
                     }
-                    output_manager.set_status(format!("撿起了 {} 個物品", items_count));
-                    
-                    // 保存角色物品
-                    let person_dir = format!("{}/persons", game_world.world_dir);
-                    let _ = me.save(&person_dir, "me");
+                    point.objects.clear();
+                    output_manager.set_status(format!("撿起了 {} 個物品", total_items));
+                    should_save_map = true;
                 }
                 Some(name) => {
-                    // 尋找指定名稱的物品
-                    if let Some(pos) = point.objects.iter().position(|obj| obj.contains(&name)) {
-                        let item = point.objects.remove(pos);
-                        me.add_item(item.clone());
-                        output_manager.print(format!("✓ 撿起了: {}", item));
-                        output_manager.set_status(format!("撿起: {}", name));
-                        
-                        // 保存角色物品
-                        let person_dir = format!("{}/persons", game_world.world_dir);
-                        let _ = me.save(&person_dir, "me");
-                    } else {
-                        output_manager.print(format!("找不到 \"{}\" 的物品。", name));
+                    // 解析物品名稱（支援英文和中文）
+                    let resolved_name = item_registry::resolve_item_name(&name);
+                    let available = point.get_object_count(&resolved_name);
+                    
+                    if available == 0 {
+                        output_manager.print(format!("找不到 \"{}\"。", name));
+                        return;
+                    }
+                    
+                    // 取較小值：要求數量 vs 實際數量
+                    let actual_quantity = quantity.min(available);
+                    let removed = point.remove_objects(&resolved_name, actual_quantity);
+                    
+                    if removed > 0 {
+                        me.add_items(resolved_name.clone(), removed);
+                        let display_name = item_registry::get_item_display_name(&resolved_name);
+                        output_manager.print(format!("✓ 撿起了: {} x{}", display_name, removed));
+                        if removed < quantity {
+                            output_manager.set_status(format!("只撿起了 {} 個 (要求 {})", removed, quantity));
+                        } else {
+                            output_manager.set_status(format!("撿起: {} x{}", display_name, removed));
+                        }
+                        should_save_map = true;
                     }
                 }
             }
+        }
+    }
+    
+    // 保存角色物品和地圖
+    if should_save_map {
+        let person_dir = format!("{}/persons", game_world.world_dir);
+        let _ = me.save(&person_dir, "me");
+        if let Some(current_map) = game_world.get_current_map() {
+            let _ = game_world.save_map(current_map);
         }
     }
 }
 
 fn handle_drop(
     item_name: String,
+    quantity: u32,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
     me: &mut Person,
 ) {
-    if let Some(item) = me.drop_item(&item_name) {
+    // 解析物品名稱（支援英文和中文）
+    let resolved_name = item_registry::resolve_item_name(&item_name);
+    let owned = me.get_item_count(&resolved_name);
+    
+    if owned == 0 {
+        output_manager.print(format!("你沒有 \"{}\"。", item_name));
+        return;
+    }
+    
+    // 取較小值：要求數量 vs 持有數量
+    let actual_quantity = quantity.min(owned);
+    
+    let mut should_save_map = false;
+    
+    if me.drop_items(&resolved_name, actual_quantity).is_some() {
         if let Some(current_map) = game_world.get_current_map_mut() {
             if let Some(point) = current_map.get_point_mut(me.x, me.y) {
-                point.objects.push(item.clone());
-                output_manager.print(format!("✓ 放下了: {}", item));
-                output_manager.set_status(format!("放下: {}", item_name));
-                
-                // 保存角色物品
-                let person_dir = format!("{}/persons", game_world.world_dir);
-                let _ = me.save(&person_dir, "me");
+                point.add_objects(resolved_name.clone(), actual_quantity);
+                let display_name = item_registry::get_item_display_name(&resolved_name);
+                output_manager.print(format!("✓ 放下了: {} x{}", display_name, actual_quantity));
+                if actual_quantity < quantity {
+                    output_manager.set_status(format!("只放下了 {} 個 (要求 {})", actual_quantity, quantity));
+                } else {
+                    output_manager.set_status(format!("放下: {} x{}", display_name, actual_quantity));
+                }
+                should_save_map = true;
             }
         }
-    } else {
-        output_manager.print(format!("身上沒有 \"{}\" 的物品。", item_name));
+    }
+    
+    // 保存角色物品和地圖
+    if should_save_map {
+        let person_dir = format!("{}/persons", game_world.world_dir);
+        let _ = me.save(&person_dir, "me");
+        if let Some(current_map) = game_world.get_current_map() {
+            let _ = game_world.save_map(current_map);
+        }
     }
 }
 
@@ -522,9 +602,13 @@ fn check_and_execute_events(
     let current_hour = game_world.time.hour;
     let current_minute = game_world.time.minute;
     
+    // 如果是同一分鐘，不重複檢查
     if (current_day, current_hour, current_minute) == game_world.event_scheduler.last_check_time {
         return;
     }
+    
+    // 調試訊息
+    output_manager.log(format!("🔍 [DEBUG] 檢查事件 Day {} {:02}:{:02}", current_day, current_hour, current_minute));
     
     game_world.event_scheduler.last_check_time = (current_day, current_hour, current_minute);
     
@@ -533,6 +617,8 @@ fn check_and_execute_events(
         .map(|e| (*e).clone())
         .collect();
     
+    output_manager.log(format!("🔍 [DEBUG] 共 {} 個事件", events.len()));
+    
     let mut triggered_event_ids = Vec::new();
     
     for event in events {
@@ -540,26 +626,32 @@ fn check_and_execute_events(
         
         if let Some(runtime_state) = game_world.event_manager.get_runtime_state(&event_id) {
             if !event.can_trigger(runtime_state) {
+                output_manager.log(format!("🔍 [DEBUG] {} - 冷卻中", event.name));
                 continue;
             }
         }
         
-        let should_trigger = crate::event_scheduler::EventScheduler::new()
-            .check_trigger(&event, game_world) &&
-            crate::event_scheduler::EventScheduler::new()
+        let trigger_check = crate::event_scheduler::EventScheduler::new()
+            .check_trigger(&event, game_world);
+        let condition_check = crate::event_scheduler::EventScheduler::new()
             .check_conditions(&event, game_world, me);
         
-        if should_trigger {
+        output_manager.log(format!("🔍 [DEBUG] {} - trigger: {}, condition: {}", 
+            event.name, trigger_check, condition_check));
+        
+        if trigger_check && condition_check {
             triggered_event_ids.push(event_id.clone());
             game_world.event_manager.trigger_event(&event_id);
         }
     }
     
+    output_manager.log(format!("🔍 [DEBUG] 觸發 {} 個事件", triggered_event_ids.len()));
+    
     for event_id in triggered_event_ids {
         if let Some(event) = game_world.event_manager.get_event(&event_id) {
             let event_clone = event.clone();
             let location_info = get_event_location_info(&event_clone, game_world);
-            output_manager.print(format!("🎭 事件: {}{}", event_clone.name, location_info));
+            output_manager.log(format!("🎭 事件: {}{}", event_clone.name, location_info));
             
             if let Err(e) = crate::event_executor::EventExecutor::execute_event(
                 &event_clone,
@@ -567,7 +659,7 @@ fn check_and_execute_events(
                 me,
                 output_manager
             ) {
-                output_manager.print(format!("⚠️  事件執行錯誤: {}", e));
+                output_manager.log(format!("⚠️  事件執行錯誤: {}", e));
             }
         }
     }

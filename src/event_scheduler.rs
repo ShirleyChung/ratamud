@@ -209,7 +209,7 @@ impl EventScheduler {
         // 檢查物品條件（What）
         if let Some(required_items) = &event.what.required_items {
             for item in required_items {
-                if !player.items.contains(item) {
+                if player.get_item_count(item) == 0 {
                     return false;
                 }
             }

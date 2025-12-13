@@ -146,7 +146,13 @@ pub struct Point {
     pub y: usize,
     pub walkable: bool,           // 是否可移動
     pub description: String,      // 描述
-    pub objects: Vec<String>,     // 該點上的物件（Person也算）
+    #[serde(default = "default_objects")]
+    pub objects: HashMap<String, u32>,  // 該點上的物件名稱 -> 數量
+}
+
+// 預設物件 HashMap
+fn default_objects() -> HashMap<String, u32> {
+    HashMap::new()
 }
 
 impl Point {
@@ -157,7 +163,7 @@ impl Point {
             y,
             walkable,
             description,
-            objects: Vec::new(),
+            objects: HashMap::new(),
         }
     }
 
@@ -177,7 +183,7 @@ impl Point {
             y,
             walkable,
             description,
-            objects: Vec::new(),
+            objects: HashMap::new(),
         }
     }
 
@@ -187,18 +193,37 @@ impl Point {
         Self::random_for_type(x, y, &MapType::Normal)
     }
 
+    // 添加物件（預設數量1）
     pub fn add_object(&mut self, obj: String) {
-        self.objects.push(obj);
+        self.add_objects(obj, 1);
+    }
+    
+    // 添加指定數量的物件
+    pub fn add_objects(&mut self, obj: String, quantity: u32) {
+        *self.objects.entry(obj).or_insert(0) += quantity;
     }
 
-    #[allow(dead_code)]
-    pub fn remove_object(&mut self, obj: &str) -> bool {
-        if let Some(pos) = self.objects.iter().position(|x| x == obj) {
-            self.objects.remove(pos);
-            true
-        } else {
-            false
+    // 移除物件（預設數量1）
+    pub fn remove_object(&mut self, obj_name: &str) -> bool {
+        self.remove_objects(obj_name, 1) > 0
+    }
+    
+    // 移除指定數量的物件，返回實際移除的數量
+    pub fn remove_objects(&mut self, obj_name: &str, quantity: u32) -> u32 {
+        if let Some(count) = self.objects.get_mut(obj_name) {
+            let removed = (*count).min(quantity);
+            *count -= removed;
+            if *count == 0 {
+                self.objects.remove(obj_name);
+            }
+            return removed;
         }
+        0
+    }
+    
+    // 獲取物件數量
+    pub fn get_object_count(&self, obj_name: &str) -> u32 {
+        *self.objects.get(obj_name).unwrap_or(&0)
     }
 }
 
@@ -210,6 +235,8 @@ pub struct Map {
     pub height: usize,
     pub map_type: MapType,           // 地圖類型
     pub points: Vec<Vec<Point>>,
+    #[serde(default)]
+    pub description: String,         // 地圖描述
 }
 
 impl Map {
@@ -230,12 +257,22 @@ impl Map {
             points.push(row);
         }
 
+        // 根據地圖類型設定描述
+        let description = match map_type {
+            MapType::Normal => "這是一片平坦的土地，適合新手探索。".to_string(),
+            MapType::Forest => "茂密的森林覆蓋著這片區域，樹木高聳入雲，陽光透過樹葉灑下斑駁的光影。".to_string(),
+            MapType::Cave => "黑暗的洞穴深處傳來滴水聲，空氣濕冷而神秘。".to_string(),
+            MapType::Desert => "一望無際的沙漠，炎熱的太陽炙烤著大地，偶爾有綠洲點綴其中。".to_string(),
+            MapType::Mountain => "高聳的山峰直插雲霄，道路崎嶇難行，但風景壯麗。".to_string(),
+        };
+
         Map {
             name,
             width,
             height,
             map_type,
             points,
+            description,
         }
     }
 
@@ -320,8 +357,18 @@ impl Map {
             return;
         }
 
-        // 計算要放置的 item 數量（可移動地點的一半）
-        let item_count = walkable_points.len() / 2;
+        // 可用的物品中文名稱（與 item_registry 一致）
+        let available_items = vec![
+            "舊布料", "石子", "樹皮", "羽毛",
+            "蘋果", "麵包", "乾肉", "漿果",
+            "木劍", "鐵劍", "弓", "匕首",
+            "皮衣", "頭盔", "盾牌",
+            "治療藥水", "魔力藥水", "毒藥",
+            "火把", "繩索", "鎬", "鑰匙",
+        ];
+
+        // 計算要放置的 item 數量（可移動地點的 10%）
+        let item_count = (walkable_points.len() / 10).max(5);
         
         // 隨機選擇位置並放置 item
         for _ in 0..item_count {
@@ -329,8 +376,10 @@ impl Map {
             let (x, y) = walkable_points[random_idx];
             
             if let Some(point) = self.get_point_mut(x, y) {
-                let item = Item::generate_random();
-                point.add_object(format!("[物品] {}", item.display()));
+                let item_idx = rng.gen_range(0..available_items.len());
+                let item_name = available_items[item_idx];
+                let quantity = rng.gen_range(1..=3);  // 隨機 1-3 個
+                point.add_objects(item_name.to_string(), quantity);
             }
         }
     }

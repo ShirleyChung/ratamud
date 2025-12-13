@@ -2,8 +2,8 @@
   "name": "工人",
   "description": "努力的工人，從事建築工作",
   "abilities": [],
-  "items": [],
+  "items": {},
   "status": "正常",
-  "x": 3,
+  "x": 7,
   "y": 0
 }

@@ -10,25 +10,26 @@ impl EventLoader {
     pub fn load_from_directory(
         event_manager: &mut EventManager,
         dir_path: &str,
-    ) -> Result<usize, Box<dyn std::error::Error>> {
-        let mut loaded_count = 0;
+    ) -> Result<(usize, Vec<String>), Box<dyn std::error::Error>> {
+        let mut loaded_events = Vec::new();
         
         if !Path::new(dir_path).exists() {
             fs::create_dir_all(dir_path)?;
-            return Ok(0);
+            return Ok((0, loaded_events));
         }
         
         // 遞迴讀取目錄
-        loaded_count += Self::load_recursive(event_manager, dir_path)?;
+        Self::load_recursive(event_manager, dir_path, &mut loaded_events)?;
         
-        Ok(loaded_count)
+        let count = loaded_events.len();
+        Ok((count, loaded_events))
     }
     
     fn load_recursive(
         event_manager: &mut EventManager,
         dir_path: &str,
-    ) -> Result<usize, Box<dyn std::error::Error>> {
-        let mut count = 0;
+        loaded_events: &mut Vec<String>,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         
         for entry in fs::read_dir(dir_path)? {
             let entry = entry?;
@@ -36,13 +37,14 @@ impl EventLoader {
             
             if path.is_dir() {
                 // 遞迴處理子目錄
-                count += Self::load_recursive(event_manager, path.to_str().unwrap())?;
+                Self::load_recursive(event_manager, path.to_str().unwrap(), loaded_events)?;
             } else if path.extension().and_then(|s| s.to_str()) == Some("json") {
                 // 加載 JSON 事件檔案
                 match Self::load_event_file(&path) {
                     Ok(event) => {
+                        let event_info = format!("{} ({})", event.name, event.id);
+                        loaded_events.push(event_info);
                         event_manager.add_event(event);
-                        count += 1;
                     }
                     Err(e) => {
                         eprintln!("載入事件檔案 {:?} 失敗: {}", path, e);
@@ -51,7 +53,7 @@ impl EventLoader {
             }
         }
         
-        Ok(count)
+        Ok(())
     }
     
     /// 從文件加載單個事件

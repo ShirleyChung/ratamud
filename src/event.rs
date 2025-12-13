@@ -51,6 +51,34 @@ pub struct LevelRange {
     pub max: Option<u32>,
 }
 
+/// 位置類型（支援固定位置或隨機位置）
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Position {
+    Fixed([usize; 2]),  // 固定位置 [x, y]
+    Random(String),     // "random" 表示隨機位置
+}
+
+impl Position {
+    /// 解析位置，如果是隨機則從地圖中選擇一個可行走的位置
+    pub fn resolve(&self, map: &crate::map::Map) -> Option<[usize; 2]> {
+        match self {
+            Position::Fixed(pos) => Some(*pos),
+            Position::Random(_) => {
+                let walkable_points = map.get_walkable_points();
+                if walkable_points.is_empty() {
+                    None
+                } else {
+                    use rand::Rng;
+                    let mut rng = rand::thread_rng();
+                    let idx = rng.gen_range(0..walkable_points.len());
+                    Some([walkable_points[idx].0, walkable_points[idx].1])
+                }
+            }
+        }
+    }
+}
+
 /// 地點條件（Where）
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct WhereCondition {
@@ -84,7 +112,7 @@ pub enum EventAction {
     #[serde(rename = "spawn_npc")]
     SpawnNpc {
         npc_id: String,
-        position: [usize; 2],
+        position: Position,
         #[serde(skip_serializing_if = "Option::is_none")]
         dialogue: Option<String>,
     },
@@ -104,17 +132,17 @@ pub enum EventAction {
     #[serde(rename = "add_item")]
     AddItem {
         item: String,
-        position: [usize; 2],
+        position: Position,
     },
     #[serde(rename = "remove_item")]
     RemoveItem {
         item: String,
-        position: [usize; 2],
+        position: Position,
     },
     #[serde(rename = "teleport")]
     Teleport {
         map: String,
-        position: [usize; 2],
+        position: Position,
     },
 }
 

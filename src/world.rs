@@ -309,6 +309,8 @@ pub struct WorldMetadata {
     pub name: String,
     pub description: String,
     pub maps: Vec<String>,
+    #[serde(default)]
+    pub current_map: String,
 }
 
 impl WorldMetadata {
@@ -317,6 +319,7 @@ impl WorldMetadata {
             name,
             description,
             maps: Vec::new(),
+            current_map: String::new(),
         }
     }
 
@@ -447,7 +450,9 @@ impl GameWorld {
     // 保存世界元數據
     pub fn save_metadata(&self) -> Result<(), Box<dyn std::error::Error>> {
         let metadata_path = format!("{}/world.json", self.world_dir);
-        let json = serde_json::to_string_pretty(&self.metadata)?;
+        let mut metadata = self.metadata.clone();
+        metadata.current_map = self.current_map.clone();
+        let json = serde_json::to_string_pretty(&metadata)?;
         fs::write(metadata_path, json)?;
         Ok(())
     }
@@ -458,6 +463,9 @@ impl GameWorld {
         if Path::new(&metadata_path).exists() {
             let json = fs::read_to_string(metadata_path)?;
             self.metadata = serde_json::from_str(&json)?;
+            if !self.metadata.current_map.is_empty() {
+                self.current_map = self.metadata.current_map.clone();
+            }
         }
         Ok(())
     }

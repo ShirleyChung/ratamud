@@ -1,8 +1,10 @@
 use crate::observable::Observable;
 use crate::time_updatable::{TimeUpdatable, TimeInfo};
+use crate::item_registry;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
+use std::collections::HashMap;
 
 // Person 類別，實現 Observable trait
 #[derive(Clone, Serialize, Deserialize)]
@@ -10,10 +12,16 @@ pub struct Person {
     pub name: String,
     pub description: String,
     pub abilities: Vec<String>,
-    pub items: Vec<String>,
+    #[serde(default = "default_items")]
+    pub items: HashMap<String, u32>,  // 物品名稱 -> 數量
     pub status: String,
     pub x: usize,                    // X 座標
     pub y: usize,                    // Y 座標
+}
+
+// 預設物品 HashMap
+fn default_items() -> HashMap<String, u32> {
+    HashMap::new()
 }
 
 impl Person {
@@ -22,7 +30,7 @@ impl Person {
             name,
             description,
             abilities: Vec::new(),
-            items: Vec::new(),
+            items: HashMap::new(),
             status: "正常".to_string(),
             x: 50,                    // 初始位置：地圖中央
             y: 50,
@@ -34,18 +42,38 @@ impl Person {
         self.abilities.push(ability);
     }
 
-    // 添加物品
+    // 添加物品（支援數量）
     pub fn add_item(&mut self, item: String) {
-        self.items.push(item);
+        self.add_items(item, 1);
+    }
+    
+    // 添加指定數量的物品
+    pub fn add_items(&mut self, item: String, quantity: u32) {
+        *self.items.entry(item).or_insert(0) += quantity;
     }
 
-    // 放下物品
+    // 放下物品（預設數量1）
     pub fn drop_item(&mut self, item_name: &str) -> Option<String> {
-        if let Some(pos) = self.items.iter().position(|item| item.contains(item_name)) {
-            Some(self.items.remove(pos))
-        } else {
-            None
+        self.drop_items(item_name, 1)
+    }
+    
+    // 放下指定數量的物品
+    pub fn drop_items(&mut self, item_name: &str, quantity: u32) -> Option<String> {
+        if let Some(count) = self.items.get_mut(item_name) {
+            if *count >= quantity {
+                *count -= quantity;
+                if *count == 0 {
+                    self.items.remove(item_name);
+                }
+                return Some(item_name.to_string());
+            }
         }
+        None
+    }
+    
+    // 獲取物品數量
+    pub fn get_item_count(&self, item_name: &str) -> u32 {
+        *self.items.get(item_name).unwrap_or(&0)
     }
 
     // 設置狀態
@@ -115,14 +143,17 @@ impl Observable for Person {
             }
         }
 
-        // 添加物品
+        // 添加物品（顯示數量和英文名）
         if !self.items.is_empty() {
-            list.push(format!("【持有物品】({} 個)", self.items.len()));
-            for item in &self.items {
-                list.push(item.clone());
+            let total_types = self.items.len();
+            let total_count: u32 = self.items.values().sum();
+            list.push(format!("【持有物品】({} 種, {} 個)", total_types, total_count));
+            for (item, count) in &self.items {
+                let display_name = item_registry::get_item_display_name(item);
+                list.push(format!("{} x{}", display_name, count));
             }
         } else {
-            list.push("【持有物品】(0 個)".to_string());
+            list.push("【持有物品】(0 種, 0 個)".to_string());
             list.push("未持有物品".to_string());
         }
 

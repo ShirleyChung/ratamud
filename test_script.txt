@@ -1,6 +1,0 @@
-test line 1
-test line 2
-/save test_output.txt
-/clear
-another line
-/exit
