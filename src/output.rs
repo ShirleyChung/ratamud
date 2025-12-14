@@ -26,6 +26,12 @@ pub struct OutputManager {
     map_offset_y: usize,        // 大地圖顯示的偏移量 Y
 }
 
+impl Default for OutputManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl OutputManager {
     // 建立新的輸出管理器
     pub fn new() -> Self {
@@ -122,7 +128,7 @@ impl OutputManager {
     }
 
     // 渲染輸出區域的小部件
-    pub fn render_output(&self, area: Rect) -> Paragraph {
+    pub fn render_output(&self, area: Rect) -> Paragraph<'_> {
         let message_area_height = area.height.saturating_sub(2) as usize;
         let total_messages = self.messages.len();
         let max_scroll = total_messages.saturating_sub(message_area_height);
@@ -147,7 +153,7 @@ impl OutputManager {
     }
 
     // 渲染狀態列（只顯示臨時狀態訊息）
-    pub fn render_status(&self) -> Paragraph {
+    pub fn render_status(&self) -> Paragraph<'_> {
         let status_text = if let Some(time) = self.status_time {
             if time.elapsed() > Duration::from_secs(5) {
                 String::new()  // 狀態過期後顯示空白
@@ -212,7 +218,7 @@ impl OutputManager {
     }
 
     // 取得minimap 的內容
-    pub fn get_minimap(&self, _area: Rect) -> Paragraph {
+    pub fn get_minimap(&self, _area: Rect) -> Paragraph<'_> {
         // 根據 show_minimap 狀態決定要渲染的內容
         // 渲染小地圖
         let lines: Vec<Line> = self.minimap_lines
@@ -228,7 +234,7 @@ impl OutputManager {
             .style(Style::default().bg(Color::DarkGray).fg(Color::Cyan))
     }
     // 取得stats內容
-    pub fn get_side_panel(&self, _area: Rect) -> Paragraph {
+    pub fn get_side_panel(&self, _area: Rect) -> Paragraph<'_> {
             // 渲染 Status 面板
         let lines = crate::observable::observable_to_lines(self.side_observable.as_ref());
         Paragraph::new(Text::from(lines))
@@ -278,7 +284,7 @@ impl OutputManager {
 
     // 渲染小地圖懸浮視窗
     #[allow(dead_code)]
-    pub fn render_minimap(&self, _area: Rect) -> Paragraph {
+    pub fn render_minimap(&self, _area: Rect) -> Paragraph<'_> {
         let lines: Vec<Line> = self.minimap_lines
             .iter()
             .map(|line| Line::from(line.as_str()))
@@ -299,7 +305,7 @@ impl OutputManager {
         self.print(obs.show_description());
         let list = obs.show_list();
         if !list.is_empty() {
-            self.print(format!("--"));
+            self.print("--".to_string());
             for item in list {
                 self.print(format!("• {}", item));
             }
@@ -319,6 +325,7 @@ impl OutputManager {
     }
     
     // 切換日誌視窗顯示/隱藏
+    #[allow(dead_code)]
     pub fn toggle_log(&mut self) {
         self.show_log = !self.show_log;
     }
@@ -339,6 +346,7 @@ impl OutputManager {
     }
     
     // 日誌視窗向上滾動
+    #[allow(dead_code)]
     pub fn scroll_log_up(&mut self) {
         if self.log_scroll > 0 {
             self.log_scroll -= 1;
@@ -346,6 +354,7 @@ impl OutputManager {
     }
     
     // 日誌視窗向下滾動
+    #[allow(dead_code)]
     pub fn scroll_log_down(&mut self, visible_height: usize) {
         let max_scroll = self.log_messages.len().saturating_sub(visible_height);
         if self.log_scroll < max_scroll {
@@ -354,16 +363,12 @@ impl OutputManager {
     }
     
     // 渲染日誌視窗
-    pub fn render_log(&self, area: Rect) -> Paragraph {
+    pub fn render_log(&self, area: Rect) -> Paragraph<'_> {
         let visible_height = area.height.saturating_sub(2) as usize;
         
         // 自動滾動到底部，顯示最新的訊息
         let total_messages = self.log_messages.len();
-        let start_idx = if total_messages > visible_height {
-            total_messages - visible_height
-        } else {
-            0
-        };
+        let start_idx = total_messages.saturating_sub(visible_height);
         let end_idx = total_messages;
         
         let visible_messages: Vec<Line> = self.log_messages[start_idx..end_idx]
@@ -415,7 +420,7 @@ impl OutputManager {
     }
     
     // 渲染大地圖
-    pub fn render_big_map(&self, area: Rect, map: &crate::map::Map, player_x: usize, player_y: usize, npc_manager: &crate::npc_manager::NpcManager) -> Paragraph {
+    pub fn render_big_map(&self, area: Rect, map: &crate::map::Map, player_x: usize, player_y: usize, npc_manager: &crate::npc_manager::NpcManager) -> Paragraph<'_> {
         let visible_width = area.width.saturating_sub(2) as usize;
         let visible_height = area.height.saturating_sub(2) as usize;
         

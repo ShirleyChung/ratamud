@@ -51,7 +51,7 @@ impl GameSettings {
         
         // 序列化並寫入文件
         let json = serde_json::to_string_pretty(self)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+            .map_err(std::io::Error::other)?;
         fs::write(Self::SETTINGS_FILE, json)?;
         Ok(())
     }

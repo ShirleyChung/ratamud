@@ -97,7 +97,7 @@ impl Observable for CustomObservable {
 }
 
 // 将 Observable 对象转换为可显示的行
-pub fn observable_to_lines(obs: &dyn Observable) -> Vec<Line> {
+pub fn observable_to_lines(obs: &dyn Observable) -> Vec<Line<'_>> {
     let mut lines = Vec::new();
     
     // 添加标题

@@ -53,6 +53,7 @@ impl Person {
     }
 
     // 放下物品（預設數量1）
+    #[allow(dead_code)]
     pub fn drop_item(&mut self, item_name: &str) -> Option<String> {
         self.drop_items(item_name, 1)
     }

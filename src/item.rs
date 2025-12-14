@@ -13,6 +13,7 @@ pub enum ItemType {
 }
 
 impl ItemType {
+    #[allow(dead_code)]
     pub fn describe(&self) -> &str {
         match self {
             ItemType::Miscellaneous => "雜物",
@@ -37,6 +38,7 @@ pub struct Item {
 }
 
 impl Item {
+    #[allow(dead_code)]
     pub fn new(name: String, english_name: String, item_type: ItemType, description: String, value: u32) -> Self {
         Item {
             name,
@@ -47,6 +49,7 @@ impl Item {
         }
     }
 
+    #[allow(dead_code)]
     pub fn display(&self) -> String {
         if let Some(ref eng) = self.english_name {
             format!("{} ({}) [{}]", self.name, eng, self.item_type.describe())
@@ -56,6 +59,7 @@ impl Item {
     }
 
     // 生成隨機物品
+    #[allow(dead_code)]
     pub fn generate_random() -> Self {
         let mut rng = rand::thread_rng();
         
@@ -97,6 +101,6 @@ impl Item {
         
         let idx = rng.gen_range(0..items.len());
         let (name, english_name, item_type, description, value) = items[idx];
-        Item::new(name.to_string(), english_name.to_string(), item_type.clone(), description.to_string(), value)
+        Item::new(name.to_string(), english_name.to_string(), item_type, description.to_string(), value)
     }
 }

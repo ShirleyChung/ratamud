@@ -232,6 +232,7 @@ pub struct EventRuntimeState {
 }
 
 impl EventRuntimeState {
+    #[allow(dead_code)]
     pub fn new() -> Self {
         Self::default()
     }
@@ -264,7 +265,7 @@ impl EventManager {
     pub fn add_event(&mut self, event: GameEvent) {
         let id = event.id.clone();
         self.events.insert(id.clone(), event);
-        self.runtime_states.entry(id).or_insert_with(EventRuntimeState::new);
+        self.runtime_states.entry(id).or_default();
     }
     
     pub fn get_event(&self, id: &str) -> Option<&GameEvent> {
@@ -275,6 +276,7 @@ impl EventManager {
         self.runtime_states.get(id)
     }
     
+    #[allow(dead_code)]
     pub fn get_runtime_state_mut(&mut self, id: &str) -> Option<&mut EventRuntimeState> {
         self.runtime_states.get_mut(id)
     }

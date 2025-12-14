@@ -10,7 +10,7 @@ impl CronParser {
     /// 解析 crontab 格式的時間表達式
     /// 格式: "分 時 日 月 星期"
     /// 支持: * (任意), */N (每N), N (具體值), N-M (範圍)
-    pub fn matches(schedule: &str, minute: u8, hour: u8, day: u32) -> bool {
+    pub fn matches(schedule: &str, minute: u8, hour: u8, _day: u32) -> bool {
         let parts: Vec<&str> = schedule.split_whitespace().collect();
         if parts.len() < 2 {
             return false;
@@ -29,8 +29,8 @@ impl CronParser {
         }
         
         // 處理 */N 格式（每N）
-        if pattern.starts_with("*/") {
-            if let Ok(interval) = pattern[2..].parse::<u32>() {
+        if let Some(stripped) = pattern.strip_prefix("*/") {
+            if let Ok(interval) = stripped.parse::<u32>() {
                 return value % interval == 0;
             }
         }
@@ -67,6 +67,7 @@ impl EventScheduler {
     }
     
     /// 檢查並觸發時間相關事件
+    #[allow(dead_code)]
     pub fn check_and_trigger(
         &mut self,
         event_manager: &mut EventManager,
@@ -219,6 +220,7 @@ impl EventScheduler {
     }
     
     /// 檢查位置觸發
+    #[allow(dead_code)]
     pub fn check_location_trigger(
         &self,
         event_manager: &EventManager,

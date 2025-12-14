@@ -170,89 +170,23 @@ pub fn run_main_loop(
             let event = event::read()?;
             
             // 處理鍵盤事件
-            match event {
-                crossterm::event::Event::Key(key) => {
-                    match key.code {
-                    KeyCode::Esc => {
-                        // ESC 鍵清除輸入
-                        input_handler.clear_input();
-                    },
-                    KeyCode::F(1) => {
-                        // F1 鍵切換側邊面板
-                        output_manager.toggle_side_panel();
-                    },
-                    KeyCode::Char('q') | KeyCode::Char('Q') => {
-                        // 如果大地圖開啟，q 鍵關閉地圖
-                        if output_manager.is_map_open() {
-                            output_manager.close_map();
-                            output_manager.set_status("大地圖已關閉".to_string());
-                        } else {
-                            // 否則當作正常輸入處理
-                            if let Some(result) = input_handler.handle_event(
-                                crossterm::event::Event::Key(key)
-                            ) {
-                                if let CommandResult::Exit = result {
-                                    should_exit = true;
-                                } else {
-                                    handle_command_result(result, output_manager, game_world, me)?;
-                                }
-                            }
-                        }
-                    },
-                    // 上下左右鍵優先用於移動
-                    KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right => {
-                        // 檢查是否按住 Shift 鍵 - 用於訊息捲動
-                        if key.modifiers.contains(crossterm::event::KeyModifiers::SHIFT) {
-                            match key.code {
-                                KeyCode::Up => {
-                                    output_manager.scroll_up();
-                                    output_manager.set_status("向上捲動訊息".to_string());
-                                },
-                                KeyCode::Down => {
-                                    // 需要傳入可見高度，這裡使用合理的預設值
-                                    output_manager.scroll_down(20);
-                                    output_manager.set_status("向下捲動訊息".to_string());
-                                },
-                                _ => {}
-                            }
-                        }
-                        // 如果大地圖開啟，用方向鍵移動地圖視圖
-                        else if output_manager.is_map_open() {
-                            if let Some(current_map) = game_world.get_current_map() {
-                                let (dx, dy) = match key.code {
-                                    KeyCode::Up => (0, -5),
-                                    KeyCode::Down => (0, 5),
-                                    KeyCode::Left => (-5, 0),
-                                    KeyCode::Right => (5, 0),
-                                    _ => (0, 0),
-                                };
-                                output_manager.move_map_view(dx, dy, current_map.width, current_map.height);
-                            }
-                        } else {
-                            // 否則將方向鍵傳遞給 input_handler 處理移動
-                            if let Some(result) = input_handler.handle_event(
-                                crossterm::event::Event::Key(key)
-                            ) {
-                                if let CommandResult::Exit = result {
-                                    should_exit = true;
-                                } else {
-                                    handle_command_result(result, output_manager, game_world, me)?;
-                                }
-                            }
-                        }
-                    },
-                    KeyCode::PageUp => {
-                        // PageUp 鍵向上捲動訊息
-                        output_manager.scroll_up();
-                        output_manager.set_status("向上捲動訊息".to_string());
-                    },
-                    KeyCode::PageDown => {
-                        // PageDown 鍵向下捲動訊息
-                        output_manager.scroll_down(20);
-                        output_manager.set_status("向下捲動訊息".to_string());
-                    },
-                    _ => {
-                        // 處理其他鍵盤輸入（字符、Enter、Backspace 等）
+            if let crossterm::event::Event::Key(key) = event {
+                match key.code {
+                KeyCode::Esc => {
+                    // ESC 鍵清除輸入
+                    input_handler.clear_input();
+                },
+                KeyCode::F(1) => {
+                    // F1 鍵切換側邊面板
+                    output_manager.toggle_side_panel();
+                },
+                KeyCode::Char('q') | KeyCode::Char('Q') => {
+                    // 如果大地圖開啟，q 鍵關閉地圖
+                    if output_manager.is_map_open() {
+                        output_manager.close_map();
+                        output_manager.set_status("大地圖已關閉".to_string());
+                    } else {
+                        // 否則當作正常輸入處理
                         if let Some(result) = input_handler.handle_event(
                             crossterm::event::Event::Key(key)
                         ) {
@@ -263,9 +197,72 @@ pub fn run_main_loop(
                             }
                         }
                     }
+                },
+                // 上下左右鍵優先用於移動
+                KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right => {
+                    // 檢查是否按住 Shift 鍵 - 用於訊息捲動
+                    if key.modifiers.contains(crossterm::event::KeyModifiers::SHIFT) {
+                        match key.code {
+                            KeyCode::Up => {
+                                output_manager.scroll_up();
+                                output_manager.set_status("向上捲動訊息".to_string());
+                            },
+                            KeyCode::Down => {
+                                // 需要傳入可見高度，這裡使用合理的預設值
+                                output_manager.scroll_down(20);
+                                output_manager.set_status("向下捲動訊息".to_string());
+                            },
+                            _ => {}
+                        }
+                    }
+                    // 如果大地圖開啟，用方向鍵移動地圖視圖
+                    else if output_manager.is_map_open() {
+                        if let Some(current_map) = game_world.get_current_map() {
+                            let (dx, dy) = match key.code {
+                                KeyCode::Up => (0, -5),
+                                KeyCode::Down => (0, 5),
+                                KeyCode::Left => (-5, 0),
+                                KeyCode::Right => (5, 0),
+                                _ => (0, 0),
+                            };
+                            output_manager.move_map_view(dx, dy, current_map.width, current_map.height);
+                        }
+                    } else {
+                        // 否則將方向鍵傳遞給 input_handler 處理移動
+                        if let Some(result) = input_handler.handle_event(
+                            crossterm::event::Event::Key(key)
+                        ) {
+                            if let CommandResult::Exit = result {
+                                should_exit = true;
+                            } else {
+                                handle_command_result(result, output_manager, game_world, me)?;
+                            }
+                        }
                     }
                 },
-                _ => {}
+                KeyCode::PageUp => {
+                    // PageUp 鍵向上捲動訊息
+                    output_manager.scroll_up();
+                    output_manager.set_status("向上捲動訊息".to_string());
+                },
+                KeyCode::PageDown => {
+                    // PageDown 鍵向下捲動訊息
+                    output_manager.scroll_down(20);
+                    output_manager.set_status("向下捲動訊息".to_string());
+                },
+                _ => {
+                    // 處理其他鍵盤輸入（字符、Enter、Backspace 等）
+                    if let Some(result) = input_handler.handle_event(
+                        crossterm::event::Event::Key(key)
+                    ) {
+                        if let CommandResult::Exit = result {
+                            should_exit = true;
+                        } else {
+                            handle_command_result(result, output_manager, game_world, me)?;
+                        }
+                    }
+                }
+                }
             }
         }
     }
@@ -273,9 +270,10 @@ pub fn run_main_loop(
     // 保存所有數據
     game_world.save_metadata()?;
     game_world.save_time()?;  // 保存世界時間
-    let mut game_settings = GameSettings::default();
-    game_settings.show_minimap = output_manager.is_minimap_open();
-    game_settings.show_log = output_manager.is_log_open();
+    let game_settings = GameSettings {
+        show_minimap: output_manager.is_minimap_open(),
+        show_log: output_manager.is_log_open(),
+    };
     let _ = game_settings.save();
 
     Ok(())
@@ -324,8 +322,10 @@ fn handle_exit(
 ) -> Result<(), Box<dyn std::error::Error>> {
     game_world.save_metadata()?;
     game_world.save_time()?;  // 保存世界時間
-    let mut game_settings = GameSettings::default();
-    game_settings.show_minimap = output_manager.is_minimap_open();
+    let game_settings = GameSettings {
+        show_minimap: output_manager.is_minimap_open(),
+        ..Default::default()
+    };
     let _ = game_settings.save();
     Ok(())
 }
@@ -495,7 +495,7 @@ fn display_look(
             
             // 顯示當前位置的 items
             if !point.objects.is_empty() {
-                output_manager.print(format!("\n🎁 此處物品:"));
+                output_manager.print("\n🎁 此處物品:".to_string());
                 for (obj, count) in &point.objects {
                     let display_name = item_registry::get_item_display_name(obj);
                     output_manager.print(format!("  • {} x{}", display_name, count));
@@ -505,7 +505,7 @@ fn display_look(
             // 顯示當前位置的 NPC
             let npcs_here = game_world.npc_manager.get_npcs_at(me.x, me.y);
             if !npcs_here.is_empty() {
-                output_manager.print(format!("\n👥 此處的人物:"));
+                output_manager.print("\n👥 此處的人物:".to_string());
                 for npc in npcs_here {
                     output_manager.print(format!("  • {} - {}", npc.name, npc.description));
                 }
@@ -743,11 +743,7 @@ fn handle_summon(
     me: &Person,
 ) {
     // 先檢查 NPC 是否存在並獲取名稱
-    let npc_info = if let Some(npc) = game_world.npc_manager.get_npc(&npc_name) {
-        Some((npc.name.clone(), npc.x, npc.y))
-    } else {
-        None
-    };
+    let npc_info = game_world.npc_manager.get_npc(&npc_name).map(|npc| (npc.name.clone(), npc.x, npc.y));
     
     if let Some((name, old_x, old_y)) = npc_info {
         // 移動 NPC 到玩家位置
@@ -936,7 +932,7 @@ fn handle_name(
     new_name: String,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
-    me: &Person,
+    _me: &Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // 嘗試解析為坐標
     if let Some((x, y)) = parse_coordinates(&target) {
@@ -995,7 +991,7 @@ fn handle_destroy(
     me: &Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // 先嘗試作為 NPC（在當前位置）
-    if let Some((id, npc)) = game_world.npc_manager.remove_npc_at(&target, me.x, me.y) {
+    if let Some((_id, npc)) = game_world.npc_manager.remove_npc_at(&target, me.x, me.y) {
         let npc_name = npc.name.clone();
         output_manager.print(format!("你摧毀了 NPC「{}」", npc_name));
         output_manager.log(format!("NPC「{}」在 ({}, {}) 被刪除", npc_name, me.x, me.y));

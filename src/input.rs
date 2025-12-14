@@ -6,6 +6,12 @@ pub struct InputHandler {
     pub buffer: Vec<String>, // 儲存所有已提交的文本
 }
 
+impl Default for InputHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl InputHandler {
     // 建立新的輸入處理器
     pub fn new() -> Self {
@@ -356,7 +362,7 @@ impl CommandResult {
         
         for cmd in commands {
             if let Some((usage, desc, category)) = cmd.description() {
-                categories.entry(category).or_insert_with(Vec::new).push((usage, desc));
+                categories.entry(category).or_default().push((usage, desc));
             }
         }
         

@@ -2,9 +2,6 @@ use std::collections::HashMap;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::fs;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
-use std::thread;
-use std::time::Duration;
 use serde::{Deserialize, Serialize};
 use crate::map::Map;
 use crate::person::Person;
@@ -18,6 +15,12 @@ pub struct WorldTime {
     pub second: u8,    // 0-59
     pub day: u32,      // 遊戲日期
     last_update: u64,  // 上次更新的實時時間戳（毫秒）
+}
+
+impl Default for WorldTime {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl WorldTime {
@@ -124,7 +127,7 @@ impl WorldObject {
 // NPC 結構體
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
-pub struct NPC {
+pub struct Npc {
     pub id: String,
     pub name: String,
     pub description: String,
@@ -134,10 +137,10 @@ pub struct NPC {
     pub dialogue: Vec<String>, // NPC 的對話
 }
 
-impl NPC {
+impl Npc {
     #[allow(dead_code)]
     pub fn new(id: String, name: String, description: String, position: Position, max_health: i32) -> Self {
-        NPC {
+        Npc {
             id,
             name,
             description,
@@ -197,11 +200,17 @@ impl MapArea {
 #[allow(dead_code)]
 pub struct World {
     pub time: WorldTime,
-    pub game_speed: f32, // 遊戲速度（實際秒數 = 遊戲分鐘數 / game_speed）
+    pub _game_speed: f32, // 遊戲速度（實際秒數 = 遊戲分鐘數 / game_speed）
     pub map_areas: HashMap<String, MapArea>,
     pub objects: HashMap<String, WorldObject>,
-    pub npcs: HashMap<String, NPC>,
+    pub npcs: HashMap<String, Npc>,
     current_area: String,
+}
+
+impl Default for World {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl World {
@@ -209,7 +218,7 @@ impl World {
     pub fn new() -> Self {
         let mut world = World {
             time: WorldTime::new(),
-            game_speed: 60.0, // 預設：1 實際秒 = 60 遊戲秒
+            _game_speed: 60.0, // 預設：1 實際秒 = 60 遊戲秒
             map_areas: HashMap::new(),
             objects: HashMap::new(),
             npcs: HashMap::new(),
@@ -239,13 +248,13 @@ impl World {
     }
 
     #[allow(dead_code)]
-    pub fn add_npc(&mut self, npc: NPC) {
+    pub fn add_npc(&mut self, npc: Npc) {
         self.npcs.insert(npc.id.clone(), npc);
     }
 
     #[allow(dead_code)]
     pub fn update(&mut self) {
-        self.time.advance(self.game_speed);
+        self.time.advance(self._game_speed);
     }
 
     #[allow(dead_code)]
@@ -264,7 +273,7 @@ impl World {
     }
 
     #[allow(dead_code)]
-    pub fn get_npcs_at_position(&self, pos: Position) -> Vec<&NPC> {
+    pub fn get_npcs_at_position(&self, pos: Position) -> Vec<&Npc> {
         self.npcs
             .values()
             .filter(|npc| npc.position == pos && npc.is_alive())
@@ -293,12 +302,12 @@ impl World {
     }
 
     #[allow(dead_code)]
-    pub fn get_npc_mut(&mut self, npc_id: &str) -> Option<&mut NPC> {
+    pub fn get_npc_mut(&mut self, npc_id: &str) -> Option<&mut Npc> {
         self.npcs.get_mut(npc_id)
     }
 
     #[allow(dead_code)]
-    pub fn get_npc(&self, npc_id: &str) -> Option<&NPC> {
+    pub fn get_npc(&self, npc_id: &str) -> Option<&Npc> {
         self.npcs.get(npc_id)
     }
 }
@@ -337,11 +346,17 @@ pub struct GameWorld {
     pub metadata: WorldMetadata,
     pub world_dir: String,
     pub time: WorldTime,
-    pub game_speed: f32,
+    pub _game_speed: f32,
     pub event_manager: crate::event::EventManager,
     pub event_scheduler: crate::event_scheduler::EventScheduler,
     pub time_thread: Option<crate::time_thread::TimeThread>,
     pub npc_manager: crate::npc_manager::NpcManager,
+}
+
+impl Default for GameWorld {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl GameWorld {
@@ -368,7 +383,7 @@ impl GameWorld {
             metadata,
             world_dir,
             time,
-            game_speed,
+            _game_speed: game_speed,
             event_manager: crate::event::EventManager::new(),
             event_scheduler: crate::event_scheduler::EventScheduler::new(),
             time_thread: Some(time_thread),
@@ -500,14 +515,12 @@ impl GameWorld {
         let mut persons = Vec::new();
 
         if let Ok(entries) = fs::read_dir(&person_dir) {
-            for entry in entries {
-                if let Ok(entry) = entry {
-                    let path = entry.path();
-                    if path.extension().and_then(|s| s.to_str()) == Some("json") {
-                        if let Some(filename) = path.file_stem().and_then(|s| s.to_str()) {
-                            if let Ok(person) = Person::load(&person_dir, filename) {
-                                persons.push(person);
-                            }
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.extension().and_then(|s| s.to_str()) == Some("json") {
+                    if let Some(filename) = path.file_stem().and_then(|s| s.to_str()) {
+                        if let Ok(person) = Person::load(&person_dir, filename) {
+                            persons.push(person);
                         }
                     }
                 }

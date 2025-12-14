@@ -64,6 +64,7 @@ impl EventLoader {
     }
     
     /// 保存事件到文件
+    #[allow(dead_code)]
     pub fn save_event_file(
         event: &GameEvent,
         file_path: &str,
@@ -80,6 +81,7 @@ impl EventLoader {
     }
     
     /// 創建範例事件腳本
+    #[allow(dead_code)]
     pub fn create_example_events(world_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
         let events_dir = format!("{}/events", world_dir);
         

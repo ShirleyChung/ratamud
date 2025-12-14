@@ -1,6 +1,5 @@
 use rand::Rng;
 use crate::observable::Observable;
-use crate::item::Item;
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 
@@ -29,6 +28,12 @@ impl MapType {
 // 描述資料庫
 pub struct DescriptionDb {
     descriptions: HashMap<MapType, Vec<String>>,
+}
+
+impl Default for DescriptionDb {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl DescriptionDb {
@@ -394,7 +399,7 @@ impl Map {
         use std::io::Write;
 
         let json = serde_json::to_string_pretty(self)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+            .map_err(std::io::Error::other)?;
 
         let mut file = File::create(filename)?;
         file.write_all(json.as_bytes())?;
@@ -407,7 +412,7 @@ impl Map {
 
         let content = fs::read_to_string(filename)?;
         let map: Map = serde_json::from_str(&content)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+            .map_err(std::io::Error::other)?;
         Ok(map)
     }
 }

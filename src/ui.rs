@@ -8,7 +8,7 @@ pub struct InputDisplay;
 
 impl InputDisplay {
     // 渲染輸入區域的小部件
-    pub fn render_input(input_text: &str, _area: Rect) -> Paragraph {
+    pub fn render_input(input_text: &str, _area: Rect) -> Paragraph<'_> {
         // 建立帶邊框和標題的輸入區塊
         let input_block = Block::default()
             .title("*")

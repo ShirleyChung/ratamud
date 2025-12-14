@@ -7,6 +7,12 @@ pub struct NpcManager {
     npc_aliases: HashMap<String, String>,  // 別名 -> NPC ID
 }
 
+impl Default for NpcManager {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl NpcManager {
     pub fn new() -> Self {
         NpcManager {
@@ -61,6 +67,7 @@ impl NpcManager {
     }
 
     /// 獲取所有 NPC
+    #[allow(dead_code)]
     pub fn get_all_npcs(&self) -> Vec<&Person> {
         self.npcs.values().collect()
     }
@@ -73,6 +80,7 @@ impl NpcManager {
     }
 
     /// 移除 NPC
+    #[allow(dead_code)]
     pub fn remove_npc(&mut self, id: &str) -> Option<Person> {
         self.npcs.remove(id)
     }
@@ -93,7 +101,7 @@ impl NpcManager {
         }
         
         // 嘗試通過名稱查找
-        if let Some((id, npc)) = self.npcs.iter().find(|(_, npc)| {
+        if let Some((id, _npc)) = self.npcs.iter().find(|(_, npc)| {
             npc.name.to_lowercase() == key && npc.x == x && npc.y == y
         }) {
             let id_clone = id.clone();
@@ -113,6 +121,7 @@ impl NpcManager {
     }
 
     /// 載入 NPC
+    #[allow(dead_code)]
     pub fn load_npc(&mut self, id: String, person_dir: &str, aliases: Vec<String>) -> Result<(), Box<dyn std::error::Error>> {
         let npc = Person::load(person_dir, &id)?;
         self.add_npc(id, npc, aliases);
@@ -120,6 +129,7 @@ impl NpcManager {
     }
 
     /// 獲取 NPC 數量
+    #[allow(dead_code)]
     pub fn count(&self) -> usize {
         self.npcs.len()
     }
