@@ -168,8 +168,8 @@ pub fn run_main_loop(
             break 'main_loop;
         }
 
-        // 檢查是否有鍵盤事件（100ms 超時）
-        if event::poll(Duration::from_millis(100))? {
+        // 檢查是否有鍵盤事件（16ms 超時，約60fps）
+        if event::poll(Duration::from_millis(16))? {
             let event = event::read()?;
             
             // 處理鍵盤事件

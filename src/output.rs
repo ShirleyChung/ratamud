@@ -64,7 +64,7 @@ impl OutputManager {
             map_offset_x: 0,
             map_offset_y: 0,
             typewriter: None,
-            typewriter_enabled: false,  // 預設關閉打字機效果
+            typewriter_enabled: true,  // 預設開啟打字機效果
         }
     }
 
@@ -80,7 +80,7 @@ impl OutputManager {
                 message_index: self.messages.len() - 1,
                 char_count: 0,
                 last_update: Instant::now(),
-                char_delay: Duration::from_millis(10), // 每個字符10ms（加快3倍）
+                char_delay: Duration::from_millis(3), // 每個字符3ms
             });
         }
     }
