@@ -47,7 +47,7 @@ impl EventLoader {
                         event_manager.add_event(event);
                     }
                     Err(e) => {
-                        eprintln!("載入事件檔案 {:?} 失敗: {}", path, e);
+                        eprintln!("載入事件檔案 {path:?} 失敗: {e}");
                     }
                 }
             }
@@ -83,12 +83,12 @@ impl EventLoader {
     /// 創建範例事件腳本
     #[allow(dead_code)]
     pub fn create_example_events(world_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
-        let events_dir = format!("{}/events", world_dir);
+        let events_dir = format!("{world_dir}/events");
         
         // 創建目錄結構
-        fs::create_dir_all(format!("{}/time_based", events_dir))?;
-        fs::create_dir_all(format!("{}/random", events_dir))?;
-        fs::create_dir_all(format!("{}/location", events_dir))?;
+        fs::create_dir_all(format!("{events_dir}/time_based"))?;
+        fs::create_dir_all(format!("{events_dir}/random"))?;
+        fs::create_dir_all(format!("{events_dir}/location"))?;
         
         // 範例1: 每10分鐘的商人到訪
         let merchant_event = serde_json::json!({
@@ -124,7 +124,7 @@ impl EventLoader {
         });
         
         fs::write(
-            format!("{}/time_based/merchant_visit.json", events_dir),
+            format!("{events_dir}/time_based/merchant_visit.json"),
             serde_json::to_string_pretty(&merchant_event)?
         )?;
         
@@ -161,7 +161,7 @@ impl EventLoader {
         });
         
         fs::write(
-            format!("{}/random/treasure_spawn.json", events_dir),
+            format!("{events_dir}/random/treasure_spawn.json"),
             serde_json::to_string_pretty(&treasure_event)?
         )?;
         
@@ -189,7 +189,7 @@ impl EventLoader {
         });
         
         fs::write(
-            format!("{}/location/discover_shrine.json", events_dir),
+            format!("{events_dir}/location/discover_shrine.json"),
             serde_json::to_string_pretty(&location_event)?
         )?;
         

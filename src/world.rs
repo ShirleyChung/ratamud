@@ -5,7 +5,7 @@ use std::path::Path;
 use serde::{Deserialize, Serialize};
 use crate::map::Map;
 use crate::person::Person;
-use crate::time_updatable::TimeInfo;
+use crate::time_updatable::{TimeInfo, TimeUpdatable};
 
 // 世界時間結構體
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -449,7 +449,7 @@ impl GameWorld {
     #[allow(dead_code)]
     pub fn load_map(&mut self, map_name: &str) -> Result<(), Box<dyn std::error::Error>> {
         let maps_dir = self.get_maps_dir();
-        let map_path = format!("{}/{}.json", maps_dir, map_name);
+        let map_path = format!("{maps_dir}/{map_name}.json");
         let map = Map::load(&map_path)?;
         self.maps.insert(map_name.to_string(), map);
         Ok(())
@@ -535,6 +535,15 @@ impl GameWorld {
         if let Some(ref time_thread) = self.time_thread {
             self.time = time_thread.get_time();
         }
+        
+        // 更新所有地圖上的物品年齡
+        let time_info = self.get_time_info();
+        for map in self.maps.values_mut() {
+            map.on_time_update(&time_info);
+        }
+        
+        // 更新所有 NPC 的年齡
+        self.npc_manager.update_all_time(&time_info);
     }
 
     // 獲取當前時間信息

@@ -1,0 +1,18 @@
+測試 set 命令：
+
+1. 查看初始屬性：status
+2. 設置玩家屬性：
+   - set me hp 150
+   - set me mp 200
+   - set me strength 20
+   - set me knowledge 30
+   - set me sociality 25
+3. 再次查看屬性：status
+4. 如果有 NPC，可以用：set <npc名稱> hp 80
+
+屬性支持：
+- hp (體力/健康)
+- mp (精神力/意志力)
+- strength / str (力量)
+- knowledge / kno (知識)
+- sociality / soc (交誼)

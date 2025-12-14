@@ -35,6 +35,8 @@ pub struct Item {
     pub item_type: ItemType,
     pub description: String,
     pub value: u32,  // 物品價值
+    #[serde(default)]
+    pub age: u64,    // 物品存在時間（以秒計算）
 }
 
 impl Item {
@@ -46,6 +48,7 @@ impl Item {
             item_type,
             description,
             value,
+            age: 0,
         }
     }
 
@@ -102,5 +105,15 @@ impl Item {
         let idx = rng.gen_range(0..items.len());
         let (name, english_name, item_type, description, value) = items[idx];
         Item::new(name.to_string(), english_name.to_string(), item_type, description.to_string(), value)
+    }
+}
+
+// 實現 TimeUpdatable trait
+use crate::time_updatable::{TimeUpdatable, TimeInfo};
+
+impl TimeUpdatable for Item {
+    fn on_time_update(&mut self, _current_time: &TimeInfo) {
+        // 每秒增加年齡
+        self.age += 1;
     }
 }

@@ -18,7 +18,7 @@ impl EventExecutor {
         
         for action in &event.actions {
             if let Err(e) = Self::execute_action(action, game_world, player, output_manager) {
-                return Err(format!("執行動作失敗: {}", e));
+                return Err(format!("執行動作失敗: {e}"));
             }
         }
         
@@ -76,7 +76,7 @@ impl EventExecutor {
         ));
         
         if let Some(text) = dialogue {
-            output_manager.print(format!("💬 {}: \"{}\"", npc_id, text));
+            output_manager.print(format!("💬 {npc_id}: \"{text}\""));
         }
         
         // TODO: 實際生成 NPC 到遊戲世界
@@ -84,13 +84,13 @@ impl EventExecutor {
     }
     
     fn remove_npc(npc_id: &str, output_manager: &mut OutputManager) -> Result<(), String> {
-        output_manager.print(format!("👤 NPC {} 離開了", npc_id));
+        output_manager.print(format!("👤 NPC {npc_id} 離開了"));
         // TODO: 從遊戲世界移除 NPC
         Ok(())
     }
     
     fn show_message(text: &str, output_manager: &mut OutputManager) -> Result<(), String> {
-        output_manager.print(format!("📢 {}", text));
+        output_manager.print(format!("📢 {text}"));
         Ok(())
     }
     
@@ -99,7 +99,7 @@ impl EventExecutor {
         text: &str,
         output_manager: &mut OutputManager,
     ) -> Result<(), String> {
-        output_manager.print(format!("💬 {}: \"{}\"", npc_id, text));
+        output_manager.print(format!("💬 {npc_id}: \"{text}\""));
         Ok(())
     }
     
@@ -175,7 +175,7 @@ impl EventExecutor {
             ));
             Ok(())
         } else {
-            Err(format!("地圖 {} 不存在", map))
+            Err(format!("地圖 {map} 不存在"))
         }
     }
 }

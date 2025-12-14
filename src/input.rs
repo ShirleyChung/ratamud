@@ -192,6 +192,32 @@ impl InputHandler {
                     CommandResult::Drop(item_name, quantity)
                 }
             },
+            "eat" => {
+                // eat 命令，吃食物回復 HP
+                // eat <食物名稱>
+                if parts.len() < 2 {
+                    CommandResult::Error("Usage: eat <food name>".to_string())
+                } else {
+                    let food_name = parts[1].to_string();
+                    CommandResult::Eat(food_name)
+                }
+            },
+            "sleep" => {
+                // sleep 命令，進入睡眠狀態
+                CommandResult::Sleep
+            },
+            "dream" => {
+                // dream 命令，在睡眠時做夢
+                if parts.len() < 2 {
+                    CommandResult::Dream(None)
+                } else {
+                    CommandResult::Dream(Some(parts[1..].join(" ")))
+                }
+            },
+            "wakeup" | "wake" => {
+                // wakeup/wake 命令，從睡眠中醒來
+                CommandResult::WakeUp
+            },
             "right" | "r" => {
                 // 向右移動
                 CommandResult::Move(1, 0)
@@ -276,6 +302,18 @@ impl InputHandler {
                     CommandResult::Create(obj_type, item_type, name)
                 }
             },
+            "set" => {
+                // set <目標人物> <屬性> <數值> 命令，設置角色屬性
+                // 支持: hp, mp, strength, knowledge, sociality
+                if parts.len() < 4 {
+                    CommandResult::Error("Usage: set <目標人物> <屬性> <數值>".to_string())
+                } else {
+                    let target = parts[1].to_string();
+                    let attribute = parts[2].to_string();
+                    let value = parts[3].parse::<i32>().unwrap_or(0);
+                    CommandResult::Set(target, attribute, value)
+                }
+            },
             _ => CommandResult::Error(format!("Unknown command: {}", parts[0])),
         };
         result
@@ -292,10 +330,10 @@ impl InputHandler {
             Ok(mut file) => {
                 match file.write_all(content.as_bytes()) {
                     Ok(_) => CommandResult::Error(format!("Saved {} lines to {}", self.buffer.len(), filename)),
-                    Err(e) => CommandResult::Error(format!("Write error: {}", e)),
+                    Err(e) => CommandResult::Error(format!("Write error: {e}")),
                 }
             },
-            Err(e) => CommandResult::Error(format!("File error: {}", e)),
+            Err(e) => CommandResult::Error(format!("File error: {e}")),
         }
     }
 }
@@ -318,6 +356,10 @@ pub enum CommandResult {
     Move(i32, i32),                  // 移動 (dx, dy)，顯示方向
     Get(Option<String>, u32),        // 撿起物品 (可選：物品名稱, 數量)
     Drop(String, u32),               // 放下物品 (物品名稱, 數量)
+    Eat(String),                     // 吃食物回復 HP (食物名稱)
+    Sleep,                           // 進入睡眠狀態
+    Dream(Option<String>),           // 做夢 (可選：夢境內容)
+    WakeUp,                          // 從睡眠中醒來
     Summon(String),                  // 召喚 NPC (NPC 名稱/ID)
     Conquer(String),                 // 征服指定方向，使其可行走 (up/down/left/right/u/d/l/r)
     FlyTo(String),                   // 飛到指定位置/地圖/地點 (坐標/地圖名/地點名)
@@ -325,6 +367,7 @@ pub enum CommandResult {
     Name(String, String),            // 命名 NPC 或地點 (目標, 新名稱)
     Destroy(String),                 // 刪除指定的 NPC 或物品 (NPC名稱/物品名稱)
     Create(String, String, Option<String>), // 創建物件 (類型, 物件類型, 可選名稱)
+    Set(String, String, i32),        // 設置角色屬性 (目標人物, 屬性, 數值)
     ToggleTypewriter,                // 切換打字機效果
     Help,                            // 顯示幫助訊息
 }
@@ -345,6 +388,10 @@ impl CommandResult {
             CommandResult::Name(..) => Some(("name <目標> <名稱>", "命名NPC或地點", "🎮 遊戲控制")),
             CommandResult::Get(..) => Some(("get [<物品>] [<數量>]", "撿起物品", "🎒 物品管理")),
             CommandResult::Drop(..) => Some(("drop <物品> <數量>", "放下物品", "🎒 物品管理")),
+            CommandResult::Eat(..) => Some(("eat <食物>", "吃食物回復HP", "🎒 物品管理")),
+            CommandResult::Sleep => Some(("sleep", "進入睡眠狀態", "💤 睡眠")),
+            CommandResult::Dream(..) => Some(("dream [<內容>]", "做夢（睡眠時）", "💤 睡眠")),
+            CommandResult::WakeUp => Some(("wakeup / wake", "從睡眠中醒來", "💤 睡眠")),
             CommandResult::Summon(..) => Some(("summon / sn <npc>", "召喚NPC到此", "👥 NPC互動")),
             CommandResult::ShowStatus => Some(("status / i", "顯示角色狀態", "ℹ️  資訊查詢")),
             CommandResult::ShowWorld => Some(("show world", "顯示世界資訊", "ℹ️  資訊查詢")),
@@ -355,6 +402,7 @@ impl CommandResult {
             CommandResult::ShowMap => Some(("show map / sm", "顯示大地圖 (↑↓←→移動, q退出)", "🗺️  介面控制")),
             CommandResult::Destroy(..) => Some(("destroy / ds <目標>", "刪除NPC或物品", "🛠️  其他")),
             CommandResult::Create(..) => Some(("create / cr <類型> <物件類型> [名稱]", "創建物件 (item/npc)", "🛠️  其他")),
+            CommandResult::Set(..) => Some(("set <人物> <屬性> <數值>", "設置角色屬性 (hp/mp/strength/knowledge/sociality)", "🛠️  其他")),
             _ => None,
         }
     }
@@ -375,6 +423,10 @@ impl CommandResult {
             CommandResult::Exit,
             CommandResult::Get(None, 1),
             CommandResult::Drop(String::new(), 1),
+            CommandResult::Eat(String::new()),
+            CommandResult::Sleep,
+            CommandResult::Dream(None),
+            CommandResult::WakeUp,
             CommandResult::Summon(String::new()),
             CommandResult::ShowMinimap,
             CommandResult::HideMinimap,
@@ -386,6 +438,7 @@ impl CommandResult {
             CommandResult::Clear,
             CommandResult::Destroy(String::new()),
             CommandResult::Create(String::new(), String::new(), None),
+            CommandResult::Set(String::new(), String::new(), 0),
         ];
         
         let mut categories: HashMap<&'static str, Vec<(&'static str, &'static str)>> = HashMap::new();

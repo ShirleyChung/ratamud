@@ -46,6 +46,28 @@ static ITEM_NAME_MAP: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m
 });
 
+/// 食物的 HP 回復值映射表
+static FOOD_HP_MAP: Lazy<HashMap<&'static str, i32>> = Lazy::new(|| {
+    let mut m = HashMap::new();
+    
+    m.insert("蘋果", 300);
+    m.insert("麵包", 500);
+    m.insert("乾肉", 800);
+    m.insert("漿果", 200);
+    
+    m
+});
+
+/// 檢查物品是否為食物
+pub fn is_food(item_name: &str) -> bool {
+    FOOD_HP_MAP.contains_key(item_name)
+}
+
+/// 獲取食物的 HP 回復值
+pub fn get_food_hp(item_name: &str) -> Option<i32> {
+    FOOD_HP_MAP.get(item_name).copied()
+}
+
 /// 將輸入的名稱（可能是英文或中文）轉換為統一的中文名稱
 pub fn resolve_item_name(input: &str) -> String {
     // 先轉小寫
@@ -72,7 +94,7 @@ pub fn get_item_display_name(chinese_name: &str) -> String {
     // 找到對應的英文名稱
     for (&eng, &chi) in ITEM_NAME_MAP.iter() {
         if chi == chinese_name {
-            return format!("{} ({})", chinese_name, eng);
+            return format!("{chinese_name} ({eng})");
         }
     }
     chinese_name.to_string()

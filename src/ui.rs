@@ -26,7 +26,7 @@ pub struct HeaderDisplay;
 impl HeaderDisplay {
     // 渲染標題列
     pub fn render_header<'a>(world_name: &'a str, current_time: &'a str) -> Paragraph<'a> {
-        let header_text = format!("⚔️  {} | 🕐 {}", world_name, current_time);
+        let header_text = format!("⚔️  {world_name} | 🕐 {current_time}");
         
         let header_span = Span::styled(
             header_text,

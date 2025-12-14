@@ -133,6 +133,14 @@ impl NpcManager {
     pub fn count(&self) -> usize {
         self.npcs.len()
     }
+    
+    /// 更新所有 NPC 的時間
+    pub fn update_all_time(&mut self, time_info: &crate::time_updatable::TimeInfo) {
+        use crate::time_updatable::TimeUpdatable;
+        for npc in self.npcs.values_mut() {
+            npc.on_time_update(time_info);
+        }
+    }
 
     /// 根據名稱獲取 NPC 的顯示字符
     pub fn get_display_char(name: &str) -> char {

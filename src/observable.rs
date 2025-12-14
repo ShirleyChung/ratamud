@@ -115,7 +115,7 @@ pub fn observable_to_lines(obs: &dyn Observable) -> Vec<Line<'_>> {
     if !list.is_empty() {
         lines.push(Line::from(""));
         for item in list {
-            lines.push(Line::from(format!("• {}", item)));
+            lines.push(Line::from(format!("• {item}")));
         }
     }
     

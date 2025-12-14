@@ -93,14 +93,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     match event_loader::EventLoader::load_from_directory(&mut game_world.event_manager, &events_dir) {
         Ok((count, event_list)) => {
             if count > 0 {
-                output_manager.log(format!("✅ 載入了 {} 個事件", count));
+                output_manager.log(format!("✅ 載入了 {count} 個事件"));
                 for event_name in event_list {
-                    output_manager.log(format!("  📌 {}", event_name));
+                    output_manager.log(format!("  📌 {event_name}"));
                 }
             }
         }
         Err(e) => {
-            output_manager.log(format!("⚠️  載入事件失敗: {}", e));
+            output_manager.log(format!("⚠️  載入事件失敗: {e}"));
         }
     }
     
@@ -142,7 +142,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         };
         output_manager.log(format!("地圖已加載: {}", map.name));
         let (walkable, unwalkable) = map.get_stats();
-        output_manager.log(format!("{} - 可行走點: {}, 不可行走點: {}", map_name, walkable, unwalkable));
+        output_manager.log(format!("{map_name} - 可行走點: {walkable}, 不可行走點: {unwalkable}"));
         game_world.add_map(map);
     }
     
@@ -193,13 +193,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         );
                         
                         loaded_npc_count += 1;
-                        output_manager.log(format!("已載入 NPC: {} 在位置 ({}, {})", npc_name, npc_x, npc_y));
+                        output_manager.log(format!("已載入 NPC: {npc_name} 在位置 ({npc_x}, {npc_y})"));
                     }
                 }
             }
         }
     }    
-    output_manager.log(format!("從文件載入了 {} 個 NPC", loaded_npc_count));    
+    output_manager.log(format!("從文件載入了 {loaded_npc_count} 個 NPC"));    
     output_manager.log(format!("已加載 {} 個地圖", game_world.map_count()));
 
     // 顯示歡迎訊息

@@ -38,6 +38,11 @@ pub fn run_main_loop(
         // 從時鐘線程同步時間
         game_world.update_time();
         
+        // 更新玩家年齡
+        use crate::time_updatable::TimeUpdatable;
+        let time_info = game_world.get_time_info();
+        me.on_time_update(&time_info);
+        
         // 定期檢查並觸發事件
         let now = Instant::now();
         if now.duration_since(last_event_check) >= event_check_interval {
@@ -290,6 +295,19 @@ fn handle_command_result(
     me: &mut Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
     output_manager.close_side_panel();
+    
+    // 檢查是否在睡眠狀態，如果是則只允許 dream 和 wakeup 命令
+    if me.is_sleeping {
+        match result {
+            CommandResult::Dream(content) => handle_dream(content, output_manager),
+            CommandResult::WakeUp => handle_wakeup(output_manager, me),
+            _ => {
+                output_manager.print("你正在睡覺，只能使用 dream 或 wakeup 指令！".to_string());
+            }
+        }
+        return Ok(());
+    }
+    
     match result {
         CommandResult::Exit => handle_exit(output_manager, game_world)?,
         CommandResult::Help => handle_help(output_manager),
@@ -308,6 +326,14 @@ fn handle_command_result(
         CommandResult::Move(dx, dy) => handle_movement(dx, dy, output_manager, game_world, me)?,
         CommandResult::Get(item_name, quantity) => handle_get(item_name, quantity, output_manager, game_world, me),
         CommandResult::Drop(item_name, quantity) => handle_drop(item_name, quantity, output_manager, game_world, me),
+        CommandResult::Eat(food_name) => handle_eat(food_name, output_manager, me),
+        CommandResult::Sleep => handle_sleep(output_manager, me),
+        CommandResult::Dream(_) => {
+            output_manager.print("你需要先睡覺才能做夢！使用 sleep 指令進入睡眠。".to_string());
+        },
+        CommandResult::WakeUp => {
+            output_manager.print("你還沒睡覺呢！".to_string());
+        },
         CommandResult::Summon(npc_name) => handle_summon(npc_name, output_manager, game_world, me),
         CommandResult::Conquer(direction) => handle_conquer(direction, output_manager, game_world, me)?,
         CommandResult::FlyTo(target) => handle_flyto(target, output_manager, game_world, me)?,
@@ -315,6 +341,7 @@ fn handle_command_result(
         CommandResult::Name(target, name) => handle_name(target, name, output_manager, game_world, me)?,
         CommandResult::Destroy(target) => handle_destroy(target, output_manager, game_world, me)?,
         CommandResult::Create(obj_type, item_type, name) => handle_create(obj_type, item_type, name, output_manager, game_world, me)?,
+        CommandResult::Set(target, attribute, value) => handle_set(target, attribute, value, output_manager, game_world, me)?,
         CommandResult::ToggleTypewriter => handle_toggle_typewriter(output_manager),
     }
     Ok(())
@@ -347,7 +374,7 @@ fn handle_help(output_manager: &mut OutputManager) {
     for (category, commands) in CommandResult::get_help_info() {
         output_manager.print(category.to_string());
         for (command, description) in commands {
-            output_manager.print(format!("  {:<16} - {}", command, description));
+            output_manager.print(format!("  {command:<16} - {description}"));
         }
         output_manager.print("".to_string());
     }
@@ -468,7 +495,7 @@ fn display_look(
             if !npc.abilities.is_empty() {
                 output_manager.print("\n✨ 能力:".to_string());
                 for ability in &npc.abilities {
-                    output_manager.print(format!("  • {}", ability));
+                    output_manager.print(format!("  • {ability}"));
                 }
             }
             
@@ -476,13 +503,13 @@ fn display_look(
                 output_manager.print("\n🎒 攜帶物品:".to_string());
                 for (item, count) in &npc.items {
                     let display_name = item_registry::get_item_display_name(item);
-                    output_manager.print(format!("  • {} x{}", display_name, count));
+                    output_manager.print(format!("  • {display_name} x{count}"));
                 }
             }
             
             output_manager.print("".to_string());
         } else {
-            output_manager.set_status(format!("找不到 NPC: {}", target_name));
+            output_manager.set_status(format!("找不到 NPC: {target_name}"));
         }
         return;
     }
@@ -503,7 +530,20 @@ fn display_look(
                 output_manager.print("\n🎁 此處物品:".to_string());
                 for (obj, count) in &point.objects {
                     let display_name = item_registry::get_item_display_name(obj);
-                    output_manager.print(format!("  • {} x{}", display_name, count));
+                    
+                    // 顯示物品年齡信息
+                    if let Some(ages) = point.object_ages.get(obj) {
+                        if !ages.is_empty() {
+                            let avg_age = ages.iter().sum::<u64>() / ages.len() as u64;
+                            let days = avg_age / 86400;
+                            let hours = (avg_age % 86400) / 3600;
+                            output_manager.print(format!("  • {display_name} x{count} (平均存在: {days}天{hours}時)"));
+                        } else {
+                            output_manager.print(format!("  • {display_name} x{count}"));
+                        }
+                    } else {
+                        output_manager.print(format!("  • {display_name} x{count}"));
+                    }
                 }
             }
             
@@ -602,7 +642,7 @@ fn handle_movement(
                         (0, 1) => "下",
                         _ => "?",
                     };
-                    output_manager.set_status(format!("往 {} 移動", direction));
+                    output_manager.set_status(format!("往 {direction} 移動"));
                     
                     // 移動後執行look
                     display_look(None, output_manager, game_world, me);
@@ -646,11 +686,11 @@ fn handle_get(
                     for (obj_name, count) in point.objects.clone() {
                         me.add_items(obj_name.clone(), count);
                         let display_name = item_registry::get_item_display_name(&obj_name);
-                        output_manager.print(format!("✓ 撿起了: {} x{}", display_name, count));
+                        output_manager.print(format!("✓ 撿起了: {display_name} x{count}"));
                         total_items += count;
                     }
                     point.objects.clear();
-                    output_manager.set_status(format!("撿起了 {} 個物品", total_items));
+                    output_manager.set_status(format!("撿起了 {total_items} 個物品"));
                     should_save_map = true;
                 }
                 Some(name) => {
@@ -659,7 +699,7 @@ fn handle_get(
                     let available = point.get_object_count(&resolved_name);
                     
                     if available == 0 {
-                        output_manager.print(format!("找不到 \"{}\"。", name));
+                        output_manager.print(format!("找不到 \"{name}\"。"));
                         return;
                     }
                     
@@ -670,11 +710,11 @@ fn handle_get(
                     if removed > 0 {
                         me.add_items(resolved_name.clone(), removed);
                         let display_name = item_registry::get_item_display_name(&resolved_name);
-                        output_manager.print(format!("✓ 撿起了: {} x{}", display_name, removed));
+                        output_manager.print(format!("✓ 撿起了: {display_name} x{removed}"));
                         if removed < quantity {
-                            output_manager.set_status(format!("只撿起了 {} 個 (要求 {})", removed, quantity));
+                            output_manager.set_status(format!("只撿起了 {removed} 個 (要求 {quantity})"));
                         } else {
-                            output_manager.set_status(format!("撿起: {} x{}", display_name, removed));
+                            output_manager.set_status(format!("撿起: {display_name} x{removed}"));
                         }
                         should_save_map = true;
                     }
@@ -705,7 +745,7 @@ fn handle_drop(
     let owned = me.get_item_count(&resolved_name);
     
     if owned == 0 {
-        output_manager.print(format!("你沒有 \"{}\"。", item_name));
+        output_manager.print(format!("你沒有 \"{item_name}\"。"));
         return;
     }
     
@@ -719,11 +759,11 @@ fn handle_drop(
             if let Some(point) = current_map.get_point_mut(me.x, me.y) {
                 point.add_objects(resolved_name.clone(), actual_quantity);
                 let display_name = item_registry::get_item_display_name(&resolved_name);
-                output_manager.print(format!("✓ 放下了: {} x{}", display_name, actual_quantity));
+                output_manager.print(format!("✓ 放下了: {display_name} x{actual_quantity}"));
                 if actual_quantity < quantity {
-                    output_manager.set_status(format!("只放下了 {} 個 (要求 {})", actual_quantity, quantity));
+                    output_manager.set_status(format!("只放下了 {actual_quantity} 個 (要求 {quantity})"));
                 } else {
-                    output_manager.set_status(format!("放下: {} x{}", display_name, actual_quantity));
+                    output_manager.set_status(format!("放下: {display_name} x{actual_quantity}"));
                 }
                 should_save_map = true;
             }
@@ -739,6 +779,99 @@ fn handle_drop(
         }
     }
 }
+
+/// 處理吃食物
+fn handle_eat(
+    food_name: String,
+    output_manager: &mut OutputManager,
+    me: &mut Person,
+) {
+    // 解析物品名稱（支援英文和中文）
+    let resolved_name = item_registry::resolve_item_name(&food_name);
+    
+    // 檢查是否持有該物品
+    let owned = me.get_item_count(&resolved_name);
+    if owned == 0 {
+        output_manager.print(format!("你沒有「{food_name}」。"));
+        return;
+    }
+    
+    // 檢查是否為食物
+    if !item_registry::is_food(&resolved_name) {
+        output_manager.print(format!("「{resolved_name}」不是食物，無法食用！"));
+        return;
+    }
+    
+    // 獲取食物回復值
+    if let Some(hp_restore) = item_registry::get_food_hp(&resolved_name) {
+        // 消耗一個食物
+        me.drop_items(&resolved_name, 1);
+        
+        // 回復 HP
+        let old_hp = me.hp;
+        me.hp += hp_restore;
+        let actual_restore = me.hp - old_hp;
+        
+        let display_name = item_registry::get_item_display_name(&resolved_name);
+        output_manager.print(format!("你吃了「{display_name}」，回復了 {actual_restore} HP！"));
+        output_manager.print(format!("目前 HP: {}", me.hp));
+    }
+}
+
+/// 處理睡眠命令
+fn handle_sleep(
+    output_manager: &mut OutputManager,
+    me: &mut Person,
+) {
+    if me.is_sleeping {
+        output_manager.print("你已經在睡覺了！".to_string());
+        return;
+    }
+    
+    me.is_sleeping = true;
+    me.set_status("睡眠中".to_string());
+    output_manager.print("💤 你進入了睡眠狀態...".to_string());
+    output_manager.print("在睡眠中，你不會消耗 HP，並且每 10 分鐘恢復 10% MP。".to_string());
+    output_manager.print("你可以使用 dream 做夢，或使用 wakeup 醒來。".to_string());
+}
+
+/// 處理做夢命令
+fn handle_dream(
+    content: Option<String>,
+    output_manager: &mut OutputManager,
+) {
+    if let Some(dream_content) = content {
+        output_manager.print(format!("💭 你夢見了：{dream_content}"));
+    } else {
+        let dreams = ["你夢見自己在飛翔...",
+            "你夢見了一片美麗的花田...",
+            "你夢見自己在海邊漫步...",
+            "你夢見了童年的回憶...",
+            "你夢見了一座神秘的城堡...",
+            "你夢見自己成為了英雄..."];
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        let idx = rng.gen_range(0..dreams.len());
+        output_manager.print(format!("💭 {}", dreams[idx]));
+    }
+}
+
+/// 處理醒來命令
+fn handle_wakeup(
+    output_manager: &mut OutputManager,
+    me: &mut Person,
+) {
+    if !me.is_sleeping {
+        output_manager.print("你還沒睡覺呢！".to_string());
+        return;
+    }
+    
+    me.is_sleeping = false;
+    me.set_status("正常".to_string());
+    output_manager.print("☀️ 你醒來了！感覺精神充沛！".to_string());
+    output_manager.print(format!("目前 MP: {}", me.mp));
+}
+
 
 /// 處理召喚 NPC
 fn handle_summon(
@@ -760,10 +893,10 @@ fn handle_summon(
         let person_dir = format!("{}/persons", game_world.world_dir);
         let _ = game_world.npc_manager.save_all(&person_dir);
         
-        output_manager.print(format!("你召喚了 {} 到這裡", name));
+        output_manager.print(format!("你召喚了 {name} 到這裡"));
         output_manager.log(format!("{} 從 ({}, {}) 傳送到 ({}, {})", name, old_x, old_y, me.x, me.y));
     } else {
-        output_manager.set_status(format!("找不到 NPC: {}", npc_name));
+        output_manager.set_status(format!("找不到 NPC: {npc_name}"));
     }
 }
 
@@ -781,7 +914,7 @@ fn handle_conquer(
         "left" | "l" => (-1, 0, "左"),
         "right" | "r" => (1, 0, "右"),
         _ => {
-            output_manager.set_status(format!("未知方向: {}，請使用 up/down/left/right", direction));
+            output_manager.set_status(format!("未知方向: {direction}，請使用 up/down/left/right"));
             return Ok(());
         }
     };
@@ -804,12 +937,12 @@ fn handle_conquer(
         // 獲取目標點
         if let Some(point) = current_map.get_point_mut(target_x, target_y) {
             if point.walkable {
-                output_manager.set_status(format!("{} 方已經是可行走的了", dir_name));
+                output_manager.set_status(format!("{dir_name} 方已經是可行走的了"));
             } else {
                 // 設置為可行走
                 point.walkable = true;
-                output_manager.print(format!("你征服了 {} 方的障礙！", dir_name));
-                output_manager.print(format!("位置 ({}, {}) 現在可以行走了", target_x, target_y));
+                output_manager.print(format!("你征服了 {dir_name} 方的障礙！"));
+                output_manager.print(format!("位置 ({target_x}, {target_y}) 現在可以行走了"));
                 output_manager.log(format!("玩家在 ({}, {}) 征服了 {} 方 ({}, {})", me.x, me.y, dir_name, target_x, target_y));
             }
         }
@@ -836,8 +969,8 @@ fn handle_flyto(
         if let Some(current_map) = game_world.get_current_map() {
             if x < current_map.width && y < current_map.height {
                 me.move_to(x, y);
-                output_manager.print(format!("你飛到了位置 ({}, {})", x, y));
-                output_manager.log(format!("玩家傳送到 ({}, {})", x, y));
+                output_manager.print(format!("你飛到了位置 ({x}, {y})"));
+                output_manager.log(format!("玩家傳送到 ({x}, {y})"));
                 
                 // 保存玩家位置
                 let person_dir = format!("{}/persons", game_world.world_dir);
@@ -861,8 +994,8 @@ fn handle_flyto(
             let center_x = new_map.width / 2;
             let center_y = new_map.height / 2;
             me.move_to(center_x, center_y);
-            output_manager.print(format!("你飛到了地圖「{}」", target));
-            output_manager.log(format!("玩家傳送到地圖「{}」({}, {})", target, center_x, center_y));
+            output_manager.print(format!("你飛到了地圖「{target}」"));
+            output_manager.log(format!("玩家傳送到地圖「{target}」({center_x}, {center_y})"));
             
             // 保存玩家位置和世界狀態
             let person_dir = format!("{}/persons", game_world.world_dir);
@@ -896,7 +1029,7 @@ fn handle_flyto(
         }
     }
     
-    output_manager.set_status(format!("找不到目標: {}（請使用座標x,y、地圖名或地點名）", target));
+    output_manager.set_status(format!("找不到目標: {target}（請使用座標x,y、地圖名或地點名）"));
     Ok(())
 }
 
@@ -918,7 +1051,7 @@ fn handle_namehere(
             };
             
             point.name = name.clone();
-            output_manager.print(format!("你將此地命名為「{}」", name));
+            output_manager.print(format!("你將此地命名為「{name}」"));
             output_manager.log(format!("位置 ({}, {}) 從 {} 更名為「{}」", me.x, me.y, old_name, name));
         }
     }
@@ -953,8 +1086,8 @@ fn handle_name(
                     };
                     
                     point.name = new_name.clone();
-                    output_manager.print(format!("你將位置 ({}, {}) 命名為「{}」", x, y, new_name));
-                    output_manager.log(format!("位置 ({}, {}) 從 {} 更名為「{}」", x, y, old_name, new_name));
+                    output_manager.print(format!("你將位置 ({x}, {y}) 命名為「{new_name}」"));
+                    output_manager.log(format!("位置 ({x}, {y}) 從 {old_name} 更名為「{new_name}」"));
                 }
             } else {
                 output_manager.set_status("座標超出地圖範圍".to_string());
@@ -974,8 +1107,8 @@ fn handle_name(
     if let Some(npc) = game_world.npc_manager.get_npc_mut(&target) {
         let old_name = npc.name.clone();
         npc.name = new_name.clone();
-        output_manager.print(format!("你將「{}」改名為「{}」", old_name, new_name));
-        output_manager.log(format!("NPC 從「{}」更名為「{}」", old_name, new_name));
+        output_manager.print(format!("你將「{old_name}」改名為「{new_name}」"));
+        output_manager.log(format!("NPC 從「{old_name}」更名為「{new_name}」"));
         
         // 保存 NPC
         let person_dir = format!("{}/persons", game_world.world_dir);
@@ -984,7 +1117,7 @@ fn handle_name(
         return Ok(());
     }
     
-    output_manager.set_status(format!("找不到目標: {}（請使用座標x,y或NPC名稱）", target));
+    output_manager.set_status(format!("找不到目標: {target}（請使用座標x,y或NPC名稱）"));
     Ok(())
 }
 
@@ -998,17 +1131,17 @@ fn handle_destroy(
     // 先嘗試作為 NPC（在當前位置）
     if let Some((npc_id, npc)) = game_world.npc_manager.remove_npc_at(&target, me.x, me.y) {
         let npc_name = npc.name.clone();
-        output_manager.print(format!("你摧毀了 NPC「{}」", npc_name));
+        output_manager.print(format!("你摧毀了 NPC「{npc_name}」"));
         output_manager.log(format!("NPC「{}」在 ({}, {}) 被刪除", npc_name, me.x, me.y));
         
         // 刪除 NPC 的 JSON 文件
         let person_dir = format!("{}/persons", game_world.world_dir);
-        let npc_file_path = format!("{}/{}.json", person_dir, npc_id);
+        let npc_file_path = format!("{person_dir}/{npc_id}.json");
         
         if let Err(e) = std::fs::remove_file(&npc_file_path) {
-            output_manager.log(format!("⚠️  刪除 NPC 文件失敗: {}", e));
+            output_manager.log(format!("⚠️  刪除 NPC 文件失敗: {e}"));
         } else {
-            output_manager.log(format!("✅ 已刪除 NPC 文件: {}.json", npc_id));
+            output_manager.log(format!("✅ 已刪除 NPC 文件: {npc_id}.json"));
         }
         
         return Ok(());
@@ -1025,7 +1158,7 @@ fn handle_destroy(
                 point.objects.remove(&item_name);
                 
                 let display_name = item_registry::get_item_display_name(&item_name);
-                output_manager.print(format!("你摧毀了物品「{}」x{}", display_name, count_value));
+                output_manager.print(format!("你摧毀了物品「{display_name}」x{count_value}"));
                 output_manager.log(format!("物品「{}」x{} 在 ({}, {}) 被刪除", display_name, count_value, me.x, me.y));
                 
                 // 保存地圖
@@ -1038,7 +1171,7 @@ fn handle_destroy(
         }
     }
     
-    output_manager.set_status(format!("此處找不到「{}」（NPC 或物品）", target));
+    output_manager.set_status(format!("此處找不到「{target}」（NPC 或物品）"));
     Ok(())
 }
 
@@ -1109,7 +1242,7 @@ fn check_and_execute_events(
                 me,
                 output_manager
             ) {
-                output_manager.log(format!("⚠️  事件執行錯誤: {}", e));
+                output_manager.log(format!("⚠️  事件執行錯誤: {e}"));
             }
         }
     }
@@ -1132,7 +1265,7 @@ fn get_event_location_info(event: &crate::event::GameEvent, game_world: &GameWor
             return format!(" 在 {} 區域({}-{}, {}-{})", 
                 map_name, area.x[0], area.x[1], area.y[0], area.y[1]);
         }
-        return format!(" 在 {}", map_name);
+        return format!(" 在 {map_name}");
     }
     String::new()
 }
@@ -1170,11 +1303,11 @@ fn handle_create(
             
             // 檢查 NPC 是否已存在
             if game_world.npc_manager.get_npc(&npc_name).is_some() {
-                output_manager.set_status(format!("NPC「{}」已經存在", npc_name));
+                output_manager.set_status(format!("NPC「{npc_name}」已經存在"));
                 return Ok(());
             }
             
-            let description = format!("一個{}", resolved_type);
+            let description = format!("一個{resolved_type}");
             
             // 創建新的 Person 作為 NPC
             let mut npc = Person::new(npc_name.clone(), description);
@@ -1191,7 +1324,7 @@ fn handle_create(
             let person_dir = format!("{}/persons", game_world.world_dir);
             game_world.npc_manager.save_all(&person_dir)?;
             
-            output_manager.print(format!("你創建了 NPC「{}」(類型: {})", npc_name, resolved_type));
+            output_manager.print(format!("你創建了 NPC「{npc_name}」(類型: {resolved_type})"));
             output_manager.log(format!("NPC「{}」在 ({}, {}) 被創建", npc_name, me.x, me.y));
         },
         "item" => {
@@ -1205,7 +1338,7 @@ fn handle_create(
                     // 添加物品到當前位置
                     *point.objects.entry(item_name.clone()).or_insert(0) += 1;
                     
-                    output_manager.print(format!("你創建了物品「{}」(類型: {})", display_name, item_type));
+                    output_manager.print(format!("你創建了物品「{display_name}」(類型: {item_type})"));
                     output_manager.log(format!("物品「{}」在 ({}, {}) 被創建", display_name, me.x, me.y));
                     
                     // 保存地圖
@@ -1220,7 +1353,86 @@ fn handle_create(
             }
         },
         _ => {
-            output_manager.set_status(format!("未知類型: {}，請使用 item 或 npc", obj_type));
+            output_manager.set_status(format!("未知類型: {obj_type}，請使用 item 或 npc"));
+        }
+    }
+    
+    Ok(())
+}
+
+/// 處理 set 命令
+fn handle_set(
+    target: String,
+    attribute: String,
+    value: i32,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &mut Person,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // 判斷目標是 me 還是 NPC
+    let is_me = target.to_lowercase() == "me" || target == "我";
+    
+    if is_me {
+        // 設置玩家屬性
+        match attribute.to_lowercase().as_str() {
+            "hp" => {
+                me.hp = value;
+                output_manager.print(format!("你的 HP 設置為 {value}"));
+            },
+            "mp" => {
+                me.mp = value;
+                output_manager.print(format!("你的 MP 設置為 {value}"));
+            },
+            "strength" | "str" => {
+                me.strength = value;
+                output_manager.print(format!("你的力量設置為 {value}"));
+            },
+            "knowledge" | "kno" => {
+                me.knowledge = value;
+                output_manager.print(format!("你的知識設置為 {value}"));
+            },
+            "sociality" | "soc" => {
+                me.sociality = value;
+                output_manager.print(format!("你的交誼設置為 {value}"));
+            },
+            _ => {
+                output_manager.set_status(format!("未知屬性: {attribute}，支持: hp, mp, strength, knowledge, sociality"));
+            }
+        }
+    } else {
+        // 設置 NPC 屬性
+        if let Some(npc) = game_world.npc_manager.get_npc_mut(&target) {
+            match attribute.to_lowercase().as_str() {
+                "hp" => {
+                    npc.hp = value;
+                    output_manager.print(format!("{target}的 HP 設置為 {value}"));
+                },
+                "mp" => {
+                    npc.mp = value;
+                    output_manager.print(format!("{target}的 MP 設置為 {value}"));
+                },
+                "strength" | "str" => {
+                    npc.strength = value;
+                    output_manager.print(format!("{target}的力量設置為 {value}"));
+                },
+                "knowledge" | "kno" => {
+                    npc.knowledge = value;
+                    output_manager.print(format!("{target}的知識設置為 {value}"));
+                },
+                "sociality" | "soc" => {
+                    npc.sociality = value;
+                    output_manager.print(format!("{target}的交誼設置為 {value}"));
+                },
+                _ => {
+                    output_manager.set_status(format!("未知屬性: {attribute}，支持: hp, mp, strength, knowledge, sociality"));
+                }
+            }
+            
+            // 保存 NPC
+            let person_dir = format!("{}/persons", game_world.world_dir);
+            game_world.npc_manager.save_all(&person_dir)?;
+        } else {
+            output_manager.set_status(format!("找不到 NPC: {target}"));
         }
     }
     

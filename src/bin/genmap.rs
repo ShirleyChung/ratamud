@@ -20,9 +20,9 @@ fn main() {
     ];
 
     for (name, map_type, width, height) in maps_to_generate {
-        let filename = format!("{}/{}.json", maps_dir, name);
+        let filename = format!("{maps_dir}/{name}.json");
         
-        println!("Generating map: {} ({} x {})", name, width, height);
+        println!("Generating map: {name} ({width} x {height})");
         let map = Map::new_with_type(name.to_string(), width, height, map_type);
         
         match map.save(&filename) {
@@ -31,9 +31,9 @@ fn main() {
                     map.points.iter().flatten().filter(|p| p.walkable).count(),
                     map.points.iter().flatten().filter(|p| !p.walkable).count(),
                 );
-                println!("✓ Saved {} ({} walkable, {} unwalkable)", filename, walkable, unwalkable);
+                println!("✓ Saved {filename} ({walkable} walkable, {unwalkable} unwalkable)");
             }
-            Err(e) => println!("✗ Failed to save {}: {}", filename, e),
+            Err(e) => println!("✗ Failed to save {filename}: {e}"),
         }
     }
 

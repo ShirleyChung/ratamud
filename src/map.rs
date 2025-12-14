@@ -155,6 +155,8 @@ pub struct Point {
     pub name: String,             // 地點名稱（可選）
     #[serde(default = "default_objects")]
     pub objects: HashMap<String, u32>,  // 該點上的物件名稱 -> 數量
+    #[serde(default)]
+    pub object_ages: HashMap<String, Vec<u64>>,  // 物品名稱 -> 各個實例的年齡
 }
 
 // 預設物件 HashMap
@@ -172,6 +174,7 @@ impl Point {
             description,
             name: String::new(),
             objects: HashMap::new(),
+            object_ages: HashMap::new(),
         }
     }
 
@@ -193,6 +196,7 @@ impl Point {
             description,
             name: String::new(),
             objects: HashMap::new(),
+            object_ages: HashMap::new(),
         }
     }
 
@@ -209,7 +213,12 @@ impl Point {
     
     // 添加指定數量的物件
     pub fn add_objects(&mut self, obj: String, quantity: u32) {
-        *self.objects.entry(obj).or_insert(0) += quantity;
+        *self.objects.entry(obj.clone()).or_insert(0) += quantity;
+        // 添加對應數量的年齡記錄（初始為0）
+        let ages = self.object_ages.entry(obj).or_default();
+        for _ in 0..quantity {
+            ages.push(0);
+        }
     }
 
     // 移除物件（預設數量1）
@@ -225,6 +234,19 @@ impl Point {
             if *count == 0 {
                 self.objects.remove(obj_name);
             }
+            
+            // 移除對應數量的年齡記錄（從最舊的開始移除）
+            if let Some(ages) = self.object_ages.get_mut(obj_name) {
+                for _ in 0..removed {
+                    if !ages.is_empty() {
+                        ages.remove(0);  // 移除最舊的
+                    }
+                }
+                if ages.is_empty() {
+                    self.object_ages.remove(obj_name);
+                }
+            }
+            
             return removed;
         }
         0
@@ -435,5 +457,23 @@ impl Observable for Map {
             format!("總點數: {}", self.width * self.height),
             format!("類型: MUD地圖"),
         ]
+    }
+}
+
+// 實現 TimeUpdatable trait
+use crate::time_updatable::{TimeUpdatable, TimeInfo};
+
+impl TimeUpdatable for Map {
+    fn on_time_update(&mut self, _current_time: &TimeInfo) {
+        // 更新所有地點上的物品年齡
+        for row in &mut self.points {
+            for point in row {
+                for ages in point.object_ages.values_mut() {
+                    for age in ages {
+                        *age += 1;
+                    }
+                }
+            }
+        }
     }
 }

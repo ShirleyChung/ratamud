@@ -382,7 +382,7 @@ impl OutputManager {
         if !list.is_empty() {
             self.print("--".to_string());
             for item in list {
-                self.print(format!("• {}", item));
+                self.print(format!("• {item}"));
             }
         }
 
@@ -394,7 +394,7 @@ impl OutputManager {
     pub fn log(&mut self, message: String) {
         use chrono::Local;
         let timestamp = Local::now().format("%H:%M:%S").to_string();
-        let log_entry = format!("[{}] {}", timestamp, message);
+        let log_entry = format!("[{timestamp}] {message}");
         self.log_messages.push(log_entry);
         self.log_scroll = self.log_messages.len().saturating_sub(1);
     }
