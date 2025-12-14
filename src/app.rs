@@ -311,6 +311,7 @@ fn handle_command_result(
         CommandResult::NameHere(name) => handle_namehere(name, output_manager, game_world, me)?,
         CommandResult::Name(target, name) => handle_name(target, name, output_manager, game_world, me)?,
         CommandResult::Destroy(target) => handle_destroy(target, output_manager, game_world, me)?,
+        CommandResult::Create(obj_type, item_type, name) => handle_create(obj_type, item_type, name, output_manager, game_world, me)?,
     }
     Ok(())
 }
@@ -991,14 +992,20 @@ fn handle_destroy(
     me: &Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // 先嘗試作為 NPC（在當前位置）
-    if let Some((_id, npc)) = game_world.npc_manager.remove_npc_at(&target, me.x, me.y) {
+    if let Some((npc_id, npc)) = game_world.npc_manager.remove_npc_at(&target, me.x, me.y) {
         let npc_name = npc.name.clone();
         output_manager.print(format!("你摧毀了 NPC「{}」", npc_name));
         output_manager.log(format!("NPC「{}」在 ({}, {}) 被刪除", npc_name, me.x, me.y));
         
-        // 保存 NPC 狀態
+        // 刪除 NPC 的 JSON 文件
         let person_dir = format!("{}/persons", game_world.world_dir);
-        game_world.npc_manager.save_all(&person_dir)?;
+        let npc_file_path = format!("{}/{}.json", person_dir, npc_id);
+        
+        if let Err(e) = std::fs::remove_file(&npc_file_path) {
+            output_manager.log(format!("⚠️  刪除 NPC 文件失敗: {}", e));
+        } else {
+            output_manager.log(format!("✅ 已刪除 NPC 文件: {}.json", npc_id));
+        }
         
         return Ok(());
     }
@@ -1124,4 +1131,94 @@ fn get_event_location_info(event: &crate::event::GameEvent, game_world: &GameWor
         return format!(" 在 {}", map_name);
     }
     String::new()
+}
+
+/// 解析 NPC 類型簡稱
+fn resolve_npc_type(type_code: &str) -> String {
+    match type_code.to_lowercase().as_str() {
+        "m" => "商人".to_string(),
+        "w" => "工人".to_string(),
+        "d" => "醫生".to_string(),
+        "wr" => "戰士".to_string(),
+        "en" => "工程師".to_string(),
+        "tr" => "老師".to_string(),
+        // 如果不是簡稱，返回原始輸入
+        _ => type_code.to_string(),
+    }
+}
+
+/// 處理 create 指令 - 創建物件
+fn handle_create(
+    obj_type: String,
+    item_type: String,
+    name: Option<String>,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &Person,
+) -> Result<(), Box<dyn std::error::Error>> {
+    match obj_type.to_lowercase().as_str() {
+        "npc" => {
+            // 解析 NPC 類型（支持簡稱）
+            let resolved_type = resolve_npc_type(&item_type);
+            
+            // 創建 NPC
+            let npc_name = name.unwrap_or_else(|| resolved_type.clone());
+            
+            // 檢查 NPC 是否已存在
+            if game_world.npc_manager.get_npc(&npc_name).is_some() {
+                output_manager.set_status(format!("NPC「{}」已經存在", npc_name));
+                return Ok(());
+            }
+            
+            let description = format!("一個{}", resolved_type);
+            
+            // 創建新的 Person 作為 NPC
+            let mut npc = Person::new(npc_name.clone(), description);
+            npc.x = me.x;
+            npc.y = me.y;
+            
+            // 使用 NPC 名稱作為 ID（如果重複會被覆蓋）
+            let npc_id = npc_name.clone();
+            
+            // 添加到 NPC 管理器
+            game_world.npc_manager.add_npc(npc_id.clone(), npc, vec![]);
+            
+            // 保存 NPC
+            let person_dir = format!("{}/persons", game_world.world_dir);
+            game_world.npc_manager.save_all(&person_dir)?;
+            
+            output_manager.print(format!("你創建了 NPC「{}」(類型: {})", npc_name, resolved_type));
+            output_manager.log(format!("NPC「{}」在 ({}, {}) 被創建", npc_name, me.x, me.y));
+        },
+        "item" => {
+            // 創建物品
+            let item_name = item_registry::resolve_item_name(&item_type);
+            let display_name = name.as_ref().unwrap_or(&item_type);
+            let map_name = game_world.current_map.clone();
+            
+            if let Some(current_map) = game_world.get_current_map_mut() {
+                if let Some(point) = current_map.get_point_mut(me.x, me.y) {
+                    // 添加物品到當前位置
+                    *point.objects.entry(item_name.clone()).or_insert(0) += 1;
+                    
+                    output_manager.print(format!("你創建了物品「{}」(類型: {})", display_name, item_type));
+                    output_manager.log(format!("物品「{}」在 ({}, {}) 被創建", display_name, me.x, me.y));
+                    
+                    // 保存地圖
+                    if let Some(map) = game_world.maps.get(&map_name) {
+                        game_world.save_map(map)?;
+                    }
+                } else {
+                    output_manager.set_status("無法在當前位置創建物品".to_string());
+                }
+            } else {
+                output_manager.set_status("找不到當前地圖".to_string());
+            }
+        },
+        _ => {
+            output_manager.set_status(format!("未知類型: {}，請使用 item 或 npc", obj_type));
+        }
+    }
+    
+    Ok(())
 }

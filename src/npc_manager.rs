@@ -142,6 +142,9 @@ impl NpcManager {
             "醫生" => 'D',
             "工人" => 'W',
             "路人" | "旅者" => 'T',
+            "戰士" => 'R',     // Warrior
+            "工程師" => 'E',   // Engineer
+            "老師" => 'C',     // Teacher (Coach)
             _ => 'N',  // 預設為 N (NPC)
         }
     }

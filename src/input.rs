@@ -81,7 +81,7 @@ impl InputHandler {
         }
 
         // 先檢查是否為 status 相關命令（這些命令不應關閉 status）
-        let _is_status_command = matches!(parts[0], "status" | "show" if parts.len() > 1 && parts[1] == "status");
+        let _is_status_command = matches!(parts[0], "status" | "i" | "show" | "s" if parts.len() == 1 && (parts[0] == "status" || parts[0] == "i") || (parts.len() > 1 && parts[1] == "status"));
         
         let result = match parts[0] {
             "exit" | "quit" => CommandResult::Exit,
@@ -92,8 +92,8 @@ impl InputHandler {
                 self.execute_save(&filename)
             },
             "clear" => CommandResult::Clear,
-            "status" => {
-                // status 命令，顯示玩家狀態到側邊面板
+            "status" | "i" => {
+                // status/i 命令，顯示玩家狀態到側邊面板
                 CommandResult::ShowStatus
             },
             "hello" => {
@@ -115,7 +115,7 @@ impl InputHandler {
                     CommandResult::AddToSide(message)
                 }
             },
-            "show" => {
+            "show" | "s" => {
                 if parts.len() < 2 {
                     CommandResult::Error("Usage: show <command>".to_string())
                 } else if parts[1] == "status" {
@@ -126,11 +126,15 @@ impl InputHandler {
                     CommandResult::ShowMinimap
                 } else if parts[1] == "log" {
                     CommandResult::ShowLog
-                } else if parts[1] == "map" {
+                } else if parts[1] == "map" || parts[1] == "m" {
                     CommandResult::ShowMap
                 } else {
                     CommandResult::Error(format!("Unknown show command: {}", parts[1]))
                 }
+            },
+            "sm" => {
+                // sm 是 show map 的別名
+                CommandResult::ShowMap
             },
             "hide" => {
                 if parts.len() < 2 {
@@ -200,8 +204,8 @@ impl InputHandler {
                 // 向下移動
                 CommandResult::Move(0, 1)
             },
-            "summon" => {
-                // summon <npc名稱/id> 命令，召喚 NPC 到玩家位置
+            "summon" | "sn" => {
+                // summon/sn <npc名稱/id> 命令，召喚 NPC 到玩家位置
                 if parts.len() < 2 {
                     CommandResult::Error("Usage: summon <npc名稱/id>".to_string())
                 } else {
@@ -217,8 +221,8 @@ impl InputHandler {
                     CommandResult::Conquer(parts[1].to_string())
                 }
             },
-            "flyto" => {
-                // flyto <坐標/地圖名/地點名> 命令
+            "flyto" | "ft" => {
+                // flyto/ft <坐標/地圖名/地點名> 命令
                 if parts.len() < 2 {
                     CommandResult::Error("Usage: flyto <x,y|地圖名|地點名>".to_string())
                 } else {
@@ -242,12 +246,30 @@ impl InputHandler {
                     CommandResult::Name(parts[1].to_string(), parts[2..].join(" "))
                 }
             },
-            "destroy" => {
-                // destroy <npc/物品> 命令，刪除當前位置的 NPC 或物品
+            "destroy" | "ds" => {
+                // destroy/ds <npc/物品> 命令，刪除當前位置的 NPC 或物品
                 if parts.len() < 2 {
                     CommandResult::Error("Usage: destroy <npc名稱|物品名稱>".to_string())
                 } else {
                     CommandResult::Destroy(parts[1].to_string())
+                }
+            },
+            "create" | "cr" => {
+                // create/cr <類型> <物件類型> [名稱] 命令，創建物件
+                // 類型: item 或 npc
+                // 物件類型: 如 "工人", "蘋果" 等
+                // 名稱: 可選，自訂義名稱
+                if parts.len() < 3 {
+                    CommandResult::Error("Usage: create <item|npc> <物件類型> [名稱]".to_string())
+                } else {
+                    let obj_type = parts[1].to_string();
+                    let item_type = parts[2].to_string();
+                    let name = if parts.len() > 3 {
+                        Some(parts[3..].join(" "))
+                    } else {
+                        None
+                    };
+                    CommandResult::Create(obj_type, item_type, name)
                 }
             },
             _ => CommandResult::Error(format!("Unknown command: {}", parts[0])),
@@ -298,6 +320,7 @@ pub enum CommandResult {
     NameHere(String),                // 命名當前地點
     Name(String, String),            // 命名 NPC 或地點 (目標, 新名稱)
     Destroy(String),                 // 刪除指定的 NPC 或物品 (NPC名稱/物品名稱)
+    Create(String, String, Option<String>), // 創建物件 (類型, 物件類型, 可選名稱)
     Help,                            // 顯示幫助訊息
 }
 
@@ -309,23 +332,24 @@ impl CommandResult {
             CommandResult::Exit => Some(("exit / quit", "退出遊戲", "🎮 遊戲控制")),
             CommandResult::Help => Some(("help", "顯示此幫助訊息", "🎮 遊戲控制")),
             CommandResult::Clear => Some(("clear", "清除訊息輸出", "🛠️  其他")),
-            CommandResult::Look(..) => Some(("look [<npc>]", "查看位置或NPC", "🎮 遊戲控制")),
-            CommandResult::Move(..) => Some(("↑↓←→", "移動角色", "🎮 遊戲控制")),
-            CommandResult::Conquer(..) => Some(("conq <方向>", "征服方向使其可行走", "🎮 遊戲控制")),
-            CommandResult::FlyTo(..) => Some(("flyto <目標>", "傳送到位置/地圖/地點", "🎮 遊戲控制")),
+            CommandResult::Look(..) => Some(("look / l [<npc>]", "查看位置或NPC", "🎮 遊戲控制")),
+            CommandResult::Move(..) => Some(("↑↓←→ / up/down/left/right (u/d/r)", "移動角色", "🎮 遊戲控制")),
+            CommandResult::Conquer(..) => Some(("conq / conquer <方向>", "征服方向使其可行走", "🎮 遊戲控制")),
+            CommandResult::FlyTo(..) => Some(("flyto / ft <目標>", "傳送到位置/地圖/地點", "🎮 遊戲控制")),
             CommandResult::NameHere(..) => Some(("namehere <名稱>", "命名當前地點", "🎮 遊戲控制")),
             CommandResult::Name(..) => Some(("name <目標> <名稱>", "命名NPC或地點", "🎮 遊戲控制")),
             CommandResult::Get(..) => Some(("get [<物品>] [<數量>]", "撿起物品", "🎒 物品管理")),
             CommandResult::Drop(..) => Some(("drop <物品> <數量>", "放下物品", "🎒 物品管理")),
-            CommandResult::Summon(..) => Some(("summon <npc>", "召喚NPC到此", "👥 NPC互動")),
-            CommandResult::ShowStatus => Some(("show status", "顯示角色狀態", "ℹ️  資訊查詢")),
+            CommandResult::Summon(..) => Some(("summon / sn <npc>", "召喚NPC到此", "👥 NPC互動")),
+            CommandResult::ShowStatus => Some(("status / i", "顯示角色狀態", "ℹ️  資訊查詢")),
             CommandResult::ShowWorld => Some(("show world", "顯示世界資訊", "ℹ️  資訊查詢")),
             CommandResult::ShowMinimap => Some(("show minimap", "顯示小地圖", "🗺️  介面控制")),
             CommandResult::HideMinimap => Some(("hide minimap", "隱藏小地圖", "🗺️  介面控制")),
             CommandResult::ShowLog => Some(("show log", "顯示系統日誌", "🗺️  介面控制")),
             CommandResult::HideLog => Some(("hide log", "隱藏系統日誌", "🗺️  介面控制")),
-            CommandResult::ShowMap => Some(("show map", "顯示大地圖 (↑↓←→移動, q退出)", "🗺️  介面控制")),
-            CommandResult::Destroy(..) => Some(("destroy <目標>", "刪除NPC或物品", "🛠️  其他")),
+            CommandResult::ShowMap => Some(("show map / sm", "顯示大地圖 (↑↓←→移動, q退出)", "🗺️  介面控制")),
+            CommandResult::Destroy(..) => Some(("destroy / ds <目標>", "刪除NPC或物品", "🛠️  其他")),
+            CommandResult::Create(..) => Some(("create / cr <類型> <物件類型> [名稱]", "創建物件 (item/npc)", "🛠️  其他")),
             _ => None,
         }
     }
@@ -356,6 +380,7 @@ impl CommandResult {
             CommandResult::ShowWorld,
             CommandResult::Clear,
             CommandResult::Destroy(String::new()),
+            CommandResult::Create(String::new(), String::new(), None),
         ];
         
         let mut categories: HashMap<&'static str, Vec<(&'static str, &'static str)>> = HashMap::new();

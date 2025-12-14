@@ -165,39 +165,41 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         output_manager.log("已保存新角色: Me".to_string());
     }
     
-    // 生成或加載 NPC
-    let npc_types = vec![
-        ("merchant", "商人", "精明的商人，販售各種物品", vec!["m", "商", "merchant"]),
-        ("traveler", "路人", "友善的旅者，經過森林", vec!["t", "traveler", "旅"]),
-        ("doctor", "醫生", "熟練的醫生，治療傷口", vec!["d", "doc", "醫"]),
-        ("worker", "工人", "努力的工人，從事建築工作", vec!["w", "worker", "工"]),
-        ("farmer", "農夫", "勤勞的農夫，種植農作物", vec!["f", "farmer", "農"]),
-    ];
+    // 先載入 persons 目錄下的所有 NPC 文件
+    output_manager.log("開始載入 NPC...".to_string());
+    let mut loaded_npc_count = 0;
     
-    if let Some(forest_map) = game_world.get_current_map() {
-        let walkable_points = forest_map.get_walkable_points();
-        
-        for (i, (npc_id, name, desc, aliases)) in npc_types.iter().enumerate() {
-            let npc = if let Ok(loaded_npc) = Person::load(&person_dir, npc_id) {
-                loaded_npc
-            } else {
-                let mut new_npc = Person::new(name.to_string(), desc.to_string());
-                if i < walkable_points.len() {
-                    let (x, y) = walkable_points[i];
-                    new_npc.move_to(x, y);
+    if let Ok(entries) = std::fs::read_dir(&person_dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().and_then(|s| s.to_str()) == Some("json") {
+                if let Some(file_stem) = path.file_stem().and_then(|s| s.to_str()) {
+                    // 跳過 "me" 文件，因為已經單獨載入了
+                    if file_stem == "me" {
+                        continue;
+                    }
+                    
+                    // 嘗試載入 NPC
+                    if let Ok(npc) = Person::load(&person_dir, file_stem) {
+                        let npc_name = npc.name.clone();
+                        let npc_x = npc.x;
+                        let npc_y = npc.y;
+                        
+                        // 使用文件名作為 ID，名稱作為別名
+                        game_world.npc_manager.add_npc(
+                            file_stem.to_string(), 
+                            npc, 
+                            vec![npc_name.to_lowercase()]
+                        );
+                        
+                        loaded_npc_count += 1;
+                        output_manager.log(format!("已載入 NPC: {} 在位置 ({}, {})", npc_name, npc_x, npc_y));
+                    }
                 }
-                let _ = new_npc.save(&person_dir, npc_id);
-                new_npc
-            };
-            
-            // 添加到 NPC 管理器
-            let aliases_vec: Vec<String> = aliases.iter().map(|s| s.to_string()).collect();
-            game_world.npc_manager.add_npc(npc_id.to_string(), npc.clone(), aliases_vec);
-            
-            output_manager.log(format!("已載入 NPC: {} 在位置 ({}, {})", name, npc.x, npc.y));
+            }
         }
-    }
-    
+    }    
+    output_manager.log(format!("從文件載入了 {} 個 NPC", loaded_npc_count));    
     output_manager.log(format!("已加載 {} 個地圖", game_world.map_count()));
 
     // 顯示歡迎訊息
@@ -221,14 +223,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 /// 顯示世界歡迎訊息
 fn show_welcome_message(output_manager: &mut output::OutputManager, game_world: &world::GameWorld) {
-    output_manager.print("".to_string());
-    output_manager.print("═══════════════════════════════════════".to_string());
     output_manager.print(format!("✨ 歡迎來到 {} ✨", game_world.metadata.name));
-    output_manager.print("═══════════════════════════════════════".to_string());
-    output_manager.print("".to_string());
     output_manager.print(game_world.metadata.description.clone());
     output_manager.print("".to_string());
-    output_manager.print("───────────────────────────────────────".to_string());
     output_manager.print("💡 輸入 'help' 查看可用指令".to_string());
     output_manager.print("".to_string());
 }
@@ -236,12 +233,7 @@ fn show_welcome_message(output_manager: &mut output::OutputManager, game_world: 
 /// 顯示當前地圖資訊
 fn show_current_map_info(output_manager: &mut output::OutputManager, game_world: &world::GameWorld) {
     if let Some(current_map) = game_world.get_current_map() {
-        output_manager.print("".to_string());
-        output_manager.print("🗺️  ═══════════════════════════════════".to_string());
         output_manager.print(format!("📍 當前區域: {}", current_map.name));
-        output_manager.print("🗺️  ═══════════════════════════════════".to_string());
-        output_manager.print("".to_string());
         output_manager.print(current_map.description.clone());
-        output_manager.print("".to_string());
     }
 }
