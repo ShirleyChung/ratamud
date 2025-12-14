@@ -32,6 +32,9 @@ pub fn run_main_loop(
         // 更新狀態列（檢查訊息是否過期）
         output_manager.update_status();
         
+        // 更新打字機效果
+        output_manager.update_typewriter();
+        
         // 從時鐘線程同步時間
         game_world.update_time();
         
@@ -312,6 +315,7 @@ fn handle_command_result(
         CommandResult::Name(target, name) => handle_name(target, name, output_manager, game_world, me)?,
         CommandResult::Destroy(target) => handle_destroy(target, output_manager, game_world, me)?,
         CommandResult::Create(obj_type, item_type, name) => handle_create(obj_type, item_type, name, output_manager, game_world, me)?,
+        CommandResult::ToggleTypewriter => handle_toggle_typewriter(output_manager),
     }
     Ok(())
 }
@@ -1222,3 +1226,15 @@ fn handle_create(
     
     Ok(())
 }
+
+/// 處理打字機效果切換
+fn handle_toggle_typewriter(output_manager: &mut OutputManager) {
+    if output_manager.is_typing() || output_manager.typewriter_enabled {
+        output_manager.disable_typewriter();
+        output_manager.print("打字機效果已關閉".to_string());
+    } else {
+        output_manager.enable_typewriter();
+        output_manager.print("打字機效果已開啟".to_string());
+    }
+}
+

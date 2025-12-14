@@ -5,6 +5,14 @@ use ratatui::style::{Color, Modifier, Style};
 use std::time::{Instant, Duration};
 use crate::observable::{Observable, Empty};
 
+// 打字機效果狀態
+struct TypewriterState {
+    message_index: usize,       // 正在打字的訊息索引
+    char_count: usize,          // 已顯示的字符數
+    last_update: Instant,       // 上次更新時間
+    char_delay: Duration,       // 每個字符的延遲
+}
+
 // 管理輸出訊息和滾動位置的結構體
 pub struct OutputManager {
     messages: Vec<String>,      // 儲存所有輸出訊息
@@ -24,6 +32,8 @@ pub struct OutputManager {
     show_map: bool,             // 是否顯示大地圖
     map_offset_x: usize,        // 大地圖顯示的偏移量 X
     map_offset_y: usize,        // 大地圖顯示的偏移量 Y
+    typewriter: Option<TypewriterState>, // 打字機效果狀態
+    pub typewriter_enabled: bool,   // 是否啟用打字機效果
 }
 
 impl Default for OutputManager {
@@ -53,14 +63,61 @@ impl OutputManager {
             show_map: false,
             map_offset_x: 0,
             map_offset_y: 0,
+            typewriter: None,
+            typewriter_enabled: false,  // 預設關閉打字機效果
         }
     }
 
     // 添加訊息並將滾動位置移到最後（僅儲存純文本）
     pub fn print(&mut self, message: String) {
-        self.messages.push(message);
+        self.messages.push(message.clone());
         // 將 scroll 設為一個很大的值，render_output 會自動限制它
         self.scroll = usize::MAX;
+        
+        // 如果啟用打字機效果，啟動對最新訊息的打字效果
+        if self.typewriter_enabled && !message.is_empty() {
+            self.typewriter = Some(TypewriterState {
+                message_index: self.messages.len() - 1,
+                char_count: 0,
+                last_update: Instant::now(),
+                char_delay: Duration::from_millis(10), // 每個字符10ms（加快3倍）
+            });
+        }
+    }
+    
+    // 啟用打字機效果
+    pub fn enable_typewriter(&mut self) {
+        self.typewriter_enabled = true;
+    }
+    
+    // 關閉打字機效果
+    pub fn disable_typewriter(&mut self) {
+        self.typewriter_enabled = false;
+        self.typewriter = None;
+    }
+    
+    // 更新打字機效果
+    pub fn update_typewriter(&mut self) {
+        if let Some(ref mut tw) = self.typewriter {
+            let now = Instant::now();
+            if now.duration_since(tw.last_update) >= tw.char_delay && tw.message_index < self.messages.len() {
+                let message = &self.messages[tw.message_index];
+                let char_count = message.chars().count();
+                
+                if tw.char_count < char_count {
+                    tw.char_count += 1;
+                    tw.last_update = now;
+                } else {
+                    // 當前訊息已完全顯示
+                    self.typewriter = None;
+                }
+            }
+        }
+    }
+    
+    // 檢查是否正在打字
+    pub fn is_typing(&self) -> bool {
+        self.typewriter.is_some()
     }
 
     // 設定狀態列訊息（5秒後自動清除）
@@ -141,10 +198,28 @@ impl OutputManager {
             &self.messages[..]
         };
 
-        // 將訊息轉換為渲染線條
+        // 將訊息轉換為渲染線條，考慮打字機效果
         let message_lines: Vec<Line> = visible_messages
             .iter()
-            .map(|m| Line::from(m.as_str()))
+            .enumerate()
+            .map(|(idx, m)| {
+                let actual_index = scroll + idx;
+                
+                // 如果有打字機效果且是正在打字的訊息
+                if let Some(ref tw) = self.typewriter {
+                    if actual_index == tw.message_index {
+                        // 只顯示部分字符
+                        let chars: Vec<char> = m.chars().collect();
+                        let visible_chars: String = chars.iter()
+                            .take(tw.char_count)
+                            .collect();
+                        return Line::from(visible_chars);
+                    }
+                }
+                
+                // 正常顯示完整訊息
+                Line::from(m.as_str())
+            })
             .collect();
 
         // 建立帶邊框的段落小部件

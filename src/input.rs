@@ -147,6 +147,10 @@ impl InputHandler {
                     CommandResult::Error(format!("Unknown hide command: {}", parts[1]))
                 }
             },
+            "typewriter" | "tw" => {
+                // 切換打字機效果
+                CommandResult::ToggleTypewriter
+            },
             "look" | "l" => {
                 // look/l 命令，查看當前位置或 NPC
                 // look - 查看當前位置
@@ -321,6 +325,7 @@ pub enum CommandResult {
     Name(String, String),            // 命名 NPC 或地點 (目標, 新名稱)
     Destroy(String),                 // 刪除指定的 NPC 或物品 (NPC名稱/物品名稱)
     Create(String, String, Option<String>), // 創建物件 (類型, 物件類型, 可選名稱)
+    ToggleTypewriter,                // 切換打字機效果
     Help,                            // 顯示幫助訊息
 }
 
