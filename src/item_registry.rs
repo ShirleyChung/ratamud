@@ -42,6 +42,8 @@ static ITEM_NAME_MAP: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     // 其他
     m.insert("book", "魔法書");
     m.insert("magic_book", "魔法書");
+    m.insert("gold", "金幣");
+    m.insert("coin", "金幣");
     
     m
 });

@@ -71,6 +71,11 @@ impl NpcManager {
     pub fn get_all_npcs(&self) -> Vec<&Person> {
         self.npcs.values().collect()
     }
+    
+    /// 獲取所有 NPC ID
+    pub fn get_all_npc_ids(&self) -> Vec<String> {
+        self.npcs.keys().cloned().collect()
+    }
 
     /// 獲取指定位置的 NPC
     pub fn get_npcs_at(&self, x: usize, y: usize) -> Vec<&Person> {

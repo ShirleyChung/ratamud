@@ -18,6 +18,8 @@ pub struct Person {
     pub y: usize,                    // Y 座標
     pub hp: i32,                     // 體力/健康程度
     pub mp: i32,                     // 精神力/意志力
+    pub max_hp: i32,                 // 最大 HP 值
+    pub max_mp: i32,                 // 最大 MP 值
     pub strength: i32,               // 力量
     pub knowledge: i32,              // 知識
     pub sociality: i32,              // 交誼
@@ -25,7 +27,6 @@ pub struct Person {
     pub last_hunger_hour: u8,        // 上次扣 HP 的小時數
     pub is_sleeping: bool,           // 是否正在睡覺
     pub last_mp_restore_minute: u8,  // 上次恢復 MP 的分鐘數
-    pub max_mp: i32,                 // 最大 MP 值
 }
 
 impl Person {
@@ -40,6 +41,8 @@ impl Person {
             y: 50,
             hp: 100000,
             mp: 100000,
+            max_hp: 100000,
+            max_mp: 100000,
             strength: 100,
             knowledge: 100,
             sociality: 100,
@@ -47,7 +50,6 @@ impl Person {
             last_hunger_hour: 0,
             is_sleeping: false,
             last_mp_restore_minute: 0,
-            max_mp: 100000,
         }
     }
 

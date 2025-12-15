@@ -212,6 +212,10 @@ impl InputHandler {
                     CommandResult::Eat(food_name)
                 }
             },
+            "npcs" | "listnpcs" => {
+                // npcs 命令，列出所有 NPC
+                CommandResult::ListNpcs
+            },
             "sleep" => {
                 // sleep 命令，進入睡眠狀態
                 CommandResult::Sleep
@@ -332,6 +336,44 @@ impl InputHandler {
                     CommandResult::SwitchControl(parts[1].to_string())
                 }
             },
+            "trade" => {
+                // trade <npc> 命令，查看 NPC 的商品列表
+                if parts.len() < 2 {
+                    CommandResult::Error("Usage: trade <npc>".to_string())
+                } else {
+                    CommandResult::Trade(parts[1].to_string())
+                }
+            },
+            "buy" => {
+                // buy <npc> <item> [quantity] 命令，從 NPC 購買物品
+                if parts.len() < 3 {
+                    CommandResult::Error("Usage: buy <npc> <item> [quantity]".to_string())
+                } else {
+                    let npc = parts[1].to_string();
+                    let item = parts[2].to_string();
+                    let quantity = if parts.len() > 3 {
+                        parts[3].parse::<u32>().unwrap_or(1)
+                    } else {
+                        1
+                    };
+                    CommandResult::Buy(npc, item, quantity)
+                }
+            },
+            "sell" => {
+                // sell <npc> <item> [quantity] 命令，向 NPC 出售物品
+                if parts.len() < 3 {
+                    CommandResult::Error("Usage: sell <npc> <item> [quantity]".to_string())
+                } else {
+                    let npc = parts[1].to_string();
+                    let item = parts[2].to_string();
+                    let quantity = if parts.len() > 3 {
+                        parts[3].parse::<u32>().unwrap_or(1)
+                    } else {
+                        1
+                    };
+                    CommandResult::Sell(npc, item, quantity)
+                }
+            },
             _ => CommandResult::Error(format!("Unknown command: {}", parts[0])),
         };
         result
@@ -387,6 +429,10 @@ pub enum CommandResult {
     Create(String, String, Option<String>), // 創建物件 (類型, 物件類型, 可選名稱)
     Set(String, String, i32),        // 設置角色屬性 (目標人物, 屬性, 數值)
     SwitchControl(String),           // 切換操控的角色 (NPC名稱/ID)
+    Trade(String),                   // 查看 NPC 商品 (NPC名稱/ID)
+    Buy(String, String, u32),        // 購買物品 (NPC, 物品, 數量)
+    Sell(String, String, u32),       // 出售物品 (NPC, 物品, 數量)
+    ListNpcs,                        // 列出所有 NPC
     ToggleTypewriter,                // 切換打字機效果
     Help,                            // 顯示幫助訊息
 }
@@ -423,6 +469,10 @@ impl CommandResult {
             CommandResult::Create(..) => Some(("create / cr <類型> <物件類型> [名稱]", "創建物件 (item/npc)", "🛠️  其他")),
             CommandResult::Set(..) => Some(("set <人物> <屬性> <數值>", "設置角色屬性 (hp/mp/strength/knowledge/sociality)", "🛠️  其他")),
             CommandResult::SwitchControl(..) => Some(("ctrl / control <npc>", "切換操控的角色", "👥 NPC互動")),
+            CommandResult::Trade(..) => Some(("trade <npc>", "查看NPC商品", "💰 交易")),
+            CommandResult::Buy(..) => Some(("buy <npc> <item> [數量]", "購買物品", "💰 交易")),
+            CommandResult::Sell(..) => Some(("sell <npc> <item> [數量]", "出售物品", "💰 交易")),
+            CommandResult::ListNpcs => Some(("npcs", "列出所有NPC", "👥 NPC互動")),
             _ => None,
         }
     }
@@ -460,6 +510,10 @@ impl CommandResult {
             CommandResult::Create(String::new(), String::new(), None),
             CommandResult::Set(String::new(), String::new(), 0),
             CommandResult::SwitchControl(String::new()),
+            CommandResult::Trade(String::new()),
+            CommandResult::Buy(String::new(), String::new(), 1),
+            CommandResult::Sell(String::new(), String::new(), 1),
+            CommandResult::ListNpcs,
         ];
         
         let mut categories: HashMap<&'static str, Vec<(&'static str, &'static str)>> = HashMap::new();
@@ -475,8 +529,10 @@ impl CommandResult {
             "🎮 遊戲控制",
             "🎒 物品管理",
             "👥 NPC互動",
+            "💰 交易",
             "🗺️  介面控制",
             "ℹ️  資訊查詢",
+            "💤 睡眠",
             "🛠️  其他",
         ];
         

@@ -13,6 +13,17 @@ pub enum MapType {
     Mountain,   // 山脈地圖
 }
 
+// 地形類型（Point 的特殊屬性）
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub enum TerrainType {
+    Normal,      // 普通地形
+    Farmland,    // 農地
+    Road,        // 道路
+    Shop,        // 商店
+    House,       // 房屋
+    Water,       // 水域
+}
+
 impl MapType {
     pub fn walkable_chance(&self) -> f64 {
         match self {
@@ -157,6 +168,8 @@ pub struct Point {
     pub objects: HashMap<String, u32>,  // 該點上的物件名稱 -> 數量
     #[serde(default)]
     pub object_ages: HashMap<String, Vec<u64>>,  // 物品名稱 -> 各個實例的年齡
+    #[serde(default)]
+    pub terrain_type: TerrainType,  // 地形類型
 }
 
 // 預設物件 HashMap
@@ -175,6 +188,7 @@ impl Point {
             name: String::new(),
             objects: HashMap::new(),
             object_ages: HashMap::new(),
+            terrain_type: TerrainType::Normal,
         }
     }
 
@@ -197,6 +211,7 @@ impl Point {
             name: String::new(),
             objects: HashMap::new(),
             object_ages: HashMap::new(),
+            terrain_type: TerrainType::Normal,
         }
     }
 

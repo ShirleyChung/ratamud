@@ -6,6 +6,8 @@ mod world;
 mod observable;
 mod person;
 mod npc_manager;
+mod npc_ai;
+mod trade;
 mod map;
 mod time_updatable;
 mod time_thread;

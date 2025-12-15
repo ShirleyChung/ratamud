@@ -3,7 +3,18 @@
   "description": "努力的工人，從事建築工作",
   "abilities": [],
   "items": {},
-  "status": "正常",
+  "status": "",
   "x": 73,
-  "y": 66
+  "y": 67,
+  "hp": 99899,
+  "mp": 100000,
+  "max_hp": 100000,
+  "max_mp": 100000,
+  "strength": 100,
+  "knowledge": 100,
+  "sociality": 100,
+  "age": 2071,
+  "last_hunger_hour": 20,
+  "is_sleeping": false,
+  "last_mp_restore_minute": 0
 }

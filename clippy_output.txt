@@ -1,0 +1,4 @@
+    Checking ratatui_demo v0.1.0 (/Users/shirleychung/rataui_demo)
+       Fixed src/app.rs (5 fixes)
+       Fixed src/trade.rs (2 fixes)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 3.91s

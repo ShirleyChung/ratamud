@@ -7,25 +7,22 @@
     "探險"
   ],
   "items": {
-    "治療藥水": 1,
-    "皮衣": 2,
-    "木劍": 2,
-    "乾肉": 1,
+    "木劍": 1,
     "魔法書": 1,
-    "毒藥": 1,
-    "麵包": 2
+    "治療藥水": 1
   },
   "status": "",
-  "x": 51,
-  "y": 50,
-  "hp": 101389,
-  "mp": 99407,
+  "x": 50,
+  "y": 52,
+  "hp": 99491,
+  "mp": 99465,
+  "max_hp": 100000,
+  "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 190391,
+  "age": 24566,
   "last_hunger_hour": 20,
   "is_sleeping": false,
-  "last_mp_restore_minute": 0,
-  "max_mp": 100000
+  "last_mp_restore_minute": 0
 }

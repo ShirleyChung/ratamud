@@ -362,6 +362,10 @@ fn handle_command_result(
         CommandResult::Create(obj_type, item_type, name) => handle_create(obj_type, item_type, name, output_manager, game_world, me)?,
         CommandResult::Set(target, attribute, value) => handle_set(target, attribute, value, output_manager, game_world, me)?,
         CommandResult::SwitchControl(npc_name) => handle_switch_control(npc_name, output_manager, game_world, me)?,
+        CommandResult::Trade(npc_name) => handle_trade(npc_name, output_manager, game_world, me)?,
+        CommandResult::Buy(npc_name, item, quantity) => handle_buy(npc_name, item, quantity, output_manager, game_world, me)?,
+        CommandResult::Sell(npc_name, item, quantity) => handle_sell(npc_name, item, quantity, output_manager, game_world, me)?,
+        CommandResult::ListNpcs => handle_list_npcs(output_manager, game_world),
         CommandResult::ToggleTypewriter => handle_toggle_typewriter(output_manager),
     }
     
@@ -1322,6 +1326,13 @@ fn check_and_execute_events(
     
     game_world.event_scheduler.last_check_time = (current_day, current_hour, current_minute);
     
+    // === 更新 NPC AI ===
+    let ai_logs = crate::npc_ai::NpcAiController::update_all_npcs(game_world);
+    for log in ai_logs {
+        output_manager.log(log);
+    }
+    
+    // === 檢查事件 ===
     let events: Vec<crate::event::GameEvent> = game_world.event_manager.list_events()
         .iter()
         .map(|e| (*e).clone())
@@ -1604,6 +1615,179 @@ fn handle_switch_control(
     }
     
     Ok(())
+}
+
+/// 處理查看 NPC 商品
+fn handle_trade(
+    npc_name: String,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &Person,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // 檢查 NPC 是否在同一位置
+    let npcs_here = game_world.npc_manager.get_npcs_at(me.x, me.y);
+    
+    let npc = npcs_here.iter().find(|n| {
+        n.name.to_lowercase() == npc_name.to_lowercase() ||
+        npc_name.to_lowercase() == "merchant" && n.description.contains("商")
+    });
+    
+    if let Some(npc) = npc {
+        let goods = crate::trade::TradeSystem::get_npc_goods(npc);
+        
+        if goods.is_empty() {
+            output_manager.print(format!("{} 目前沒有商品", npc.name));
+        } else {
+            output_manager.print("".to_string());
+            output_manager.print(format!("═══ {} 的商品 ═══", npc.name));
+            output_manager.print("".to_string());
+            
+            for (item_name, quantity, price) in goods {
+                let display_name = item_registry::get_item_display_name(&item_name);
+                output_manager.print(format!("  {display_name} x{quantity} - {price} 金幣"));
+            }
+            
+            output_manager.print("".to_string());
+            output_manager.print("使用 buy <npc> <item> [數量] 購買物品".to_string());
+            
+            // 顯示玩家金幣
+            let player_gold = me.items.get("金幣").copied().unwrap_or(0);
+            output_manager.print(format!("你的金幣: {player_gold}"));
+        }
+    } else {
+        output_manager.set_status(format!("此處找不到 {npc_name}"));
+    }
+    
+    Ok(())
+}
+
+/// 處理購買物品
+fn handle_buy(
+    npc_name: String,
+    item_name: String,
+    quantity: u32,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &mut Person,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // 檢查 NPC 是否在同一位置
+    let npcs_here: Vec<&crate::person::Person> = game_world.npc_manager.get_npcs_at(me.x, me.y);
+    
+    // 尋找匹配的 NPC
+    let npc_found = npcs_here.iter().any(|n| {
+        n.name.to_lowercase() == npc_name.to_lowercase() ||
+        (npc_name.to_lowercase() == "merchant" && n.description.contains("商"))
+    });
+    
+    if !npc_found {
+        output_manager.set_status(format!("此處找不到 {npc_name}"));
+        return Ok(());
+    }
+    
+    // 解析物品名稱
+    let resolved_item = item_registry::resolve_item_name(&item_name);
+    
+    // 計算價格
+    let price = crate::trade::TradeSystem::calculate_buy_price(&resolved_item, quantity);
+    
+    // 獲取可變 NPC
+    if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_name) {
+        let result = crate::trade::TradeSystem::buy_from_npc(me, npc, &resolved_item, quantity, price);
+        
+        match result {
+            crate::trade::TradeResult::Success(msg) => {
+                output_manager.print(msg);
+                
+                // 保存玩家和 NPC
+                let person_dir = format!("{}/persons", game_world.world_dir);
+                let _ = me.save(&person_dir, "me");
+                let _ = game_world.npc_manager.save_all(&person_dir);
+            },
+            crate::trade::TradeResult::Failed(msg) => {
+                output_manager.set_status(msg);
+            },
+        }
+    }
+    
+    Ok(())
+}
+
+/// 處理出售物品
+fn handle_sell(
+    npc_name: String,
+    item_name: String,
+    quantity: u32,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &mut Person,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // 檢查 NPC 是否在同一位置
+    let npcs_here: Vec<&crate::person::Person> = game_world.npc_manager.get_npcs_at(me.x, me.y);
+    
+    let npc_found = npcs_here.iter().any(|n| {
+        n.name.to_lowercase() == npc_name.to_lowercase() ||
+        (npc_name.to_lowercase() == "merchant" && n.description.contains("商"))
+    });
+    
+    if !npc_found {
+        output_manager.set_status(format!("此處找不到 {npc_name}"));
+        return Ok(());
+    }
+    
+    // 解析物品名稱
+    let resolved_item = item_registry::resolve_item_name(&item_name);
+    
+    // 計算價格
+    let price = crate::trade::TradeSystem::calculate_sell_price(&resolved_item, quantity);
+    
+    // 獲取可變 NPC
+    if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_name) {
+        let result = crate::trade::TradeSystem::sell_to_npc(me, npc, &resolved_item, quantity, price);
+        
+        match result {
+            crate::trade::TradeResult::Success(msg) => {
+                output_manager.print(msg);
+                
+                // 保存玩家和 NPC
+                let person_dir = format!("{}/persons", game_world.world_dir);
+                let _ = me.save(&person_dir, "me");
+                let _ = game_world.npc_manager.save_all(&person_dir);
+            },
+            crate::trade::TradeResult::Failed(msg) => {
+                output_manager.set_status(msg);
+            },
+        }
+    }
+    
+    Ok(())
+}
+
+/// 處理列出所有 NPC
+fn handle_list_npcs(
+    output_manager: &mut OutputManager,
+    game_world: &GameWorld,
+) {
+    let all_npcs = game_world.npc_manager.get_all_npcs();
+    
+    if all_npcs.is_empty() {
+        output_manager.print("目前沒有任何 NPC".to_string());
+    } else {
+        output_manager.print("".to_string());
+        output_manager.print("═══ 所有 NPC ═══".to_string());
+        output_manager.print("".to_string());
+        
+        for npc in &all_npcs {
+            output_manager.print(format!("  {} - {} 位於 ({}, {})", 
+                npc.name, 
+                npc.description,
+                npc.x,
+                npc.y
+            ));
+        }
+        
+        output_manager.print("".to_string());
+        output_manager.print(format!("共 {} 個 NPC", all_npcs.len()));
+    }
 }
 
 /// 處理打字機效果切換
