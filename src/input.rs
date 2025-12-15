@@ -1,4 +1,4 @@
-use crossterm::event::{Event, KeyCode};
+use crossterm::event::{Event, KeyCode, KeyEventKind};
 
 // 處理用戶輸入的結構體
 pub struct InputHandler {
@@ -23,36 +23,46 @@ impl InputHandler {
 
     // 處理鍵盤事件
     pub fn handle_event(&mut self, event: Event) -> Option<CommandResult> {
-        if let Event::Key(key) = event {
-            match key.code {
-                KeyCode::Char(c) => self.input.push(c),          // 添加字符
-                KeyCode::Backspace => {
-                    self.input.pop();                            // 刪除最後一個字符
-                },
-                KeyCode::Enter => {
-                    // Enter 鍵提交輸入
-                    if !self.input.is_empty() {
-                        let result = self.parse_input(self.input.clone());
-                        self.input.clear();
-                        return Some(result);
-                    }
-                },
-                // 方向鍵處理
-                KeyCode::Up => {
-                    return Some(CommandResult::Move(0, -1));     // 向上
-                },
-                KeyCode::Down => {
-                    return Some(CommandResult::Move(0, 1));      // 向下
-                },
-                KeyCode::Left => {
-                    return Some(CommandResult::Move(-1, 0));     // 向左
-                },
-                KeyCode::Right => {
-                    return Some(CommandResult::Move(1, 0));      // 向右
-                },
-                _ => {}
+        match event {
+            Event::Paste(s) => {
+                self.input.push_str(&s);
             }
+
+            Event::Key(key) => {
+                // ✅ 關鍵：只處理 Press
+                if key.kind != KeyEventKind::Press {
+                    return None;
+                }
+
+                match key.code {
+                    KeyCode::Char(c) if c.is_ascii() => {
+                        self.input.push(c);
+                    }
+
+                    KeyCode::Backspace => {
+                        self.input.pop();
+                    }
+
+                    KeyCode::Enter => {
+                        if !self.input.is_empty() {
+                            let result = self.parse_input(self.input.clone());
+                            self.input.clear();
+                            return Some(result);
+                        }
+                    }
+
+                    KeyCode::Up => return Some(CommandResult::Move(0, -1)),
+                    KeyCode::Down => return Some(CommandResult::Move(0, 1)),
+                    KeyCode::Left => return Some(CommandResult::Move(-1, 0)),
+                    KeyCode::Right => return Some(CommandResult::Move(1, 0)),
+
+                    _ => {}
+                }
+            }
+
+            _ => {}
         }
+
         None
     }
 
