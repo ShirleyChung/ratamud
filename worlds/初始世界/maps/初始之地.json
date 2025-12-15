@@ -1518,8 +1518,8 @@
         "description": "懸崖的邊緣，可以俯瞰遠景",
         "name": "",
         "objects": {
-          "漿果": 1,
-          "蘋果": 1
+          "蘋果": 1,
+          "漿果": 1
         },
         "object_ages": {}
       },
@@ -10500,8 +10500,8 @@
         "description": "寂靜的墓地",
         "name": "",
         "objects": {
-          "頭盔": 2,
-          "毒藥": 2
+          "毒藥": 2,
+          "頭盔": 2
         },
         "object_ages": {}
       },
@@ -15451,8 +15451,8 @@
         "description": "鬱鬱蒼蒼的樹林",
         "name": "",
         "objects": {
-          "魔力藥水": 1,
-          "漿果": 3
+          "漿果": 3,
+          "魔力藥水": 1
         },
         "object_ages": {}
       },
@@ -26891,7 +26891,7 @@
         "description": "懸崖的邊緣，可以俯瞰遠景",
         "name": "",
         "objects": {
-          "乾肉": 2
+          "乾肉": 1
         },
         "object_ages": {}
       },
@@ -27885,9 +27885,7 @@
         "walkable": true,
         "description": "清涼的泉水湧出",
         "name": "",
-        "objects": {
-          "木劍": 1
-        },
+        "objects": {},
         "object_ages": {}
       },
       {
@@ -29670,9 +29668,7 @@
         "walkable": true,
         "description": "清涼的泉水湧出",
         "name": "",
-        "objects": {
-          "羽毛": 1
-        },
+        "objects": {},
         "object_ages": {}
       },
       {
@@ -29681,8 +29677,14 @@
         "walkable": true,
         "description": "灰色的嶙峋岩石",
         "name": "",
-        "objects": {},
-        "object_ages": {}
+        "objects": {
+          "羽毛": 1
+        },
+        "object_ages": {
+          "羽毛": [
+            5264
+          ]
+        }
       },
       {
         "x": 42,
@@ -30587,7 +30589,7 @@
       {
         "x": 40,
         "y": 33,
-        "walkable": false,
+        "walkable": true,
         "description": "懸崖的邊緣，可以俯瞰遠景",
         "name": "",
         "objects": {},
@@ -32829,8 +32831,8 @@
         "description": "神秘的洞穴入口",
         "name": "",
         "objects": {
-          "盾牌": 2,
-          "蘋果": 2
+          "蘋果": 2,
+          "盾牌": 2
         },
         "object_ages": {}
       },
@@ -33005,8 +33007,8 @@
         "description": "白雪皚皚的地面",
         "name": "",
         "objects": {
-          "石子": 2,
-          "頭盔": 1
+          "頭盔": 1,
+          "石子": 2
         },
         "object_ages": {}
       },
@@ -33921,7 +33923,7 @@
         },
         "object_ages": {
           "蘋果": [
-            16665
+            27600
           ]
         }
       },
@@ -34078,8 +34080,8 @@
         "description": "寬闊的綠色草地，微風吹過",
         "name": "",
         "objects": {
-          "繩索": 2,
-          "麵包": 2
+          "麵包": 2,
+          "繩索": 2
         },
         "object_ages": {}
       },
@@ -39664,8 +39666,8 @@
         "description": "宏偉的石砌城堡",
         "name": "",
         "objects": {
-          "樹皮": 2,
-          "毒藥": 1
+          "毒藥": 1,
+          "樹皮": 2
         },
         "object_ages": {}
       },
@@ -41116,8 +41118,8 @@
         "description": "白雪皚皚的地面",
         "name": "",
         "objects": {
-          "盾牌": 1,
-          "鎬": 2
+          "鎬": 2,
+          "盾牌": 1
         },
         "object_ages": {}
       },
@@ -42650,8 +42652,14 @@
         "walkable": true,
         "description": "黃色沙漠風景",
         "name": "",
-        "objects": {},
-        "object_ages": {}
+        "objects": {
+          "蘋果": 1
+        },
+        "object_ages": {
+          "蘋果": [
+            9765
+          ]
+        }
       },
       {
         "x": 58,
@@ -43152,7 +43160,7 @@
       {
         "x": 12,
         "y": 47,
-        "walkable": false,
+        "walkable": true,
         "description": "神秘的洞穴入口",
         "name": "",
         "objects": {},
@@ -43179,7 +43187,7 @@
       {
         "x": 15,
         "y": 47,
-        "walkable": false,
+        "walkable": true,
         "description": "密集的灌木叢",
         "name": "",
         "objects": {},
@@ -44045,8 +44053,8 @@
         "description": "熱鬧的小村落",
         "name": "",
         "objects": {
-          "木劍": 3,
-          "頭盔": 1
+          "頭盔": 1,
+          "木劍": 3
         },
         "object_ages": {}
       },
@@ -44888,8 +44896,8 @@
         "description": "寬闊的綠色草地，微風吹過",
         "name": "",
         "objects": {
-          "盾牌": 3,
-          "弓": 2
+          "弓": 2,
+          "盾牌": 3
         },
         "object_ages": {}
       },
@@ -46262,7 +46270,7 @@
         "y": 50,
         "walkable": true,
         "description": "連接兩岸的古老橋樑",
-        "name": "",
+        "name": "center",
         "objects": {},
         "object_ages": {}
       },
@@ -46278,7 +46286,7 @@
       {
         "x": 52,
         "y": 50,
-        "walkable": false,
+        "walkable": true,
         "description": "遠方的翠綠山丘",
         "name": "",
         "objects": {},
@@ -46296,7 +46304,7 @@
       {
         "x": 54,
         "y": 50,
-        "walkable": false,
+        "walkable": true,
         "description": "盛開的彩色花田",
         "name": "",
         "objects": {},
@@ -47205,7 +47213,7 @@
       {
         "x": 53,
         "y": 51,
-        "walkable": false,
+        "walkable": true,
         "description": "遠方的翠綠山丘",
         "name": "",
         "objects": {},
@@ -47858,8 +47866,8 @@
         "description": "聳立的懸崖",
         "name": "",
         "objects": {
-          "繩索": 1,
-          "舊布料": 1
+          "舊布料": 1,
+          "繩索": 1
         },
         "object_ages": {}
       },
@@ -49836,8 +49844,8 @@
         "description": "盛開的彩色花田",
         "name": "",
         "objects": {
-          "鎬": 1,
-          "匕首": 3
+          "匕首": 3,
+          "鎬": 1
         },
         "object_ages": {}
       },
@@ -53163,8 +53171,8 @@
         "description": "清涼的泉水湧出",
         "name": "",
         "objects": {
-          "蘋果": 3,
-          "頭盔": 3
+          "頭盔": 3,
+          "蘋果": 3
         },
         "object_ages": {}
       },
@@ -67128,8 +67136,8 @@
         "description": "白雪皚皚的地面",
         "name": "",
         "objects": {
-          "頭盔": 2,
-          "羽毛": 2
+          "羽毛": 2,
+          "頭盔": 2
         },
         "object_ages": {}
       },
@@ -68359,8 +68367,8 @@
         "description": "聳立的懸崖",
         "name": "",
         "objects": {
-          "繩索": 2,
-          "毒藥": 2
+          "毒藥": 2,
+          "繩索": 2
         },
         "object_ages": {}
       },
@@ -71028,8 +71036,8 @@
         "description": "古老的廢墟遺跡",
         "name": "",
         "objects": {
-          "治療藥水": 2,
-          "樹皮": 3
+          "樹皮": 3,
+          "治療藥水": 2
         },
         "object_ages": {}
       },
@@ -87257,8 +87265,8 @@
         "description": "連接兩岸的古老橋樑",
         "name": "",
         "objects": {
-          "火把": 1,
-          "皮衣": 2
+          "皮衣": 2,
+          "火把": 1
         },
         "object_ages": {}
       },

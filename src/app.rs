@@ -18,6 +18,16 @@ use crate::input::CommandResult;
 use crate::item_registry;
 use crate::ui::{InputDisplay, HeaderDisplay};
 
+/// 確保 Rect 在邊界內
+fn clamp_rect(rect: Rect, max_width: u16, max_height: u16) -> Rect {
+    let x = rect.x.min(max_width.saturating_sub(1));
+    let y = rect.y.min(max_height.saturating_sub(1));
+    let width = rect.width.min(max_width.saturating_sub(x));
+    let height = rect.height.min(max_height.saturating_sub(y));
+    
+    Rect { x, y, width, height }
+}
+
 /// 應用程式主迴圈 - 將 main.rs 中的事件迴圈邏輯提取到此
 pub fn run_main_loop(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
@@ -95,8 +105,9 @@ pub fn run_main_loop(
             // 畫小地圖
             if output_manager.is_minimap_open() {
                 let minimap_widget = output_manager.get_minimap(minimap_area);
-                f.render_widget(Clear, minimap_area); // 清除背景
-                f.render_widget(minimap_widget, minimap_area);
+                let safe_area = clamp_rect(minimap_area, size.width, size.height);
+                f.render_widget(Clear, safe_area); // 清除背景
+                f.render_widget(minimap_widget, safe_area);
             }
 
             // 計算日誌視窗位置和大小（右側，在小地圖下方）
@@ -114,8 +125,9 @@ pub fn run_main_loop(
             // 畫日誌視窗
             if output_manager.is_log_open() {
                 let log_widget = output_manager.render_log(log_area);
-                f.render_widget(Clear, log_area); // 清除背景
-                f.render_widget(log_widget, log_area);
+                let safe_area = clamp_rect(log_area, size.width, size.height);
+                f.render_widget(Clear, safe_area); // 清除背景
+                f.render_widget(log_widget, safe_area);
             }
             
             // 側邊面板使用動態高度
@@ -137,8 +149,9 @@ pub fn run_main_loop(
             // 畫側邊面板
             if output_manager.is_side_panel_open() {
                 let side_widget = output_manager.get_side_panel(floating_area);
-                f.render_widget(Clear, floating_area); // 清除背景
-                f.render_widget(side_widget, floating_area);
+                let safe_area = clamp_rect(floating_area, size.width, size.height);
+                f.render_widget(Clear, safe_area); // 清除背景
+                f.render_widget(side_widget, safe_area);
             }
             
             // 渲染大地圖（置中懸浮視窗）
@@ -158,8 +171,9 @@ pub fn run_main_loop(
                     };
                     
                     let map_widget = output_manager.render_big_map(map_area, current_map, me.x, me.y, &game_world.npc_manager);
-                    f.render_widget(Clear, map_area);
-                    f.render_widget(map_widget, map_area);
+                    let safe_area = clamp_rect(map_area, size.width, size.height);
+                    f.render_widget(Clear, safe_area);
+                    f.render_widget(map_widget, safe_area);
                 }
             }
             
@@ -634,8 +648,22 @@ pub fn update_minimap_display(
             let mut spans: Vec<Span<'static>> = Vec::new();
             
             for dx in 0..grid_width {
-                let check_x = (me.x as i32 - half_width as i32 + dx as i32).max(0) as usize;
-                let check_y = (me.y as i32 - half_height as i32 + dy as i32).max(0) as usize;
+                let calc_x = me.x as i32 - half_width + dx;
+                let calc_y = me.y as i32 - half_height + dy;
+                
+                // 檢查是否超出邊界（包括負數）
+                if calc_x < 0 || calc_y < 0 || 
+                   calc_x >= current_map.width as i32 || calc_y >= current_map.height as i32 {
+                    // 邊界外 - 空白
+                    spans.push(Span::styled(
+                        String::from(" "),
+                        Style::default()
+                    ));
+                    continue;
+                }
+                
+                let check_x = calc_x as usize;
+                let check_y = calc_y as usize;
                 
                 // 檢查是否是玩家位置
                 if check_x == me.x && check_y == me.y {
@@ -643,12 +671,6 @@ pub fn update_minimap_display(
                     spans.push(Span::styled(
                         String::from("P"),
                         Style::default().fg(Color::Red)
-                    ));
-                } else if check_x >= current_map.width || check_y >= current_map.height {
-                    // 邊界外 - 灰色
-                    spans.push(Span::styled(
-                        String::from("■"),
-                        Style::default().fg(Color::DarkGray)
                     ));
                 } else {
                     // 檢查該位置是否有 NPC

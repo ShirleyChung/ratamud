@@ -41,10 +41,12 @@ impl EventLoader {
             } else if path.extension().and_then(|s| s.to_str()) == Some("json") {
                 // 加載 JSON 事件檔案
                 match Self::load_event_file(&path) {
-                    Ok(event) => {
-                        let event_info = format!("{} ({})", event.name, event.id);
-                        loaded_events.push(event_info);
-                        event_manager.add_event(event);
+                    Ok(events) => {
+                        for event in events {
+                            let event_info = format!("{} ({})", event.name, event.id);
+                            loaded_events.push(event_info);
+                            event_manager.add_event(event);
+                        }
                     }
                     Err(e) => {
                         eprintln!("載入事件檔案 {path:?} 失敗: {e}");
@@ -56,11 +58,18 @@ impl EventLoader {
         Ok(())
     }
     
-    /// 從文件加載單個事件
-    fn load_event_file(path: &Path) -> Result<GameEvent, Box<dyn std::error::Error>> {
+    /// 從文件加載事件（支援單個事件或事件陣列）
+    fn load_event_file(path: &Path) -> Result<Vec<GameEvent>, Box<dyn std::error::Error>> {
         let content = fs::read_to_string(path)?;
+        
+        // 先嘗試載入為陣列
+        if let Ok(events) = serde_json::from_str::<Vec<GameEvent>>(&content) {
+            return Ok(events);
+        }
+        
+        // 如果失敗，嘗試載入為單個事件
         let event: GameEvent = serde_json::from_str(&content)?;
-        Ok(event)
+        Ok(vec![event])
     }
     
     /// 保存事件到文件

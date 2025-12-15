@@ -296,10 +296,7 @@ impl OutputManager {
     pub fn get_minimap(&self, _area: Rect) -> Paragraph<'_> {
         // 根據 show_minimap 狀態決定要渲染的內容
         // 渲染小地圖
-        let lines: Vec<Line> = self.minimap_lines
-            .iter()
-            .map(|line| line.clone())
-            .collect();
+        let lines: Vec<Line> = self.minimap_lines.to_vec();
 
         Paragraph::new(Text::from(lines))
             .block(Block::default()
@@ -361,10 +358,7 @@ impl OutputManager {
     // 渲染小地圖懸浮視窗
     #[allow(dead_code)]
     pub fn render_minimap(&self, _area: Rect) -> Paragraph<'_> {
-        let lines: Vec<Line> = self.minimap_lines
-            .iter()
-            .map(|line| line.clone())
-            .collect();
+        let lines: Vec<Line> = self.minimap_lines.to_vec();
 
         Paragraph::new(Text::from(lines))
             .block(Block::default()
@@ -556,7 +550,7 @@ impl OutputManager {
                                 crate::map::MapType::Mountain => "△",
                                 _ => "x",
                             };
-                            line_spans.push(Span::styled(char_display, Style::default().fg(Color::DarkGray)));
+                            line_spans.push(Span::styled(char_display, Style::default().fg(Color::White)));
                         }
                     } else {
                         line_spans.push(Span::styled("?", Style::default().fg(Color::Red)));
