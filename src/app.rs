@@ -361,6 +361,7 @@ fn handle_command_result(
         CommandResult::Destroy(target) => handle_destroy(target, output_manager, game_world, me)?,
         CommandResult::Create(obj_type, item_type, name) => handle_create(obj_type, item_type, name, output_manager, game_world, me)?,
         CommandResult::Set(target, attribute, value) => handle_set(target, attribute, value, output_manager, game_world, me)?,
+        CommandResult::SwitchControl(npc_name) => handle_switch_control(npc_name, output_manager, game_world, me)?,
         CommandResult::ToggleTypewriter => handle_toggle_typewriter(output_manager),
     }
     
@@ -1552,6 +1553,54 @@ fn handle_set(
         } else {
             output_manager.set_status(format!("找不到 NPC: {target}"));
         }
+    }
+    
+    Ok(())
+}
+
+/// 處理切換操控角色命令
+fn handle_switch_control(
+    npc_name: String,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &mut Person,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // 步驟1: 如果當前控制的是 NPC，先把狀態同步回去
+    if let Some(current_id) = &game_world.current_controlled_id {
+        if let Some(npc) = game_world.npc_manager.get_npc_mut(current_id) {
+            *npc = me.clone();
+        }
+    }
+    
+    // 步驟2: 如果是第一次切換，備份原始玩家
+    if game_world.original_player.is_none() {
+        game_world.original_player = Some(me.clone());
+    }
+    
+    // 步驟3: 檢查是否切換回原始玩家
+    if npc_name.to_lowercase() == "me" || npc_name == "我" || npc_name.to_lowercase() == "player" {
+        if let Some(original) = &game_world.original_player {
+            *me = original.clone();
+            game_world.current_controlled_id = None;
+            output_manager.print("已切換回原始角色".to_string());
+            output_manager.set_status(format!("現在操控: {}", me.name));
+        } else {
+            output_manager.set_status("你本來就是原始角色！".to_string());
+        }
+        return Ok(());
+    }
+    
+    // 步驟4: 切換到指定 NPC
+    if let Some(npc) = game_world.npc_manager.get_npc(&npc_name) {
+        let npc_clone = npc.clone();
+        let npc_id = npc_name.clone();
+        *me = npc_clone;
+        game_world.current_controlled_id = Some(npc_id);
+        
+        output_manager.print(format!("已切換控制角色為: {}", me.name));
+        output_manager.set_status(format!("現在操控: {}", me.name));
+    } else {
+        output_manager.set_status(format!("找不到 NPC: {npc_name}"));
     }
     
     Ok(())

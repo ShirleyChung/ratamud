@@ -324,6 +324,14 @@ impl InputHandler {
                     CommandResult::Set(target, attribute, value)
                 }
             },
+            "ctrl" | "control" => {
+                // ctrl/control <npc名稱/id> 命令，切換當前操控的角色
+                if parts.len() < 2 {
+                    CommandResult::Error("Usage: ctrl <npc名稱/id>".to_string())
+                } else {
+                    CommandResult::SwitchControl(parts[1].to_string())
+                }
+            },
             _ => CommandResult::Error(format!("Unknown command: {}", parts[0])),
         };
         result
@@ -378,6 +386,7 @@ pub enum CommandResult {
     Destroy(String),                 // 刪除指定的 NPC 或物品 (NPC名稱/物品名稱)
     Create(String, String, Option<String>), // 創建物件 (類型, 物件類型, 可選名稱)
     Set(String, String, i32),        // 設置角色屬性 (目標人物, 屬性, 數值)
+    SwitchControl(String),           // 切換操控的角色 (NPC名稱/ID)
     ToggleTypewriter,                // 切換打字機效果
     Help,                            // 顯示幫助訊息
 }
@@ -413,6 +422,7 @@ impl CommandResult {
             CommandResult::Destroy(..) => Some(("destroy / ds <目標>", "刪除NPC或物品", "🛠️  其他")),
             CommandResult::Create(..) => Some(("create / cr <類型> <物件類型> [名稱]", "創建物件 (item/npc)", "🛠️  其他")),
             CommandResult::Set(..) => Some(("set <人物> <屬性> <數值>", "設置角色屬性 (hp/mp/strength/knowledge/sociality)", "🛠️  其他")),
+            CommandResult::SwitchControl(..) => Some(("ctrl / control <npc>", "切換操控的角色", "👥 NPC互動")),
             _ => None,
         }
     }
@@ -449,6 +459,7 @@ impl CommandResult {
             CommandResult::Destroy(String::new()),
             CommandResult::Create(String::new(), String::new(), None),
             CommandResult::Set(String::new(), String::new(), 0),
+            CommandResult::SwitchControl(String::new()),
         ];
         
         let mut categories: HashMap<&'static str, Vec<(&'static str, &'static str)>> = HashMap::new();

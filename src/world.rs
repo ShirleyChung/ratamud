@@ -351,6 +351,8 @@ pub struct GameWorld {
     pub event_scheduler: crate::event_scheduler::EventScheduler,
     pub time_thread: Option<crate::time_thread::TimeThread>,
     pub npc_manager: crate::npc_manager::NpcManager,
+    pub current_controlled_id: Option<String>,  // 當前操控的角色 ID (None = 原始玩家)
+    pub original_player: Option<Person>,         // 原始玩家資料備份
 }
 
 impl Default for GameWorld {
@@ -388,6 +390,8 @@ impl GameWorld {
             event_scheduler: crate::event_scheduler::EventScheduler::new(),
             time_thread: Some(time_thread),
             npc_manager: crate::npc_manager::NpcManager::new(),
+            current_controlled_id: None,
+            original_player: None,
         }
     }
 
