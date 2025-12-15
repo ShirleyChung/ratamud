@@ -207,6 +207,10 @@ impl Observable for Person {
 // 實現 TimeUpdatable trait
 impl TimeUpdatable for Person {
     fn on_time_update(&mut self, current_time: &TimeInfo) {
+        // 如果 MP 已經耗盡，強制進入睡眠狀態
+        if self.mp <= 0 {
+            self.is_sleeping = true; // 強制進入睡眠狀態
+        }
         // 每秒增加年齡
         self.age += 1;
         
@@ -222,61 +226,18 @@ impl TimeUpdatable for Person {
                 }
             }
         
-        // 睡眠時每 10 分鐘恢復 10% MP
+        // 睡眠恢復MP
         if self.is_sleeping {
-            // 檢查是否到達 10 的倍數分鐘且與上次不同
-            if current_time.minute % 10 == 0 && current_time.minute != self.last_mp_restore_minute {
-                let restore_amount = (self.max_mp as f32 * 0.1) as i32;
-                self.mp += restore_amount;
-                
-                // MP 不能超過最大值
-                if self.mp > self.max_mp {
-                    self.mp = self.max_mp;
-                }
-                
-                self.last_mp_restore_minute = current_time.minute;
+            // 有立即效果的恢復
+            self.mp += 1;                
+            // MP 不能超過最大值
+            if self.mp > self.max_mp {
+                self.mp = self.max_mp;
             }
-        }
-        
+        } 
         // 根據遊戲時間更新人物狀態（非睡眠時）
-        if !self.is_sleeping {
-            match current_time.hour {
-            6..=8 => {
-                if !self.status.contains("早晨") && !self.status.contains("起床") {
-                    self.set_status("起床中".to_string());
-                }
-            },
-            9..=11 => {
-                if !self.status.contains("工作") {
-                    self.set_status("工作中".to_string());
-                }
-            },
-            12..=13 => {
-                if !self.status.contains("午餐") {
-                    self.set_status("午餐時間".to_string());
-                }
-            },
-            14..=17 => {
-                if !self.status.contains("工作") {
-                    self.set_status("工作中".to_string());
-                }
-            },
-            18..=19 => {
-                if !self.status.contains("晚餐") {
-                    self.set_status("晚餐時間".to_string());
-                }
-            },
-            20..=22 => {
-                if !self.status.contains("放鬆") {
-                    self.set_status("放鬆中".to_string());
-                }
-            },
-            _ => {
-                if !self.status.contains("睡眠") {
-                    self.set_status("睡眠中".to_string());
-                }
-            }
-            }
+        else {
+            self.set_status("".to_string());
         }
     }
 }

@@ -307,6 +307,8 @@ fn handle_command_result(
         }
         return Ok(());
     }
+
+    me.mp -= 1; // 每執行一個命令消耗 1 MP
     
     match result {
         CommandResult::Exit => handle_exit(output_manager, game_world)?,

@@ -31,7 +31,7 @@ impl CronParser {
         // 處理 */N 格式（每N）
         if let Some(stripped) = pattern.strip_prefix("*/") {
             if let Ok(interval) = stripped.parse::<u32>() {
-                return value % interval == 0;
+                return value.is_multiple_of(interval);
             }
         }
         

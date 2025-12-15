@@ -37,6 +37,7 @@ pub struct Item {
     pub value: u32,  // 物品價值
     #[serde(default)]
     pub age: u64,    // 物品存在時間（以秒計算）
+    pub stories: Vec<String>,       // 物品的故事
 }
 
 impl Item {
@@ -49,6 +50,7 @@ impl Item {
             description,
             value,
             age: 0,
+            stories: Vec::new(),
         }
     }
 
