@@ -2,6 +2,8 @@ use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
 use ratatui::layout::{Layout, Constraint, Direction, Rect};
 use ratatui::widgets::Clear;
+use ratatui::text::{Line, Span};
+use ratatui::style::{Color, Style};
 use std::io;
 use crossterm::event::{self, KeyCode};
 use std::time::{Duration, Instant};
@@ -76,10 +78,11 @@ pub fn run_main_loop(
             let output_widget = output_manager.render_output(vertical_chunks[1]);
             f.render_widget(output_widget, vertical_chunks[1]);
 
-            // 計算小地圖的位置和大小（右上角，根據內容自動調整高度）
-            let minimap_width = (size.width as f32 * 0.35) as u16;  // 縮小寬度
-            // 小地圖固定顯示: 標題(1) + 位置(1) + 4個方向(4) + 邊框(2) = 8行
-            let minimap_height = 8u16;  
+            // 計算小地圖的位置和大小（右上角，fit內容）
+            // 網格40字符 + 邊框2 = 42
+            let minimap_width = 42u16;  // 40字符網格 + 左右邊框各1
+            // 小地圖固定顯示: 位置(1) + 4個方向(4) + 分隔線(1) + 40x10網格(10) + 邊框(2) = 18行
+            let minimap_height = 18u16;  
             let minimap_x = size.width.saturating_sub(minimap_width);
             let minimap_y = 1;  // 從標題列下方開始
             
@@ -346,6 +349,12 @@ fn handle_command_result(
         CommandResult::Set(target, attribute, value) => handle_set(target, attribute, value, output_manager, game_world, me)?,
         CommandResult::ToggleTypewriter => handle_toggle_typewriter(output_manager),
     }
+    
+    // 所有命令執行後，如果小地圖已打開，更新小地圖資料
+    if output_manager.is_minimap_open() {
+        update_minimap_display(output_manager, game_world, me);
+    }
+    
     Ok(())
 }
 
@@ -570,46 +579,136 @@ pub fn update_minimap_display(
     me: &Person,
 ) {
     if let Some(current_map) = game_world.get_current_map() {
-        let mut minimap_data = vec![format!("【位置: ({}, {})】", me.x, me.y)];
+        let mut minimap_data: Vec<Line<'static>> = vec![Line::from(format!("【位置: ({}, {})】", me.x, me.y))];
         
         // 上方
         if me.y > 0 {
             if let Some(point) = current_map.get_point(me.x, me.y - 1) {
                 let walkable = if point.walkable { '\u{2713}' } else { '\u{2718}' };
-                minimap_data.push(format!("↑ {} {}", point.description, walkable));
+                minimap_data.push(Line::from(format!("↑ {} {}", point.description, walkable)));
             }
         } else {
-            minimap_data.push("↑ (邊界)".to_string());
+            minimap_data.push(Line::from("↑ (邊界)".to_string()));
         }
         
         // 下方
         if me.y + 1 < current_map.height {
             if let Some(point) = current_map.get_point(me.x, me.y + 1) {
                 let walkable = if point.walkable { '\u{2713}' } else { '\u{2718}' };
-                minimap_data.push(format!("↓ {} {}", point.description, walkable));
+                minimap_data.push(Line::from(format!("↓ {} {}", point.description, walkable)));
             }
         } else {
-            minimap_data.push("↓ (邊界)".to_string());
+            minimap_data.push(Line::from("↓ (邊界)".to_string()));
         }
         
         // 左方
         if me.x > 0 {
             if let Some(point) = current_map.get_point(me.x - 1, me.y) {
                 let walkable = if point.walkable { '\u{2713}' } else { '\u{2718}' };
-                minimap_data.push(format!("← {} {}", point.description, walkable));
+                minimap_data.push(Line::from(format!("← {} {}", point.description, walkable)));
             }
         } else {
-            minimap_data.push("← (邊界)".to_string());
+            minimap_data.push(Line::from("← (邊界)".to_string()));
         }
         
         // 右方
         if me.x + 1 < current_map.width {
             if let Some(point) = current_map.get_point(me.x + 1, me.y) {
                 let walkable = if point.walkable { '\u{2713}' } else { '\u{2718}' };
-                minimap_data.push(format!("→ {} {}", point.description, walkable));
+                minimap_data.push(Line::from(format!("→ {} {}", point.description, walkable)));
             }
         } else {
-            minimap_data.push("→ (邊界)".to_string());
+            minimap_data.push(Line::from("→ (邊界)".to_string()));
+        }
+        
+        // 添加分隔線
+        minimap_data.push(Line::from("────────────────────────────────────────".to_string()));
+        
+        // 添加 40x10 網格視圖（玩家周圍，寬40高10）
+        let grid_width = 40;
+        let grid_height = 10;
+        let half_width = grid_width / 2;
+        let half_height = grid_height / 2;
+        
+        for dy in 0..grid_height {
+            let mut spans: Vec<Span<'static>> = Vec::new();
+            
+            for dx in 0..grid_width {
+                let check_x = (me.x as i32 - half_width as i32 + dx as i32).max(0) as usize;
+                let check_y = (me.y as i32 - half_height as i32 + dy as i32).max(0) as usize;
+                
+                // 檢查是否是玩家位置
+                if check_x == me.x && check_y == me.y {
+                    // 玩家位置 - 紅色 P
+                    spans.push(Span::styled(
+                        String::from("P"),
+                        Style::default().fg(Color::Red)
+                    ));
+                } else if check_x >= current_map.width || check_y >= current_map.height {
+                    // 邊界外 - 灰色
+                    spans.push(Span::styled(
+                        String::from("■"),
+                        Style::default().fg(Color::DarkGray)
+                    ));
+                } else {
+                    // 檢查該位置是否有 NPC
+                    let npcs_at_pos = game_world.npc_manager.get_npcs_at(check_x, check_y);
+                    let has_merchant = npcs_at_pos.iter().any(|npc| 
+                        npc.name.contains("商人") || npc.name.to_lowercase().contains("merchant")
+                    );
+                    let has_other_npc = !npcs_at_pos.is_empty();
+                    
+                    // 檢查該位置是否有物品
+                    let has_item = if let Some(point) = current_map.get_point(check_x, check_y) {
+                        !point.objects.is_empty()
+                    } else {
+                        false
+                    };
+                    
+                    // 根據優先級顯示
+                    if has_merchant {
+                        // 商人 - 綠色 M
+                        spans.push(Span::styled(
+                            String::from("M"),
+                            Style::default().fg(Color::Green)
+                        ));
+                    } else if has_other_npc {
+                        // 其他 NPC - 藍色 N
+                        spans.push(Span::styled(
+                            String::from("N"),
+                            Style::default().fg(Color::Blue)
+                        ));
+                    } else if has_item {
+                        // 物品 - 黃色 I
+                        spans.push(Span::styled(
+                            String::from("I"),
+                            Style::default().fg(Color::Yellow)
+                        ));
+                    } else if let Some(point) = current_map.get_point(check_x, check_y) {
+                        if point.walkable {
+                            // 可走 - 深灰色 ·
+                            spans.push(Span::styled(
+                                String::from("·"),
+                                Style::default().fg(Color::Gray)
+                            ));
+                        } else {
+                            // 牆壁 - 白色 ▓
+                            spans.push(Span::styled(
+                                String::from("▓"),
+                                Style::default().fg(Color::White)
+                            ));
+                        }
+                    } else {
+                        // 未知 - 灰色 ?
+                        spans.push(Span::styled(
+                            String::from("?"),
+                            Style::default().fg(Color::DarkGray)
+                        ));
+                    }
+                }
+            }
+            
+            minimap_data.push(Line::from(spans));
         }
         
         output_manager.update_minimap(minimap_data);
@@ -648,11 +747,6 @@ fn handle_movement(
                     
                     // 移動後執行look
                     display_look(None, output_manager, game_world, me);
-                    
-                    // 如果小地圖已打開，更新小地圖資料
-                    if output_manager.is_minimap_open() {
-                        update_minimap_display(output_manager, game_world, me);
-                    }
                 } else {
                     output_manager.set_status("前方是牆壁，無法通過".to_string());
                 }

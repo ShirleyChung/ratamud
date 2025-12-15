@@ -25,7 +25,7 @@ pub struct OutputManager {
     side_observable: Box<dyn Observable>, // 側邊面板的可觀察對象
     current_time: String,       // 當前遊戲時間顯示
     show_minimap: bool,         // 是否顯示小地圖
-    minimap_lines: Vec<String>, // 小地圖的行內容
+    minimap_lines: Vec<Line<'static>>, // 小地圖的行內容（支援顏色）
     log_messages: Vec<String>,  // 系統日誌訊息
     log_scroll: usize,          // 日誌滾動位置
     show_log: bool,             // 是否顯示日誌視窗
@@ -298,7 +298,7 @@ impl OutputManager {
         // 渲染小地圖
         let lines: Vec<Line> = self.minimap_lines
             .iter()
-            .map(|line| Line::from(line.as_str()))
+            .map(|line| line.clone())
             .collect();
 
         Paragraph::new(Text::from(lines))
@@ -307,6 +307,7 @@ impl OutputManager {
                 .borders(Borders::ALL)
                 .style(Style::default().bg(Color::DarkGray).fg(Color::Cyan)))
             .style(Style::default().bg(Color::DarkGray).fg(Color::Cyan))
+            .alignment(Alignment::Left)
     }
     // 取得stats內容
     pub fn get_side_panel(&self, _area: Rect) -> Paragraph<'_> {
@@ -352,8 +353,8 @@ impl OutputManager {
         self.show_minimap
     }
 
-    // 更新小地圖內容（八方向的描述）
-    pub fn update_minimap(&mut self, minimap_data: Vec<String>) {
+    // 更新小地圖內容（支援顏色的行）
+    pub fn update_minimap(&mut self, minimap_data: Vec<Line<'static>>) {
         self.minimap_lines = minimap_data;
     }
 
@@ -362,7 +363,7 @@ impl OutputManager {
     pub fn render_minimap(&self, _area: Rect) -> Paragraph<'_> {
         let lines: Vec<Line> = self.minimap_lines
             .iter()
-            .map(|line| Line::from(line.as_str()))
+            .map(|line| line.clone())
             .collect();
 
         Paragraph::new(Text::from(lines))
@@ -371,6 +372,7 @@ impl OutputManager {
                 .borders(Borders::ALL)
                 .style(Style::default().bg(Color::DarkGray).fg(Color::Cyan)))
             .style(Style::default().bg(Color::DarkGray).fg(Color::Cyan))
+            .alignment(Alignment::Left)
     }
 
     // 在Output Message印出物件
