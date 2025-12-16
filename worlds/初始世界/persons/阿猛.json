@@ -17,5 +17,9 @@
   "age": 0,
   "last_hunger_hour": 0,
   "is_sleeping": false,
-  "last_mp_restore_minute": 0
+  "last_mp_restore_minute": 0,
+  "dialogues": {
+    "見面": "喲！有什麼活要幹嗎？我可是很能幹的！"
+  },
+  "talk_eagerness": 75
 }

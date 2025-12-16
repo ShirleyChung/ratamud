@@ -479,6 +479,8 @@ fn handle_command_result(
         CommandResult::Trade(npc_name) => handle_trade(npc_name, output_manager, game_world, me)?,
         CommandResult::Buy(npc_name, item, quantity) => handle_buy(npc_name, item, quantity, output_manager, game_world, me)?,
         CommandResult::Sell(npc_name, item, quantity) => handle_sell(npc_name, item, quantity, output_manager, game_world, me)?,
+        CommandResult::SetDialogue(npc_name, scene, dialogue) => handle_set_dialogue(npc_name, scene, dialogue, output_manager, game_world)?,
+        CommandResult::SetEagerness(npc_name, eagerness) => handle_set_eagerness(npc_name, eagerness, output_manager, game_world)?,
         CommandResult::ListNpcs => handle_list_npcs(output_manager, game_world),
         CommandResult::ToggleTypewriter => handle_toggle_typewriter(output_manager),
     }
@@ -697,6 +699,11 @@ fn display_look(
                 output_manager.print("\n👥 此處的人物:".to_string());
                 for npc in npcs_here {
                     output_manager.print(format!("  • {} - {}", npc.name, npc.description));
+                    
+                    // 嘗試觸發 NPC 對話（"見面"場景）
+                    if let Some(greeting) = npc.try_talk("見面") {
+                        output_manager.print(format!("💬 {} 說：「{}」", npc.name, greeting));
+                    }
                 }
             }
             
@@ -1912,4 +1919,50 @@ fn handle_toggle_typewriter(output_manager: &mut OutputManager) {
         output_manager.print("打字機效果已開啟".to_string());
     }
 }
+
+/// 處理設置 NPC 台詞
+fn handle_set_dialogue(
+    npc_name: String,
+    scene: String,
+    dialogue: String,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_name) {
+        npc.set_dialogue(scene.clone(), dialogue.clone());
+        
+        // 保存 NPC
+        let person_dir = format!("{}/persons", game_world.world_dir);
+        game_world.npc_manager.save_all(&person_dir)?;
+        
+        output_manager.print(format!("已設置 {npc_name} 的「{scene}」台詞：「{dialogue}」"));
+    } else {
+        output_manager.set_status(format!("找不到 NPC: {npc_name}"));
+    }
+    
+    Ok(())
+}
+
+/// 處理設置 NPC 說話積極度
+fn handle_set_eagerness(
+    npc_name: String,
+    eagerness: u8,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_name) {
+        npc.set_talk_eagerness(eagerness);
+        
+        // 保存 NPC
+        let person_dir = format!("{}/persons", game_world.world_dir);
+        game_world.npc_manager.save_all(&person_dir)?;
+        
+        output_manager.print(format!("已設置 {npc_name} 的說話積極度為 {eagerness}%"));
+    } else {
+        output_manager.set_status(format!("找不到 NPC: {npc_name}"));
+    }
+    
+    Ok(())
+}
+
 

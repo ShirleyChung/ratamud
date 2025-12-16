@@ -29,6 +29,14 @@ pub struct Person {
     pub last_hunger_hour: u8,        // 上次扣 HP 的小時數
     pub is_sleeping: bool,           // 是否正在睡覺
     pub last_mp_restore_minute: u8,  // 上次恢復 MP 的分鐘數
+    #[serde(default)]
+    pub dialogues: HashMap<String, String>,  // 台詞 (場景 -> 台詞內容)
+    #[serde(default = "default_talk_eagerness")]
+    pub talk_eagerness: u8,          // 說話積極度 (0-100)
+}
+
+fn default_talk_eagerness() -> u8 {
+    100  // 預設積極度為 100
 }
 
 fn default_map() -> String {
@@ -57,7 +65,40 @@ impl Person {
             last_hunger_hour: 0,
             is_sleeping: false,
             last_mp_restore_minute: 0,
+            dialogues: HashMap::new(),
+            talk_eagerness: 100,
         }
+    }
+
+    /// 設置台詞
+    pub fn set_dialogue(&mut self, scene: String, text: String) {
+        self.dialogues.insert(scene, text);
+    }
+
+    /// 設置說話積極度 (0-100)
+    pub fn set_talk_eagerness(&mut self, eagerness: u8) {
+        self.talk_eagerness = eagerness.min(100);
+    }
+
+    /// 獲取台詞（如果有）
+    #[allow(dead_code)]
+    pub fn get_dialogue(&self, scene: &str) -> Option<&String> {
+        self.dialogues.get(scene)
+    }
+
+    /// 嘗試說話（根據積極度）
+    pub fn try_talk(&self, scene: &str) -> Option<String> {
+        if let Some(dialogue) = self.dialogues.get(scene) {
+            // 根據積極度決定是否說話
+            use rand::Rng;
+            let mut rng = rand::thread_rng();
+            let roll: u8 = rng.gen_range(0..100);
+            
+            if roll < self.talk_eagerness {
+                return Some(dialogue.clone());
+            }
+        }
+        None
     }
 
     // 添加能力

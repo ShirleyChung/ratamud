@@ -17,5 +17,9 @@
   "age": 2826,
   "last_hunger_hour": 21,
   "is_sleeping": false,
-  "last_mp_restore_minute": 0
+  "last_mp_restore_minute": 0,
+  "dialogues": {
+    "見面": "你好呀！需要醫療協助嗎？"
+  },
+  "talk_eagerness": 85
 }

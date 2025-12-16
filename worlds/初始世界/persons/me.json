@@ -7,24 +7,27 @@
     "探險"
   ],
   "items": {
-    "治療藥水": 1,
-    "魔法書": 1,
+    "魔力藥水": 1,
     "匕首": 1,
+    "魔法書": 1,
+    "治療藥水": 1,
     "木劍": 1
   },
   "status": "",
-  "x": 45,
-  "y": 55,
+  "x": 53,
+  "y": 67,
   "map": "初始之地",
-  "hp": 99263,
-  "mp": 99309,
+  "hp": 98984,
+  "mp": 99113,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 33181,
-  "last_hunger_hour": 21,
+  "age": 140065,
+  "last_hunger_hour": 22,
   "is_sleeping": false,
-  "last_mp_restore_minute": 0
+  "last_mp_restore_minute": 0,
+  "dialogues": {},
+  "talk_eagerness": 100
 }

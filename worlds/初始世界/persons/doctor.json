@@ -19,5 +19,9 @@
   "age": 6522,
   "last_hunger_hour": 21,
   "is_sleeping": false,
-  "last_mp_restore_minute": 0
+  "last_mp_restore_minute": 0,
+  "dialogues": {
+    "見面": "你好，有什麼不舒服的嗎？我可以幫你檢查一下。"
+  },
+  "talk_eagerness": 80
 }

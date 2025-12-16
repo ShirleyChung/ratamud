@@ -385,6 +385,29 @@ impl InputHandler {
                     CommandResult::Sell(npc, item, quantity)
                 }
             },
+            "setdialogue" | "setdia" => {
+                // setdialogue <npc> <場景> <台詞> 命令，設置 NPC 台詞
+                // 範例: setdialogue 商人 見面 哈囉！你好，來看看我的商品
+                if parts.len() < 4 {
+                    CommandResult::Error("Usage: setdialogue <npc> <場景> <台詞>".to_string())
+                } else {
+                    let npc = parts[1].to_string();
+                    let scene = parts[2].to_string();
+                    let dialogue = parts[3..].join(" ");
+                    CommandResult::SetDialogue(npc, scene, dialogue)
+                }
+            },
+            "seteagerness" | "setea" => {
+                // seteagerness <npc> <積極度> 命令，設置 NPC 說話積極度 (0-100)
+                // 範例: seteagerness 商人 100
+                if parts.len() < 3 {
+                    CommandResult::Error("Usage: seteagerness <npc> <積極度(0-100)>".to_string())
+                } else {
+                    let npc = parts[1].to_string();
+                    let eagerness = parts[2].parse::<u8>().unwrap_or(100).min(100);
+                    CommandResult::SetEagerness(npc, eagerness)
+                }
+            },
             _ => CommandResult::Error(format!("Unknown command: {}", parts[0])),
         };
         result
@@ -443,6 +466,8 @@ pub enum CommandResult {
     Trade(String),                   // 查看 NPC 商品 (NPC名稱/ID)
     Buy(String, String, u32),        // 購買物品 (NPC, 物品, 數量)
     Sell(String, String, u32),       // 出售物品 (NPC, 物品, 數量)
+    SetDialogue(String, String, String), // 設置 NPC 台詞 (NPC, 場景, 台詞)
+    SetEagerness(String, u8),        // 設置 NPC 說話積極度 (NPC, 積極度0-100)
     ListNpcs,                        // 列出所有 NPC
     ToggleTypewriter,                // 切換打字機效果
     Help,                            // 顯示幫助訊息

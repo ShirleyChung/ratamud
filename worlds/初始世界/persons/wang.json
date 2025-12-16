@@ -17,5 +17,9 @@
   "age": 4451,
   "last_hunger_hour": 21,
   "is_sleeping": false,
-  "last_mp_restore_minute": 0
+  "last_mp_restore_minute": 0,
+  "dialogues": {
+    "見面": "嗨，今年的收成不錯呢！你也是來看農田的嗎？"
+  },
+  "talk_eagerness": 70
 }

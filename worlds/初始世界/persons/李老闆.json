@@ -17,5 +17,9 @@
   "age": 6522,
   "last_hunger_hour": 21,
   "is_sleeping": false,
-  "last_mp_restore_minute": 0
+  "last_mp_restore_minute": 0,
+  "dialogues": {
+    "見面": "哎呀！有客人來了！今天有特價優惠喔！"
+  },
+  "talk_eagerness": 100
 }

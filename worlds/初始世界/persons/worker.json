@@ -17,5 +17,9 @@
   "age": 6522,
   "last_hunger_hour": 21,
   "is_sleeping": false,
-  "last_mp_restore_minute": 0
+  "last_mp_restore_minute": 0,
+  "dialogues": {
+    "見面": "嘿！工作辛苦了！這附近有什麼需要修的嗎？"
+  },
+  "talk_eagerness": 60
 }

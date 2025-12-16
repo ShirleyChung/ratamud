@@ -17,5 +17,9 @@
   "age": 6522,
   "last_hunger_hour": 21,
   "is_sleeping": false,
-  "last_mp_restore_minute": 0
+  "last_mp_restore_minute": 0,
+  "dialogues": {
+    "見面": "Hi there! I'm working on some interesting projects. Want to know more?"
+  },
+  "talk_eagerness": 65
 }
