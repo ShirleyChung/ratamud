@@ -52,7 +52,7 @@ pub fn run_main_loop(
     let maps_clone = Arc::clone(&maps);
     
     // 共享當前地圖名稱
-    let current_map = Arc::new(Mutex::new(game_world.current_map_name.clone()));
+    let current_map = Arc::new(Mutex::new(game_world.current_map.clone()));
     let current_map_clone = Arc::clone(&current_map);
     
     // 啟動 NPC AI 執行緒（每5秒更新一次）
@@ -124,7 +124,7 @@ pub fn run_main_loop(
             
             // 同步地圖變更（主執行緒 -> AI 執行緒）
             *maps_lock = game_world.maps.clone();
-            *current_map_lock = game_world.current_map_name.clone();
+            *current_map_lock = game_world.current_map.clone();
             
             // 同步地圖變更（AI 執行緒 -> 主執行緒）
             // 如果 AI 修改了地圖（如撿物品、改變地形），也要同步回來
@@ -692,7 +692,7 @@ fn display_look(
             }
             
             // 顯示當前位置的 NPC
-            let npcs_here = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, me.x, me.y);
+            let npcs_here = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map, me.x, me.y);
             if !npcs_here.is_empty() {
                 output_manager.print("\n👥 此處的人物:".to_string());
                 for npc in npcs_here {
@@ -793,7 +793,7 @@ pub fn update_minimap_display(
                     ));
                 } else {
                     // 檢查該位置是否有 NPC
-                    let npcs_at_pos = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, check_x, check_y);
+                    let npcs_at_pos = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map, check_x, check_y);
                     let has_merchant = npcs_at_pos.iter().any(|npc| 
                         npc.name.contains("商人") || npc.name.to_lowercase().contains("merchant")
                     );
@@ -1121,10 +1121,9 @@ fn handle_summon(
     let npc_info = game_world.npc_manager.get_npc(&npc_name).map(|npc| (npc.name.clone(), npc.x, npc.y));
     
     if let Some((name, old_x, old_y)) = npc_info {
-        // 移動 NPC 到玩家位置和地圖
+        // 移動 NPC 到玩家位置
         if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_name) {
             npc.move_to(me.x, me.y);
-            npc.map = game_world.current_map_name.clone();  // 更新到玩家當前地圖
         }
         
         // 保存 NPC 位置
@@ -1132,8 +1131,7 @@ fn handle_summon(
         let _ = game_world.npc_manager.save_all(&person_dir);
         
         output_manager.print(format!("你召喚了 {name} 到這裡"));
-        output_manager.log(format!("{} 從 ({}, {}) 傳送到 {} ({}, {})", 
-            name, old_x, old_y, game_world.current_map_name, me.x, me.y));
+        output_manager.log(format!("{} 從 ({}, {}) 傳送到 ({}, {})", name, old_x, old_y, me.x, me.y));
     } else {
         output_manager.set_status(format!("找不到 NPC: {npc_name}"));
     }
@@ -1163,7 +1161,7 @@ fn handle_conquer(
     let target_y = (me.y as i32 + dy) as usize;
     
     // 先獲取地圖名稱
-    let map_name = game_world.current_map_name.clone();
+    let map_name = game_world.current_map.clone();
     
     // 獲取當前地圖並修改
     if let Some(current_map) = game_world.get_current_map_mut() {
@@ -1227,8 +1225,7 @@ fn handle_flyto(
     
     // 嘗試作為地圖名稱
     if game_world.maps.contains_key(&target) {
-        game_world.current_map_name = target.clone();
-        me.map = target.clone();  // 更新玩家所在地圖
+        game_world.current_map = target.clone();
         // 將玩家移動到地圖中心
         if let Some(new_map) = game_world.get_current_map() {
             let center_x = new_map.width / 2;
@@ -1280,7 +1277,7 @@ fn handle_namehere(
     game_world: &mut GameWorld,
     me: &Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let map_name = game_world.current_map_name.clone();
+    let map_name = game_world.current_map.clone();
     
     if let Some(current_map) = game_world.get_current_map_mut() {
         if let Some(point) = current_map.get_point_mut(me.x, me.y) {
@@ -1314,7 +1311,7 @@ fn handle_name(
 ) -> Result<(), Box<dyn std::error::Error>> {
     // 嘗試解析為坐標
     if let Some((x, y)) = parse_coordinates(&target) {
-        let map_name = game_world.current_map_name.clone();
+        let map_name = game_world.current_map.clone();
         
         if let Some(current_map) = game_world.get_current_map_mut() {
             if x < current_map.width && y < current_map.height {
@@ -1389,7 +1386,7 @@ fn handle_destroy(
     
     // 嘗試作為物品
     let item_name = item_registry::resolve_item_name(&target);
-    let map_name = game_world.current_map_name.clone();
+    let map_name = game_world.current_map.clone();
     
     if let Some(current_map) = game_world.get_current_map_mut() {
         if let Some(point) = current_map.get_point_mut(me.x, me.y) {
@@ -1554,7 +1551,6 @@ fn handle_create(
             let mut npc = Person::new(npc_name.clone(), description);
             npc.x = me.x;
             npc.y = me.y;
-            npc.map = game_world.current_map_name.clone();  // 設置在當前地圖
             
             // 使用 NPC 名稱作為 ID（如果重複會被覆蓋）
             let npc_id = npc_name.clone();
@@ -1573,7 +1569,7 @@ fn handle_create(
             // 創建物品
             let item_name = item_registry::resolve_item_name(&item_type);
             let display_name = name.as_ref().unwrap_or(&item_type);
-            let map_name = game_world.current_map_name.clone();
+            let map_name = game_world.current_map.clone();
             
             if let Some(current_map) = game_world.get_current_map_mut() {
                 if let Some(point) = current_map.get_point_mut(me.x, me.y) {
@@ -1737,7 +1733,7 @@ fn handle_trade(
     me: &Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // 檢查 NPC 是否在同一位置
-    let npcs_here = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, me.x, me.y);
+    let npcs_here = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map, me.x, me.y);
     
     let npc = npcs_here.iter().find(|n| {
         n.name.to_lowercase() == npc_name.to_lowercase() ||
@@ -1783,7 +1779,7 @@ fn handle_buy(
     me: &mut Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // 檢查 NPC 是否在同一位置
-    let npcs_here: Vec<&crate::person::Person> = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, me.x, me.y);
+    let npcs_here: Vec<&crate::person::Person> = game_world.npc_manager.get_npcs_at(me.x, me.y);
     
     // 尋找匹配的 NPC
     let npc_found = npcs_here.iter().any(|n| {
@@ -1834,7 +1830,7 @@ fn handle_sell(
     me: &mut Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // 檢查 NPC 是否在同一位置
-    let npcs_here: Vec<&crate::person::Person> = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, me.x, me.y);
+    let npcs_here: Vec<&crate::person::Person> = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map, me.x, me.y);
     
     let npc_found = npcs_here.iter().any(|n| {
         n.name.to_lowercase() == npc_name.to_lowercase() ||

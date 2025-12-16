@@ -11,6 +11,7 @@ mod trade;
 mod map;
 mod time_updatable;
 mod time_thread;
+mod npc_ai_thread;
 mod item;
 mod item_registry;
 mod settings;

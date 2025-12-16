@@ -13,6 +13,7 @@ pub mod event_executor;
 pub mod event_scheduler;
 pub mod time_updatable;
 pub mod time_thread;
+pub mod npc_ai_thread;
 pub mod input;
 pub mod output;
 pub mod settings;

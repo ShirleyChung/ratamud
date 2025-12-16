@@ -342,7 +342,7 @@ impl WorldMetadata {
 // 遊戲世界 - 管理多個地圖和時間
 pub struct GameWorld {
     pub maps: HashMap<String, Map>,
-    pub current_map: String,
+    pub current_map_name: String,
     pub metadata: WorldMetadata,
     pub world_dir: String,
     pub time: WorldTime,
@@ -350,6 +350,7 @@ pub struct GameWorld {
     pub event_manager: crate::event::EventManager,
     pub event_scheduler: crate::event_scheduler::EventScheduler,
     pub time_thread: Option<crate::time_thread::TimeThread>,
+    pub npc_ai_thread: Option<crate::npc_ai_thread::NpcAiThread>,
     pub npc_manager: crate::npc_manager::NpcManager,
     pub current_controlled_id: Option<String>,  // 當前操控的角色 ID (None = 原始玩家)
     pub original_player: Option<Person>,         // 原始玩家資料備份
@@ -381,7 +382,7 @@ impl GameWorld {
 
         GameWorld {
             maps: HashMap::new(),
-            current_map: String::from("初始之地"),
+            current_map_name: String::from("初始之地"),
             metadata,
             world_dir,
             time,
@@ -389,6 +390,7 @@ impl GameWorld {
             event_manager: crate::event::EventManager::new(),
             event_scheduler: crate::event_scheduler::EventScheduler::new(),
             time_thread: Some(time_thread),
+            npc_ai_thread: None,  // 稍後初始化
             npc_manager: crate::npc_manager::NpcManager::new(),
             current_controlled_id: None,
             original_player: None,
@@ -406,7 +408,7 @@ impl GameWorld {
     #[allow(dead_code)]
     pub fn change_map(&mut self, map_name: &str) -> bool {
         if self.maps.contains_key(map_name) {
-            self.current_map = map_name.to_string();
+            self.current_map_name = map_name.to_string();
             true
         } else {
             false
@@ -415,12 +417,12 @@ impl GameWorld {
 
     // 獲取當前地圖
     pub fn get_current_map(&self) -> Option<&Map> {
-        self.maps.get(&self.current_map)
+        self.maps.get(&self.current_map_name)
     }
 
     // 獲取可變的當前地圖
     pub fn get_current_map_mut(&mut self) -> Option<&mut Map> {
-        self.maps.get_mut(&self.current_map)
+        self.maps.get_mut(&self.current_map_name)
     }
 
     // 列出所有地圖
@@ -472,7 +474,7 @@ impl GameWorld {
     pub fn save_metadata(&self) -> Result<(), Box<dyn std::error::Error>> {
         let metadata_path = format!("{}/world.json", self.world_dir);
         let mut metadata = self.metadata.clone();
-        metadata.current_map = self.current_map.clone();
+        metadata.current_map = self.current_map_name.clone();
         let json = serde_json::to_string_pretty(&metadata)?;
         fs::write(metadata_path, json)?;
         Ok(())
@@ -485,7 +487,7 @@ impl GameWorld {
             let json = fs::read_to_string(metadata_path)?;
             self.metadata = serde_json::from_str(&json)?;
             if !self.metadata.current_map.is_empty() {
-                self.current_map = self.metadata.current_map.clone();
+                self.current_map_name = self.metadata.current_map.clone();
             }
         }
         Ok(())
@@ -589,5 +591,33 @@ impl GameWorld {
             }
         }
         Ok(())
+    }
+    
+    /// 啟動 NPC AI 執行緒
+    #[allow(dead_code)]
+    pub fn start_npc_ai_thread(&mut self, _update_interval_ms: u64) {
+        // 此方法已廢棄，改由 app.rs 處理
+    }
+    
+    /// 從 NPC AI 執行緒獲取日誌
+    pub fn get_npc_ai_logs(&self) -> Vec<String> {
+        if let Some(ref ai_thread) = self.npc_ai_thread {
+            ai_thread.get_logs()
+        } else {
+            Vec::new()
+        }
+    }
+}
+
+impl Drop for GameWorld {
+    fn drop(&mut self) {
+        // 停止時間執行緒
+        if let Some(ref mut thread) = self.time_thread {
+            thread.stop();
+        }
+        // 停止 NPC AI 執行緒
+        if let Some(ref mut thread) = self.npc_ai_thread {
+            thread.stop();
+        }
     }
 }

@@ -29,13 +29,24 @@ impl InputHandler {
             }
 
             Event::Key(key) => {
-                // ✅ 關鍵：只處理 Press
-                if key.kind != KeyEventKind::Press {
-                    return None;
+                // ✅ Windows 相容：只處理 Press 事件，忽略 Repeat 和 Release
+                // 這樣既支援中文輸入，又避免 Windows 的重複字符問題
+                match key.kind {
+                    KeyEventKind::Press => {
+                        // 只處理按下事件
+                    }
+                    KeyEventKind::Repeat => {
+                        // Windows 上會觸發 Repeat，我們忽略它
+                        return None;
+                    }
+                    _ => {
+                        // Release 等其他事件也忽略
+                        return None;
+                    }
                 }
 
                 match key.code {
-                    KeyCode::Char(c) if c.is_ascii() => {
+                    KeyCode::Char(c) => {
                         self.input.push(c);
                     }
 

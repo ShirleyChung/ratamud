@@ -2,6 +2,7 @@ use crate::person::Person;
 use std::collections::HashMap;
 
 /// NPC 管理器，負責管理遊戲中的所有 NPC
+#[derive(Clone)]
 pub struct NpcManager {
     npcs: HashMap<String, Person>,  // NPC ID -> Person
     npc_aliases: HashMap<String, String>,  // 別名 -> NPC ID
@@ -83,6 +84,13 @@ impl NpcManager {
             .filter(|npc| npc.x == x && npc.y == y)
             .collect()
     }
+    
+    /// 獲取指定地圖和位置的 NPC
+    pub fn get_npcs_at_in_map(&self, map_name: &str, x: usize, y: usize) -> Vec<&Person> {
+        self.npcs.values()
+            .filter(|npc| npc.map == map_name && npc.x == x && npc.y == y)
+            .collect()
+    }
 
     /// 移除 NPC
     #[allow(dead_code)]
@@ -115,6 +123,11 @@ impl NpcManager {
         }
         
         None
+    }
+    
+    /// 更新 NPC 資料
+    pub fn update_npc(&mut self, id: &str, npc: Person) {
+        self.npcs.insert(id.to_string(), npc);
     }
 
     /// 保存所有 NPC

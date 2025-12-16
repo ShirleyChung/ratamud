@@ -17,6 +17,7 @@ pub enum NpcBehavior {
 /// NPC AI 控制器
 pub struct NpcAiController;
 
+#[allow(dead_code)]
 impl NpcAiController {
     /// 執行所有 NPC 的 AI 行為
     pub fn update_all_npcs(game_world: &mut GameWorld) -> Vec<String> {
@@ -69,8 +70,8 @@ impl NpcAiController {
         }
     }
     
-    /// 判斷 NPC 應該執行的行為
-    fn determine_behavior(npc: &Person) -> NpcBehavior {
+    /// 判斷 NPC 應該執行的行為（公開方法供執行緒使用）
+    pub fn determine_behavior(npc: &Person) -> NpcBehavior {
         let desc = npc.description.to_lowercase();
         
         // 優先檢查生命值，需要使用食物（HP < max_hp / 2）
@@ -133,7 +134,7 @@ impl NpcAiController {
     
     /// 嘗試撿拾物品
     fn try_pickup_items(game_world: &mut GameWorld, npc_id: &str, npc: &Person) -> Option<String> {
-        let map_name = game_world.current_map.clone();
+        let map_name = game_world.current_map_name.clone();
         
         // 獲取當前位置的物品
         let items_at_pos: Vec<(String, u32)> = if let Some(map) = game_world.maps.get(&map_name) {
@@ -217,7 +218,7 @@ impl NpcAiController {
     
     /// 農夫耕作：將周圍 3x3 變成農地
     fn try_farm(game_world: &mut GameWorld, npc_id: &str, npc: &Person) -> Option<String> {
-        let map_name = game_world.current_map.clone();
+        let map_name = game_world.current_map_name.clone();
         let mut converted = false;
         
         // 檢查周圍 3x3 範圍
