@@ -1,4 +1,5 @@
 use crate::person::Person;
+use crate::world::GameWorld;
 
 /// 交易結果
 pub enum TradeResult {
@@ -13,12 +14,20 @@ impl TradeSystem {
     /// 玩家向 NPC 購買物品
     /// price: 購買價格（金幣數量）
     pub fn buy_from_npc(
-        player: &mut Person,
-        npc: &mut Person,
+        world: &mut GameWorld,
+        npc_id: &str,
         item_name: &str,
         quantity: u32,
         price: u32,
     ) -> TradeResult {
+        let player = &mut world.player;
+        let npc_option = world.npc_manager.get_npc_mut(npc_id);
+
+        if npc_option.is_none() {
+            return TradeResult::Failed("找不到指定的商人".to_string());
+        }
+        let npc = npc_option.unwrap();
+
         // 檢查 NPC 是否有足夠的物品
         let npc_has = npc.items.get(item_name).copied().unwrap_or(0);
         if npc_has < quantity {
@@ -66,12 +75,20 @@ impl TradeSystem {
     /// 玩家向 NPC 出售物品
     /// price: 出售價格（金幣數量）
     pub fn sell_to_npc(
-        player: &mut Person,
-        npc: &mut Person,
+        world: &mut GameWorld,
+        npc_id: &str,
         item_name: &str,
         quantity: u32,
         price: u32,
     ) -> TradeResult {
+        let player = &mut world.player;
+        let npc_option = world.npc_manager.get_npc_mut(npc_id);
+
+        if npc_option.is_none() {
+            return TradeResult::Failed("找不到指定的商人".to_string());
+        }
+        let npc = npc_option.unwrap();
+
         // 檢查玩家是否有足夠的物品
         let player_has = player.items.get(item_name).copied().unwrap_or(0);
         if player_has < quantity {

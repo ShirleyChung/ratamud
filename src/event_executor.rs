@@ -1,6 +1,5 @@
 use crate::event::{EventAction, GameEvent};
 use crate::world::GameWorld;
-use crate::person::Person;
 use crate::output::OutputManager;
 
 /// 事件執行器
@@ -11,13 +10,12 @@ impl EventExecutor {
     pub fn execute_event(
         event: &GameEvent,
         game_world: &mut GameWorld,
-        player: &mut Person,
         output_manager: &mut OutputManager,
     ) -> Result<(), String> {
         output_manager.print(format!("🎭 事件觸發: {}", event.name));
         
         for action in &event.actions {
-            if let Err(e) = Self::execute_action(action, game_world, player, output_manager) {
+            if let Err(e) = Self::execute_action(action, game_world, output_manager) {
                 return Err(format!("執行動作失敗: {e}"));
             }
         }
@@ -29,7 +27,6 @@ impl EventExecutor {
     fn execute_action(
         action: &EventAction,
         game_world: &mut GameWorld,
-        player: &mut Person,
         output_manager: &mut OutputManager,
     ) -> Result<(), String> {
         match action {
@@ -52,7 +49,7 @@ impl EventExecutor {
                 Self::remove_item(item, position, game_world, output_manager)
             }
             EventAction::Teleport { map, position } => {
-                Self::teleport_player(map, position, game_world, player, output_manager)
+                Self::teleport_player(map, position, game_world, output_manager)
             }
         }
     }
@@ -158,7 +155,6 @@ impl EventExecutor {
         map: &str,
         position: &crate::event::Position,
         game_world: &mut GameWorld,
-        player: &mut Person,
         output_manager: &mut OutputManager,
     ) -> Result<(), String> {
         if game_world.change_map(map) {
@@ -168,7 +164,7 @@ impl EventExecutor {
             let resolved_pos = position.resolve(current_map)
                 .ok_or("無法解析目標位置")?;
             
-            player.move_to(resolved_pos[0], resolved_pos[1]);
+            game_world.player.move_to(resolved_pos[0], resolved_pos[1]);
             output_manager.print(format!(
                 "✨ 你被傳送到 {} ({}, {})",
                 map, resolved_pos[0], resolved_pos[1]

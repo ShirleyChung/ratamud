@@ -60,9 +60,9 @@ pub fn run_main_loop(
         move || {
             let mut all_logs = Vec::new();
             
-            if let (Ok(mut manager), Ok(_maps), Ok(_current_map_name)) = 
-                (npc_manager_clone.lock(), maps_clone.lock(), current_map_clone.lock()) {
-                let npc_ids: Vec<String> = manager.get_all_npc_ids();
+                                    if let (Ok(manager), Ok(_maps_lock), Ok(_current_map_lock)) = 
+            
+                                        (npc_manager_clone.lock(), maps_clone.lock(), current_map_clone.lock()) {                let npc_ids: Vec<String> = manager.get_all_npc_ids();
                 
                 for npc_id in npc_ids {
                     if let Some(npc) = manager.get_npc(&npc_id).cloned() {
@@ -90,8 +90,7 @@ pub fn run_main_loop(
                             all_logs.push(msg);
                         }
                         
-                        // 更新 NPC 回 manager
-                        manager.update_npc(&npc_id, npc);
+
                     }
                 }
             }
@@ -104,23 +103,15 @@ pub fn run_main_loop(
     
     'main_loop: loop {
         // 同步 NpcManager 和 Maps 的變更（雙向同步）
-        if let (Ok(mut manager), Ok(mut maps_lock), Ok(mut current_map_lock)) = 
+        if let (Ok(mut _manager), Ok(mut maps_lock), Ok(mut current_map_lock)) = 
             (npc_manager.try_lock(), maps.try_lock(), current_map.try_lock()) {
             
             // 雙向同步 NPC 狀態
             // 1. 從主執行緒同步到 AI 執行緒（玩家的操作）
-            for npc_id in game_world.npc_manager.get_all_npc_ids() {
-                if let Some(npc) = game_world.npc_manager.get_npc(&npc_id) {
-                    manager.update_npc(&npc_id, npc.clone());
-                }
-            }
+
             
             // 2. 從 AI 執行緒同步到主執行緒（AI 的變更）
-            for npc_id in manager.get_all_npc_ids() {
-                if let Some(npc) = manager.get_npc(&npc_id) {
-                    game_world.npc_manager.update_npc(&npc_id, npc.clone());
-                }
-            }
+
             
             // 同步地圖變更（主執行緒 -> AI 執行緒）
             *maps_lock = game_world.maps.clone();
@@ -1487,7 +1478,6 @@ fn check_and_execute_events(
             if let Err(e) = crate::event_executor::EventExecutor::execute_event(
                 &event_clone,
                 game_world,
-                me,
                 output_manager
             ) {
                 output_manager.log(format!("⚠️  事件執行錯誤: {e}"));
@@ -1809,9 +1799,19 @@ fn handle_buy(
     // 計算價格
     let price = crate::trade::TradeSystem::calculate_buy_price(&resolved_item, quantity);
     
-    // 獲取可變 NPC
-    if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_name) {
-        let result = crate::trade::TradeSystem::buy_from_npc(me, npc, &resolved_item, quantity, price);
+    // 獲取 NPC 名稱的克隆，以便在調用 buy_from_npc 時釋放 game_world 的可變借用
+    let npc_name_clone_for_trade = {
+        let npcs_at_pos = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, me.x, me.y);
+        npcs_at_pos.iter()
+            .find(|n| 
+                n.name.to_lowercase() == npc_name.to_lowercase() ||
+                (npc_name.to_lowercase() == "merchant" && n.description.contains("商"))
+            )
+            .map(|n| n.name.clone()) // 獲取 NPC 的名稱（ID）
+    };
+
+    if let Some(npc_id) = npc_name_clone_for_trade {
+        let result = crate::trade::TradeSystem::buy_from_npc(game_world, &npc_id, &resolved_item, quantity, price);
         
         match result {
             crate::trade::TradeResult::Success(msg) => {
@@ -1826,6 +1826,8 @@ fn handle_buy(
                 output_manager.set_status(msg);
             },
         }
+    } else {
+        output_manager.set_status(format!("此處找不到 {npc_name}"));
     }
     
     Ok(())
@@ -1859,11 +1861,20 @@ fn handle_sell(
     // 計算價格
     let price = crate::trade::TradeSystem::calculate_sell_price(&resolved_item, quantity);
     
-    // 獲取可變 NPC
-    if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_name) {
-        let result = crate::trade::TradeSystem::sell_to_npc(me, npc, &resolved_item, quantity, price);
-        
-        match result {
+    // 獲取 NPC 名稱的克隆，以便在調用 sell_to_npc 時釋放 game_world 的可變借用
+    let npc_name_clone_for_trade = {
+        let npcs_at_pos = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, me.x, me.y);
+        npcs_at_pos.iter()
+            .find(|n| 
+                n.name.to_lowercase() == npc_name.to_lowercase() ||
+                (npc_name.to_lowercase() == "merchant" && n.description.contains("商"))
+            )
+            .map(|n| n.name.clone()) // 獲取 NPC 的名稱（ID）
+    };
+
+    if let Some(npc_id) = npc_name_clone_for_trade {
+        let result = crate::trade::TradeSystem::sell_to_npc(game_world, &npc_id, &resolved_item, quantity, price);
+         match result {
             crate::trade::TradeResult::Success(msg) => {
                 output_manager.print(msg);
                 
@@ -1876,6 +1887,8 @@ fn handle_sell(
                 output_manager.set_status(msg);
             },
         }
+    } else {
+        output_manager.set_status(format!("此處找不到 {npc_name}"));
     }
     
     Ok(())

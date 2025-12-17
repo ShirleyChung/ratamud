@@ -81,8 +81,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     me.add_item("治療藥水".to_string());
     me.set_status("精力充沛".to_string());
 
-    // 初始化遊戲世界
-    let mut game_world = GameWorld::new();
+    // 初始化遊戲世界，並將 me 物件移入
+    let mut game_world = GameWorld::new(me.clone());
     
     // 嘗試加載世界元數據和時間
     let _ = game_world.load_metadata();

@@ -354,16 +354,11 @@ pub struct GameWorld {
     pub npc_manager: crate::npc_manager::NpcManager,
     pub current_controlled_id: Option<String>,  // 當前操控的角色 ID (None = 原始玩家)
     pub original_player: Option<Person>,         // 原始玩家資料備份
-}
-
-impl Default for GameWorld {
-    fn default() -> Self {
-        Self::new()
-    }
+    pub player: Person,
 }
 
 impl GameWorld {
-    pub fn new() -> Self {
+    pub fn new(player: Person) -> Self {
         // 建立世界資料夾
         let world_dir = "worlds/初始世界".to_string();
         let _ = fs::create_dir_all(&world_dir);
@@ -393,7 +388,8 @@ impl GameWorld {
             npc_ai_thread: None,  // 稍後初始化
             npc_manager: crate::npc_manager::NpcManager::new(),
             current_controlled_id: None,
-            original_player: None,
+            original_player: Some(player.clone()),
+            player,
         }
     }
 

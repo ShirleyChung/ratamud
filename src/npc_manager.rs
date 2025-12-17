@@ -125,10 +125,7 @@ impl NpcManager {
         None
     }
     
-    /// 更新 NPC 資料
-    pub fn update_npc(&mut self, id: &str, npc: Person) {
-        self.npcs.insert(id.to_string(), npc);
-    }
+
 
     /// 保存所有 NPC
     pub fn save_all(&self, person_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
