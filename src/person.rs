@@ -88,14 +88,15 @@ impl Person {
 
     /// 嘗試說話（根據積極度）
     pub fn try_talk(&self, scene: &str) -> Option<String> {
-        if let Some(dialogue) = self.dialogues.get(scene) {
-            // 根據積極度決定是否說話
-            use rand::Rng;
-            let mut rng = rand::thread_rng();
-            let roll: u8 = rng.gen_range(0..100);
-            
-            if roll < self.talk_eagerness {
+        // 根據積極度決定是否說話
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        let roll: u8 = rng.gen_range(0..100);                
+        if roll < self.talk_eagerness {
+            if let Some(dialogue) = self.dialogues.get(scene) {
                 return Some(dialogue.clone());
+            } else {
+                return Some(format!("{} 想說些什麼，但不知道該說什麼。", self.name)); // 無台詞時的回應
             }
         }
         None
