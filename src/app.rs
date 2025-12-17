@@ -233,7 +233,7 @@ pub fn run_main_loop(
             }
             
             // 側邊面板使用動態高度
-            let side_panel_height = if output_manager.is_side_panel_open() {
+            let side_panel_height = if output_manager.is_status_panel_open() {
                 let content_height = output_manager.get_side_panel_content_height();
                 // 確保不超過螢幕高度，留出空間給輸入和狀態列
                 let max_height = size.height.saturating_sub(vertical_chunks[2].height + vertical_chunks[3].height + 2);
@@ -249,7 +249,7 @@ pub fn run_main_loop(
                 height: side_panel_height,
             };
             // 畫側邊面板
-            if output_manager.is_side_panel_open() {
+            if output_manager.is_status_panel_open() {
                 let side_widget = output_manager.get_side_panel(floating_area);
                 let safe_area = clamp_rect(floating_area, size.width, size.height);
                 f.render_widget(Clear, safe_area); // 清除背景
@@ -305,7 +305,7 @@ pub fn run_main_loop(
                 },
                 KeyCode::F(1) => {
                     // F1 鍵切換側邊面板
-                    output_manager.toggle_side_panel();
+                    output_manager.toggle_status_panel();
                 },
                 KeyCode::Char('q') | KeyCode::Char('Q') => {
                     // 如果大地圖開啟，q 鍵關閉地圖
@@ -416,7 +416,7 @@ fn handle_command_result(
     game_world: &mut GameWorld,
     me: &mut Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    output_manager.close_side_panel();
+    output_manager.close_status_panel();
     
     // 檢查是否在睡眠狀態，如果是則只允許 dream 和 wakeup 命令
     if me.is_sleeping {
@@ -430,7 +430,7 @@ fn handle_command_result(
         return Ok(());
     }
 
-    me.mp -= 1; // 每執行一個命令消耗 1 MP
+    me.check_mp(-1); // 每執行一個命令消耗 1 MP
     
     match result {
         CommandResult::Exit => handle_exit(output_manager, game_world)?,
@@ -539,16 +539,16 @@ fn handle_clear(output_manager: &mut OutputManager) {
 fn handle_add_to_side(msg: String, output_manager: &mut OutputManager) {
     output_manager.add_side_message(msg);
     output_manager.set_status("Message added to side panel".to_string());
-    if output_manager.is_side_panel_open() {
-        output_manager.toggle_side_panel();
+    if output_manager.is_status_panel_open() {
+        output_manager.toggle_status_panel();
     }
 }
 
 /// 處理顯示狀態面板
 fn handle_show_status(output_manager: &mut OutputManager, me: &Person) {
     // 顯示狀態面板
-    if !output_manager.is_side_panel_open() {
-        output_manager.toggle_side_panel();
+    if !output_manager.is_status_panel_open() {
+        output_manager.toggle_status_panel();
     }
     output_manager.set_side_observable(Box::new(me.clone()));
     output_manager.set_status("已顯示角色狀態".to_string());
@@ -556,8 +556,8 @@ fn handle_show_status(output_manager: &mut OutputManager, me: &Person) {
 
 /// 處理顯示世界資訊
 fn handle_show_world(output_manager: &mut OutputManager, game_world: &GameWorld) {
-    if !output_manager.is_side_panel_open() {
-        output_manager.toggle_side_panel();
+    if !output_manager.is_status_panel_open() {
+        output_manager.toggle_status_panel();
     }
     let world_info = WorldInfo::new(
         game_world.metadata.name.clone(),
@@ -606,8 +606,8 @@ fn handle_show_map(output_manager: &mut OutputManager, me: &Person) {
 /// 處理關閉狀態面板
 #[allow(dead_code)]
 fn handle_close_status(output_manager: &mut OutputManager) {
-    if output_manager.is_side_panel_open() {
-        output_manager.toggle_side_panel();
+    if output_manager.is_status_panel_open() {
+        output_manager.toggle_status_panel();
     }
 }
 

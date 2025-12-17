@@ -102,6 +102,37 @@ impl Person {
         None
     }
 
+        /// 消耗 MP，並檢查是否進入睡眠狀態
+    pub fn check_hp(&mut self, amount: i32) {
+        self.hp += amount;
+        if self.hp < 0 {
+            self.hp = 0;
+        }
+        if self.hp > self.max_hp {
+            self.hp = self.max_hp;
+        }
+        if self.hp <= self.max_hp / 10 && self.hp > self.max_hp {
+            self.status = "覺得有點累了".to_string();
+        } else if self.hp <= self.max_hp / 4 {
+            self.status = "感到疲憊".to_string();
+        } else if self.hp <= 50 {
+            self.status = "精疲力盡".to_string();
+        } else {
+            self.status = "正常".to_string();
+        }
+    }
+
+    /// 消耗 MP，並檢查是否進入睡眠狀態
+    pub fn check_mp(&mut self, amount: i32) {
+        self.mp += amount;
+        if self.mp < 0 {
+            self.mp = 0;
+        }
+        if self.mp <= 50 {
+            self.is_sleeping = true; // MP 耗盡後進入睡眠狀態
+        }
+    }
+
     // 添加能力
     pub fn add_ability(&mut self, ability: String) {
         self.abilities.push(ability);
@@ -155,7 +186,7 @@ impl Person {
 
     // 移動到指定位置
     pub fn move_to(&mut self, x: usize, y: usize) {
-        self.hp -= 1; // 移動消耗體力
+        self.check_hp(-1); // 移動消耗體力
         self.x = x;
         self.y = y;
     }
@@ -259,28 +290,22 @@ impl Observable for Person {
 impl TimeUpdatable for Person {
     fn on_time_update(&mut self, current_time: &TimeInfo) {
         // 如果 MP 已經耗盡，強制進入睡眠狀態
-        if self.mp <= 0 {
-            self.is_sleeping = true; // 強制進入睡眠狀態
-        }
+        self.check_mp(0);
+
         // 每秒增加年齡
         self.age += 1;
         
         // 只有在非睡眠狀態才扣除 HP（飢餓消耗）
         if !self.is_sleeping
             && current_time.hour != self.last_hunger_hour {
-                self.hp -= 100;
-                self.last_hunger_hour = current_time.hour;
-                
-                // HP 不能低於 0
-                if self.hp < 0 {
-                    self.hp = 0;
-                }
+                self.check_hp(-100);
+                self.last_hunger_hour = current_time.hour;            
             }
         
         // 睡眠恢復MP
         if self.is_sleeping {
             // 有立即效果的恢復
-            self.mp += 1;                
+            self.check_mp(1);                
             // MP 不能超過最大值
             if self.mp > self.max_mp {
                 self.mp = self.max_mp;

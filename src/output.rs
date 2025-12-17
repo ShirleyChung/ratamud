@@ -21,7 +21,7 @@ pub struct OutputManager {
     status_time: Option<Instant>, // 狀態訊息的時間戳
     side_messages: Vec<String>, // 儲存側邊輸出訊息
     side_scroll: usize,         // 側邊輸出的滾動位置
-    show_side_panel: bool,      // 是否顯示側邊面板
+    show_status_panel: bool,      // 是否顯示側邊面板
     side_observable: Box<dyn Observable>, // 側邊面板的可觀察對象
     current_time: String,       // 當前遊戲時間顯示
     show_minimap: bool,         // 是否顯示小地圖
@@ -52,7 +52,7 @@ impl OutputManager {
             status_time: None,
             side_messages: Vec::new(),
             side_scroll: 0,
-            show_side_panel: false,
+            show_status_panel: false,
             side_observable: Box::new(Empty),
             current_time: String::from("Day 1 09:00:00"),
             show_minimap: false,
@@ -261,18 +261,18 @@ impl OutputManager {
     }
 
     // 切換側邊面板顯示狀態
-    pub fn toggle_side_panel(&mut self) {
-        self.show_side_panel = !self.show_side_panel;
+    pub fn toggle_status_panel(&mut self) {
+        self.show_status_panel = !self.show_status_panel;
     }
 
     // 獲取側邊面板狀態
-    pub fn is_side_panel_open(&self) -> bool {
-        self.show_side_panel
+    pub fn is_status_panel_open(&self) -> bool {
+        self.show_status_panel
     }
 
     // 關閉側邊面板
-    pub fn close_side_panel(&mut self) {
-        self.show_side_panel = false;
+    pub fn close_status_panel(&mut self) {
+        self.show_status_panel = false;
     }
 
     // 側邊面板向上滾動
