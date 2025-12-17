@@ -1,25 +1,23 @@
 {
-  "name": "李老闆",
-  "description": "一個商人",
+  "name": "www",
+  "description": "一個工人",
   "abilities": [],
   "items": {},
-  "status": "",
-  "x": 51,
-  "y": 50,
+  "status": "正常",
+  "x": 49,
+  "y": 54,
   "map": "初始之地",
-  "hp": 99700,
+  "hp": 99899,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 8740,
+  "age": 268,
   "last_hunger_hour": 22,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
-  "dialogues": {
-    "見面": "哎呀！有客人來了！今天有特價優惠喔！"
-  },
+  "dialogues": {},
   "talk_eagerness": 100
 }

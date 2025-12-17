@@ -7,8 +7,11 @@ use ratatui::style::{Color, Style};
 use std::io;
 use crossterm::event::{self, KeyCode};
 use std::time::{Duration, Instant};
+use std::sync::{Arc, Mutex};
 
 use crate::input::InputHandler;
+use crate::npc_ai_thread::NpcAiThread;
+use crate::npc_manager::NpcManager;
 use crate::output::OutputManager;
 use crate::world::GameWorld;
 use crate::settings::GameSettings;
@@ -28,46 +31,15 @@ fn clamp_rect(rect: Rect, max_width: u16, max_height: u16) -> Rect {
     Rect { x, y, width, height }
 }
 
-/// 應用程式主迴圈 - 將 main.rs 中的事件迴圈邏輯提取到此
-pub fn run_main_loop(
-    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
-    input_handler: &mut InputHandler,
-    output_manager: &mut OutputManager,
-    game_world: &mut GameWorld,
-    me: &mut Person,
-) -> Result<(), Box<dyn std::error::Error>> {
-    use std::sync::{Arc, Mutex};
-    
-    let mut should_exit = false;
-    let mut last_event_check = Instant::now();
-    let event_check_interval = Duration::from_millis(100);  // 每0.1秒檢查事件
-    
-    // 為 NPC AI 執行緒創建共享的 NpcManager 和地圖資料
-    // 克隆而非移動，保持 game_world.npc_manager 可用
-    let npc_manager = Arc::new(Mutex::new(game_world.npc_manager.clone()));
-    let npc_manager_clone = Arc::clone(&npc_manager);
-    
-    // 共享地圖資料給 AI 執行緒（使用 Arc<Mutex> 確保同步）
-    let maps = Arc::new(Mutex::new(game_world.maps.clone()));
-    let maps_clone = Arc::clone(&maps);
-    
-    // 共享當前地圖名稱
-    let current_map = Arc::new(Mutex::new(game_world.current_map_name.clone()));
-    let current_map_clone = Arc::clone(&current_map);
-    
-    // 啟動 NPC AI 執行緒（每5秒更新一次）
-    let npc_ai_thread = crate::npc_ai_thread::NpcAiThread::new(
+fn create_npc_thread(npc_manager: Arc<Mutex<NpcManager>>)->NpcAiThread {
+    crate::npc_ai_thread::NpcAiThread::new(
         move || {
-            let mut all_logs = Vec::new();
-            
-                                    if let (Ok(manager), Ok(_maps_lock), Ok(_current_map_lock)) = 
-            
-                                        (npc_manager_clone.lock(), maps_clone.lock(), current_map_clone.lock()) {                let npc_ids: Vec<String> = manager.get_all_npc_ids();
-                
+            let mut all_logs = Vec::new();            
+            if let Ok(manager) = npc_manager.lock() {                
+                let npc_ids: Vec<String> = manager.get_all_npc_ids();                
                 for npc_id in npc_ids {
                     if let Some(npc) = manager.get_npc(&npc_id).cloned() {
-                        let behavior = crate::npc_ai::NpcAiController::determine_behavior(&npc);
-                        
+                        let behavior = crate::npc_ai::NpcAiController::determine_behavior(&npc);                        
                         // 根據行為執行不同邏輯
                         let log_msg = match behavior {
                             crate::npc_ai::NpcBehavior::UseFood => {
@@ -84,22 +56,44 @@ pub fn run_main_loop(
                                 Some(format!("🌾 農夫 {} 正在耕作", npc.name))
                             },
                             _ => None,
-                        };
-                        
+                        };                        
                         if let Some(msg) = log_msg {
                             all_logs.push(msg);
-                        }
-                        
-
+                        }                        
                     }
                 }
-            }
-            
+            }            
             all_logs
         },
         5000  // 每5秒更新一次
-    );
-    game_world.npc_ai_thread = Some(npc_ai_thread);
+    )
+}
+
+/// 應用程式主迴圈 - 將 main.rs 中的事件迴圈邏輯提取到此
+pub fn run_main_loop(
+    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
+    input_handler: &mut InputHandler,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &mut Person,
+) -> Result<(), Box<dyn std::error::Error>> {
+    
+    let mut should_exit = false;
+    let mut last_event_check = Instant::now();
+    let event_check_interval = Duration::from_millis(100);  // 每0.1秒檢查事件
+    
+    // 為 NPC AI 執行緒創建共享的 NpcManager 和地圖資料
+    // 克隆而非移動，保持 game_world.npc_manager 可用
+    let npc_manager = Arc::new(Mutex::new(game_world.npc_manager.clone()));
+    
+    // 共享地圖資料給 AI 執行緒（使用 Arc<Mutex> 確保同步）
+    let maps = Arc::new(Mutex::new(game_world.maps.clone()));
+    
+    // 共享當前地圖名稱
+    let current_map = Arc::new(Mutex::new(game_world.current_map_name.clone()));
+    
+    // 啟動 NPC AI 執行緒（每5秒更新一次）
+    game_world.npc_ai_thread = Some(create_npc_thread( Arc::clone(&npc_manager)));
     
     'main_loop: loop {
         // 同步 NpcManager 和 Maps 的變更（雙向同步）
