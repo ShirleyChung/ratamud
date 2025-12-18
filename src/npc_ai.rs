@@ -231,7 +231,7 @@ impl NpcAiController {
             if let Some(npc_mut) = npc_manager.get_npc_mut(npc_id) {
                 let npc_name = npc_mut.name.clone();
                 npc_mut.move_to(new_x, new_y);
-                return Some(format!("🚶 {} 遊蕩到 ({}, {})", npc_name, new_x, new_y));
+                return Some(format!("🚶 {npc_name} 往 ({new_x}, {new_y}) 走去"));
             }
         }
         None

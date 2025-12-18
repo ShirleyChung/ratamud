@@ -86,28 +86,16 @@ pub fn run_main_loop(
     ));
     
     'main_loop: loop {
-        // 同步 NpcManager 和 Maps 的變更（雙向同步）
-        if let (Ok(ai_manager), Ok(maps_lock), Ok(current_map_lock)) = 
-            (npc_manager.try_lock(), maps.try_lock(), current_map.try_lock()) {
-
-            // 1. 從 AI 執行緒同步到主執行緒（AI 的變更，例如移動、使用物品等）
-            // 先複製 AI 的修改
+        // 同步 NpcManager 和 Maps 的變更（雙向同步)
+        if let (Ok(ai_manager), Ok(maps_lock)) =
+            (npc_manager.try_lock(), maps.try_lock()) {
+            // 複製 AI 的修改
             game_world.npc_manager = ai_manager.clone();
             game_world.maps = maps_lock.clone();
             
-            // 2. 從主執行緒同步到 AI 執行緒（玩家的操作，例如召喚NPC等）
-            // 然後把主執行緒的修改寫回去（例如玩家召喚、對話等操作）
-            // 注意：這裡需要釋放鎖才能重新獲取 mut
-            drop(ai_manager);
-            drop(maps_lock);
-            drop(current_map_lock);
-            
-            // 重新獲取可變鎖來寫入
-            if let (Ok(mut ai_manager_mut), Ok(mut maps_lock_mut), Ok(mut current_map_lock_mut)) = 
-                (npc_manager.try_lock(), maps.try_lock(), current_map.try_lock()) {
-                *ai_manager_mut = game_world.npc_manager.clone();
-                *maps_lock_mut = game_world.maps.clone();
-                *current_map_lock_mut = game_world.current_map_name.clone();
+            // NPC 位置更新後，如果小地圖已開啟，更新小地圖顯示
+            if output_manager.is_minimap_open() {
+                update_minimap_display(output_manager, game_world, me);
             }
         }
         
@@ -136,6 +124,113 @@ pub fn run_main_loop(
         if now.duration_since(last_event_check) >= event_check_interval {
             check_and_execute_events(game_world, me, output_manager);
             last_event_check = now;
+        }
+        // 檢查是否有鍵盤事件（16ms 超時，約60fps）
+        if event::poll(Duration::from_millis(16))? {
+            let event = event::read()?;
+
+            // 處理鍵盤事件
+            if let crossterm::event::Event::Key(key) = event {
+                match key.code {
+                KeyCode::Esc => {
+                    // ESC 鍵清除輸入
+                    input_handler.clear_input();
+                },
+                KeyCode::F(1) => {
+                    // F1 鍵切換側邊面板
+                    output_manager.toggle_status_panel();
+                },
+                KeyCode::Char('q') | KeyCode::Char('Q') => {
+                    // 如果大地圖開啟，q 鍵關閉地圖
+                    if output_manager.is_map_open() {
+                        output_manager.close_map();
+                        output_manager.set_status("大地圖已關閉".to_string());
+                    } else {
+                        // 否則當作正常輸入處理
+                        if let Some(result) = input_handler.handle_event(
+                            crossterm::event::Event::Key(key)
+                        ) {
+                            if let CommandResult::Exit = result {
+                                should_exit = true;
+                            } else {
+                                handle_command_result(result, output_manager, game_world, me)?;
+                            }
+                        }
+                    }
+                },
+                // 上下左右鍵優先用於移動
+                KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right => {
+                    // 檢查是否按住 Shift 鍵 - 用於訊息捲動
+                    if key.modifiers.contains(crossterm::event::KeyModifiers::SHIFT) {
+                        match key.code {
+                            KeyCode::Up => {
+                                output_manager.scroll_up();
+                                output_manager.set_status("向上捲動訊息".to_string());
+                            },
+                            KeyCode::Down => {
+                                // 需要傳入可見高度，這裡使用合理的預設值
+                                output_manager.scroll_down(20);
+                                output_manager.set_status("向下捲動訊息".to_string());
+                            },
+                            _ => {}
+                        }
+                    }
+                    // 如果大地圖開啟，用方向鍵移動地圖視圖
+                    else if output_manager.is_map_open() {
+                        if let Some(current_map) = game_world.get_current_map() {
+                            let (dx, dy) = match key.code {
+                                KeyCode::Up => (0, -5),
+                                KeyCode::Down => (0, 5),
+                                KeyCode::Left => (-5, 0),
+                                KeyCode::Right => (5, 0),
+                                _ => (0, 0),
+                            };
+                            output_manager.move_map_view(dx, dy, current_map.width, current_map.height);
+                        }
+                    } else {
+                        // 否則將方向鍵傳遞給 input_handler 處理移動
+                        if let Some(result) = input_handler.handle_event(
+                            crossterm::event::Event::Key(key)
+                        ) {
+                            if let CommandResult::Exit = result {
+                                should_exit = true;
+                            } else {
+                                handle_command_result(result, output_manager, game_world, me)?;
+                            }
+                        }
+                    }
+                },
+                KeyCode::PageUp => {
+                    // PageUp 鍵向上捲動訊息
+                    output_manager.scroll_up();
+                    output_manager.set_status("向上捲動訊息".to_string());
+                },
+                KeyCode::PageDown => {
+                    // PageDown 鍵向下捲動訊息
+                    output_manager.scroll_down(20);
+                    output_manager.set_status("向下捲動訊息".to_string());
+                },
+                _ => {
+                    // 處理其他鍵盤輸入（字符、Enter、Backspace 等）
+                    if let Some(result) = input_handler.handle_event(
+                        crossterm::event::Event::Key(key)
+                    ) {
+                        if let CommandResult::Exit = result {
+                            should_exit = true;
+                        } else {
+                            handle_command_result(result, output_manager, game_world, me)?;
+                        }
+                    }
+                }
+                }
+            }
+        }
+        // 同步 NpcManager 和 Maps 的變更（雙向同步
+        if let (Ok(mut ai_manager_mut), Ok(mut maps_lock_mut), Ok(mut current_map_lock_mut)) =
+            (npc_manager.try_lock(), maps.try_lock(), current_map.try_lock()) {
+            *ai_manager_mut = game_world.npc_manager.clone();
+            *maps_lock_mut = game_world.maps.clone();
+            *current_map_lock_mut = game_world.current_map_name.clone();
         }
         // 繪製終端畫面
         terminal.draw(|f| {
@@ -265,107 +360,6 @@ pub fn run_main_loop(
         if should_exit {
             break 'main_loop;
         }
-
-        // 檢查是否有鍵盤事件（16ms 超時，約60fps）
-        if event::poll(Duration::from_millis(16))? {
-            let event = event::read()?;
-            
-            // 處理鍵盤事件
-            if let crossterm::event::Event::Key(key) = event {
-                match key.code {
-                KeyCode::Esc => {
-                    // ESC 鍵清除輸入
-                    input_handler.clear_input();
-                },
-                KeyCode::F(1) => {
-                    // F1 鍵切換側邊面板
-                    output_manager.toggle_status_panel();
-                },
-                KeyCode::Char('q') | KeyCode::Char('Q') => {
-                    // 如果大地圖開啟，q 鍵關閉地圖
-                    if output_manager.is_map_open() {
-                        output_manager.close_map();
-                        output_manager.set_status("大地圖已關閉".to_string());
-                    } else {
-                        // 否則當作正常輸入處理
-                        if let Some(result) = input_handler.handle_event(
-                            crossterm::event::Event::Key(key)
-                        ) {
-                            if let CommandResult::Exit = result {
-                                should_exit = true;
-                            } else {
-                                handle_command_result(result, output_manager, game_world, me)?;
-                            }
-                        }
-                    }
-                },
-                // 上下左右鍵優先用於移動
-                KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right => {
-                    // 檢查是否按住 Shift 鍵 - 用於訊息捲動
-                    if key.modifiers.contains(crossterm::event::KeyModifiers::SHIFT) {
-                        match key.code {
-                            KeyCode::Up => {
-                                output_manager.scroll_up();
-                                output_manager.set_status("向上捲動訊息".to_string());
-                            },
-                            KeyCode::Down => {
-                                // 需要傳入可見高度，這裡使用合理的預設值
-                                output_manager.scroll_down(20);
-                                output_manager.set_status("向下捲動訊息".to_string());
-                            },
-                            _ => {}
-                        }
-                    }
-                    // 如果大地圖開啟，用方向鍵移動地圖視圖
-                    else if output_manager.is_map_open() {
-                        if let Some(current_map) = game_world.get_current_map() {
-                            let (dx, dy) = match key.code {
-                                KeyCode::Up => (0, -5),
-                                KeyCode::Down => (0, 5),
-                                KeyCode::Left => (-5, 0),
-                                KeyCode::Right => (5, 0),
-                                _ => (0, 0),
-                            };
-                            output_manager.move_map_view(dx, dy, current_map.width, current_map.height);
-                        }
-                    } else {
-                        // 否則將方向鍵傳遞給 input_handler 處理移動
-                        if let Some(result) = input_handler.handle_event(
-                            crossterm::event::Event::Key(key)
-                        ) {
-                            if let CommandResult::Exit = result {
-                                should_exit = true;
-                            } else {
-                                handle_command_result(result, output_manager, game_world, me)?;
-                            }
-                        }
-                    }
-                },
-                KeyCode::PageUp => {
-                    // PageUp 鍵向上捲動訊息
-                    output_manager.scroll_up();
-                    output_manager.set_status("向上捲動訊息".to_string());
-                },
-                KeyCode::PageDown => {
-                    // PageDown 鍵向下捲動訊息
-                    output_manager.scroll_down(20);
-                    output_manager.set_status("向下捲動訊息".to_string());
-                },
-                _ => {
-                    // 處理其他鍵盤輸入（字符、Enter、Backspace 等）
-                    if let Some(result) = input_handler.handle_event(
-                        crossterm::event::Event::Key(key)
-                    ) {
-                        if let CommandResult::Exit = result {
-                            should_exit = true;
-                        } else {
-                            handle_command_result(result, output_manager, game_world, me)?;
-                        }
-                    }
-                }
-                }
-            }
-        }
     }
 
     // 不需要恢復 NpcManager 和 Maps，因為使用的是 clone
@@ -407,7 +401,7 @@ fn handle_command_result(
     me.check_mp(-1); // 每執行一個命令消耗 1 MP
     
     match result {
-        CommandResult::Exit => handle_exit(output_manager, game_world)?,
+        CommandResult::Exit => handle_exit(output_manager, game_world, me)?,
         CommandResult::Help => handle_help(output_manager),
         CommandResult::Output(text) => handle_output(text, output_manager),
         CommandResult::Error(err) => handle_error(err, output_manager),
@@ -462,14 +456,28 @@ fn handle_command_result(
 fn handle_exit(
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // 保存世界元數據和時間
     game_world.save_metadata()?;
-    game_world.save_time()?;  // 保存世界時間
+    game_world.save_time()?;
+    
+    // 保存玩家狀態
+    let person_dir = format!("{}/persons", game_world.world_dir);
+    std::fs::create_dir_all(&person_dir)?;
+    me.save(&person_dir, "me")?;
+    
+    // 保存所有 NPC 的狀態
+    game_world.npc_manager.save_all(&person_dir)?;
+    
+    // 保存遊戲設置
     let game_settings = GameSettings {
         show_minimap: output_manager.is_minimap_open(),
         ..Default::default()
     };
     let _ = game_settings.save();
+    
+    output_manager.print("遊戲狀態已保存".to_string());
     Ok(())
 }
 
