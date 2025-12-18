@@ -86,17 +86,12 @@ pub fn run_main_loop(
     ));
     
     'main_loop: loop {
-        // 同步 NpcManager 和 Maps 的變更（雙向同步)
-        if let (Ok(ai_manager), Ok(maps_lock)) =
-            (npc_manager.try_lock(), maps.try_lock()) {
-            // 複製 AI 的修改
-            game_world.npc_manager = ai_manager.clone();
-            game_world.maps = maps_lock.clone();
-            
-            // NPC 位置更新後，如果小地圖已開啟，更新小地圖顯示
-            if output_manager.is_minimap_open() {
-                update_minimap_display(output_manager, game_world, me);
-            }
+        // 同步 AI thread 的最新變更到 game_world
+        sync_from_ai_thread(&npc_manager, &maps, game_world);
+        
+        // NPC 位置更新後，如果小地圖已開啟，更新小地圖顯示
+        if output_manager.is_minimap_open() {
+            update_minimap_display(output_manager, game_world, me);
         }
         
         // 更新狀態列（檢查訊息是否過期）
@@ -151,9 +146,13 @@ pub fn run_main_loop(
                             crossterm::event::Event::Key(key)
                         ) {
                             if let CommandResult::Exit = result {
+                                // 退出前先從 AI thread 同步最新的 NPC 狀態
+                                sync_from_ai_thread(&npc_manager, &maps, game_world);
+                                handle_command_result(result, output_manager, game_world, me)?;
                                 should_exit = true;
                             } else {
                                 handle_command_result(result, output_manager, game_world, me)?;
+                                sync_to_ai_thread(&npc_manager, &maps, &current_map, game_world);
                             }
                         }
                     }
@@ -193,9 +192,13 @@ pub fn run_main_loop(
                             crossterm::event::Event::Key(key)
                         ) {
                             if let CommandResult::Exit = result {
+                                // 退出前先從 AI thread 同步最新的 NPC 狀態
+                                sync_from_ai_thread(&npc_manager, &maps, game_world);
+                                handle_command_result(result, output_manager, game_world, me)?;
                                 should_exit = true;
                             } else {
                                 handle_command_result(result, output_manager, game_world, me)?;
+                                sync_to_ai_thread(&npc_manager, &maps, &current_map, game_world);
                             }
                         }
                     }
@@ -216,22 +219,23 @@ pub fn run_main_loop(
                         crossterm::event::Event::Key(key)
                     ) {
                         if let CommandResult::Exit = result {
+                            // 退出前先從 AI thread 同步最新的 NPC 狀態
+                            sync_from_ai_thread(&npc_manager, &maps, game_world);
+                            handle_command_result(result, output_manager, game_world, me)?;
                             should_exit = true;
                         } else {
                             handle_command_result(result, output_manager, game_world, me)?;
+                            sync_to_ai_thread(&npc_manager, &maps, &current_map, game_world);
                         }
                     }
                 }
                 }
             }
         }
-        // 同步 NpcManager 和 Maps 的變更（雙向同步
-        if let (Ok(mut ai_manager_mut), Ok(mut maps_lock_mut), Ok(mut current_map_lock_mut)) =
-            (npc_manager.try_lock(), maps.try_lock(), current_map.try_lock()) {
-            *ai_manager_mut = game_world.npc_manager.clone();
-            *maps_lock_mut = game_world.maps.clone();
-            *current_map_lock_mut = game_world.current_map_name.clone();
-        }
+        
+        // 繪製前同步 AI thread 的最新變更
+        sync_from_ai_thread(&npc_manager, &maps, game_world);
+        
         // 繪製終端畫面
         terminal.draw(|f| {
             let size = f.size();
@@ -450,6 +454,34 @@ fn handle_command_result(
     }
     
     Ok(())
+}
+
+/// 將玩家操作後的變更同步到 AI thread
+fn sync_to_ai_thread(
+    npc_manager: &Arc<Mutex<NpcManager>>,
+    maps: &Arc<Mutex<std::collections::HashMap<String, crate::map::Map>>>,
+    current_map: &Arc<Mutex<String>>,
+    game_world: &GameWorld,
+) {
+    if let (Ok(mut ai_manager_mut), Ok(mut maps_lock_mut), Ok(mut current_map_lock_mut)) =
+        (npc_manager.try_lock(), maps.try_lock(), current_map.try_lock()) {
+        *ai_manager_mut = game_world.npc_manager.clone();
+        *maps_lock_mut = game_world.maps.clone();
+        *current_map_lock_mut = game_world.current_map_name.clone();
+    }
+}
+
+/// 從 AI thread 同步最新變更到 game_world
+fn sync_from_ai_thread(
+    npc_manager: &Arc<Mutex<NpcManager>>,
+    maps: &Arc<Mutex<std::collections::HashMap<String, crate::map::Map>>>,
+    game_world: &mut GameWorld,
+) {
+    if let (Ok(ai_manager), Ok(maps_lock)) =
+        (npc_manager.try_lock(), maps.try_lock()) {
+        game_world.npc_manager = ai_manager.clone();
+        game_world.maps = maps_lock.clone();
+    }
 }
 
 /// 處理退出命令
