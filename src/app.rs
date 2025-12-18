@@ -31,39 +31,25 @@ fn clamp_rect(rect: Rect, max_width: u16, max_height: u16) -> Rect {
     Rect { x, y, width, height }
 }
 
-fn create_npc_thread(npc_manager: Arc<Mutex<NpcManager>>)->NpcAiThread {
+fn create_npc_thread(
+    npc_manager: Arc<Mutex<NpcManager>>,
+    maps: Arc<Mutex<std::collections::HashMap<String, crate::map::Map>>>,
+    current_map_name: Arc<Mutex<String>>,
+) -> NpcAiThread {
     crate::npc_ai_thread::NpcAiThread::new(
         move || {
-            let mut all_logs = Vec::new();            
-            if let Ok(manager) = npc_manager.lock() {                
-                let npc_ids: Vec<String> = manager.get_all_npc_ids();                
-                for npc_id in npc_ids {
-                    if let Some(npc) = manager.get_npc(&npc_id).cloned() {
-                        let behavior = crate::npc_ai::NpcAiController::determine_behavior(&npc);                        
-                        // 根據行為執行不同邏輯
-                        let log_msg = match behavior {
-                            crate::npc_ai::NpcBehavior::UseFood => {
-                                if npc.hp < npc.max_hp / 2 {
-                                    Some(format!("🍎 {} 正在尋找食物恢復生命 (HP: {}/{})", npc.name, npc.hp, npc.max_hp))
-                                } else {
-                                    None
-                                }
-                            },
-                            crate::npc_ai::NpcBehavior::Wander => {
-                                Some(format!("🚶 {} 正在四處遊蕩", npc.name))
-                            },
-                            crate::npc_ai::NpcBehavior::Farm => {
-                                Some(format!("🌾 農夫 {} 正在耕作", npc.name))
-                            },
-                            _ => None,
-                        };                        
-                        if let Some(msg) = log_msg {
-                            all_logs.push(msg);
-                        }                        
-                    }
-                }
-            }            
-            all_logs
+            // 嘗試獲取所有鎖
+            if let (Ok(mut manager), Ok(mut maps_lock), Ok(_current_map)) =
+                (npc_manager.try_lock(), maps.try_lock(), current_map_name.try_lock()) {
+
+                // 使用 NpcAiController 的新版本函數
+                crate::npc_ai::NpcAiController::update_all_npcs_with_components(
+                    &mut manager,
+                    &mut maps_lock,
+                )
+            } else {
+                Vec::new()
+            }
         },
         5000  // 每5秒更新一次
     )
@@ -93,41 +79,35 @@ pub fn run_main_loop(
     let current_map = Arc::new(Mutex::new(game_world.current_map_name.clone()));
     
     // 啟動 NPC AI 執行緒（每5秒更新一次）
-    game_world.npc_ai_thread = Some(create_npc_thread( Arc::clone(&npc_manager)));
+    game_world.npc_ai_thread = Some(create_npc_thread(
+        Arc::clone(&npc_manager),
+        Arc::clone(&maps),
+        Arc::clone(&current_map)
+    ));
     
     'main_loop: loop {
         // 同步 NpcManager 和 Maps 的變更（雙向同步）
-        if let (Ok(mut _manager), Ok(mut maps_lock), Ok(mut current_map_lock)) = 
+        if let (Ok(ai_manager), Ok(maps_lock), Ok(current_map_lock)) = 
             (npc_manager.try_lock(), maps.try_lock(), current_map.try_lock()) {
-            
-            // 雙向同步 NPC 狀態
-            // 1. 從主執行緒同步到 AI 執行緒（玩家的操作）
 
+            // 1. 從 AI 執行緒同步到主執行緒（AI 的變更，例如移動、使用物品等）
+            // 先複製 AI 的修改
+            game_world.npc_manager = ai_manager.clone();
+            game_world.maps = maps_lock.clone();
             
-            // 2. 從 AI 執行緒同步到主執行緒（AI 的變更）
-
+            // 2. 從主執行緒同步到 AI 執行緒（玩家的操作，例如召喚NPC等）
+            // 然後把主執行緒的修改寫回去（例如玩家召喚、對話等操作）
+            // 注意：這裡需要釋放鎖才能重新獲取 mut
+            drop(ai_manager);
+            drop(maps_lock);
+            drop(current_map_lock);
             
-            // 同步地圖變更（主執行緒 -> AI 執行緒）
-            *maps_lock = game_world.maps.clone();
-            *current_map_lock = game_world.current_map_name.clone();
-            
-            // 同步地圖變更（AI 執行緒 -> 主執行緒）
-            // 如果 AI 修改了地圖（如撿物品、改變地形），也要同步回來
-            for (map_name, ai_map) in maps_lock.iter() {
-                if let Some(world_map) = game_world.maps.get_mut(map_name) {
-                    // 同步每個點的物品和狀態
-                    for y in 0..world_map.height.min(ai_map.height) {
-                        for x in 0..world_map.width.min(ai_map.width) {
-                            if let Some(ai_point) = ai_map.points.get(y).and_then(|row| row.get(x)) {
-                                if let Some(world_point) = world_map.points.get_mut(y).and_then(|row| row.get_mut(x)) {
-                                    // 同步物品
-                                    world_point.objects = ai_point.objects.clone();
-                                    world_point.object_ages = ai_point.object_ages.clone();
-                                }
-                            }
-                        }
-                    }
-                }
+            // 重新獲取可變鎖來寫入
+            if let (Ok(mut ai_manager_mut), Ok(mut maps_lock_mut), Ok(mut current_map_lock_mut)) = 
+                (npc_manager.try_lock(), maps.try_lock(), current_map.try_lock()) {
+                *ai_manager_mut = game_world.npc_manager.clone();
+                *maps_lock_mut = game_world.maps.clone();
+                *current_map_lock_mut = game_world.current_map_name.clone();
             }
         }
         

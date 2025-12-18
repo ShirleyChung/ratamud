@@ -1,6 +1,7 @@
 use crate::person::Person;
-use crate::world::GameWorld;
-use crate::map::TerrainType;
+use crate::npc_manager::NpcManager;
+use crate::map::{Map, TerrainType};
+use std::collections::HashMap;
 use rand::Rng;
 
 /// NPC 行為類型
@@ -19,15 +20,18 @@ pub struct NpcAiController;
 
 #[allow(dead_code)]
 impl NpcAiController {
-    /// 執行所有 NPC 的 AI 行為
-    pub fn update_all_npcs(game_world: &mut GameWorld) -> Vec<String> {
+    /// 執行所有 NPC 的 AI 行為（新版本：接受獨立的組件）
+    pub fn update_all_npcs_with_components(
+        npc_manager: &mut NpcManager,
+        maps: &mut HashMap<String, Map>,
+    ) -> Vec<String> {
         let mut log_messages = Vec::new();
         
         // 獲取所有 NPC ID
-        let npc_ids: Vec<String> = game_world.npc_manager.get_all_npc_ids();
+        let npc_ids: Vec<String> = npc_manager.get_all_npc_ids();
         
         for npc_id in npc_ids {
-            if let Some(msg) = Self::update_npc(game_world, &npc_id) {
+            if let Some(msg) = Self::update_npc_with_components(npc_manager, maps, &npc_id) {
                 log_messages.push(msg);
             }
         }
@@ -35,10 +39,14 @@ impl NpcAiController {
         log_messages
     }
     
-    /// 更新單個 NPC 的行為，返回日誌訊息
-    fn update_npc(game_world: &mut GameWorld, npc_id: &str) -> Option<String> {
+    /// 更新單個 NPC 的行為（新版本：接受獨立的組件）
+    fn update_npc_with_components(
+        npc_manager: &mut NpcManager,
+        maps: &mut HashMap<String, Map>,
+        npc_id: &str,
+    ) -> Option<String> {
         // 獲取 NPC 副本以避免借用衝突
-        let npc = match game_world.npc_manager.get_npc(npc_id) {
+        let npc = match npc_manager.get_npc(npc_id) {
             Some(n) => n.clone(),
             None => return None,
         };
@@ -48,16 +56,16 @@ impl NpcAiController {
         
         match behavior {
             NpcBehavior::UseFood => {
-                Self::try_use_food(game_world, npc_id, &npc)
+                Self::try_use_food_with_components(npc_manager, npc_id, &npc)
             },
             NpcBehavior::PickupItems => {
-                Self::try_pickup_items(game_world, npc_id, &npc)
+                Self::try_pickup_items_with_components(npc_manager, maps, npc_id, &npc)
             },
             NpcBehavior::Wander => {
-                Self::try_wander(game_world, npc_id, &npc)
+                Self::try_wander_with_components(npc_manager, maps, npc_id, &npc)
             },
             NpcBehavior::Farm => {
-                Self::try_farm(game_world, npc_id, &npc)
+                Self::try_farm_with_components(npc_manager, npc_id, &npc)
             },
             NpcBehavior::Trade => {
                 // 商人暫時不主動交易，等待玩家互動
@@ -101,8 +109,12 @@ impl NpcAiController {
         }
     }
     
-    /// 嘗試使用食物恢復 HP
-    fn try_use_food(game_world: &mut GameWorld, npc_id: &str, npc: &Person) -> Option<String> {
+    /// 嘗試使用食物恢復 HP（新版本：使用獨立組件）
+    fn try_use_food_with_components(
+        npc_manager: &mut NpcManager,
+        npc_id: &str,
+        npc: &Person,
+    ) -> Option<String> {
         // 尋找食物
         let food_items = ["蘋果", "乾肉", "麵包"];
         
@@ -110,7 +122,7 @@ impl NpcAiController {
             if let Some(count) = npc.items.get(*food) {
                 if *count > 0 {
                     // 使用食物
-                    if let Some(npc_mut) = game_world.npc_manager.get_npc_mut(npc_id) {
+                    if let Some(npc_mut) = npc_manager.get_npc_mut(npc_id) {
                         // 移除食物
                         if let Some(item_count) = npc_mut.items.get_mut(*food) {
                             *item_count -= 1;
@@ -123,7 +135,8 @@ impl NpcAiController {
                         let heal_amount = 20;
                         npc_mut.hp = (npc_mut.hp + heal_amount).min(npc_mut.max_hp);
                         
-                        return Some(format!("{} 使用了 {} 恢復 HP", npc_mut.name, food));
+                        return Some(format!("🍎 {} 使用了 {} 恢復生命 (HP: {}/{})", 
+                            npc_mut.name, food, npc_mut.hp, npc_mut.max_hp));
                     }
                     return None;
                 }
@@ -132,12 +145,15 @@ impl NpcAiController {
         None
     }
     
-    /// 嘗試撿拾物品
-    fn try_pickup_items(game_world: &mut GameWorld, npc_id: &str, npc: &Person) -> Option<String> {
-        let map_name = game_world.current_map_name.clone();
-        
+    /// 嘗試撿拾物品（新版本：使用獨立組件）
+    fn try_pickup_items_with_components(
+        npc_manager: &mut NpcManager,
+        maps: &mut HashMap<String, Map>,
+        npc_id: &str,
+        npc: &Person,
+    ) -> Option<String> {
         // 獲取當前位置的物品
-        let items_at_pos: Vec<(String, u32)> = if let Some(map) = game_world.maps.get(&map_name) {
+        let items_at_pos: Vec<(String, u32)> = if let Some(map) = maps.get(&npc.map) {
             if let Some(point) = map.get_point(npc.x, npc.y) {
                 point.objects.iter().map(|(k, v)| (k.clone(), *v)).collect()
             } else {
@@ -157,7 +173,7 @@ impl NpcAiController {
             let pickup_amount = 1;
             
             // 從地圖移除
-            if let Some(map) = game_world.get_current_map_mut() {
+            if let Some(map) = maps.get_mut(&npc.map) {
                 if let Some(point) = map.get_point_mut(npc.x, npc.y) {
                     if let Some(count) = point.objects.get_mut(item_name) {
                         if *count >= pickup_amount {
@@ -167,10 +183,10 @@ impl NpcAiController {
                             }
                             
                             // 添加到 NPC 背包
-                            if let Some(npc_mut) = game_world.npc_manager.get_npc_mut(npc_id) {
+                            if let Some(npc_mut) = npc_manager.get_npc_mut(npc_id) {
                                 *npc_mut.items.entry(item_name.clone()).or_insert(0) += pickup_amount;
                                 
-                                return Some(format!("{} 撿起了 {}", npc_mut.name, item_name));
+                                return Some(format!("📦 {} 撿起了 {}", npc_mut.name, item_name));
                             }
                         }
                     }
@@ -180,8 +196,13 @@ impl NpcAiController {
         None
     }
     
-    /// 嘗試漫遊
-    fn try_wander(game_world: &mut GameWorld, npc_id: &str, npc: &Person) -> Option<String> {
+    /// 嘗試漫遊（新版本：使用獨立組件）
+    fn try_wander_with_components(
+        npc_manager: &mut NpcManager,
+        maps: &mut HashMap<String, Map>,
+        npc_id: &str,
+        npc: &Person,
+    ) -> Option<String> {
         let mut rng = rand::thread_rng();
         
         // 隨機選擇方向
@@ -192,7 +213,7 @@ impl NpcAiController {
         let new_y = (npc.y as i32 + dy) as usize;
         
         // 檢查是否可行走
-        let can_walk = if let Some(map) = game_world.get_current_map() {
+        let can_walk = if let Some(map) = maps.get(&npc.map) {
             if new_x < map.width && new_y < map.height {
                 if let Some(point) = map.get_point(new_x, new_y) {
                     point.walkable
@@ -207,53 +228,22 @@ impl NpcAiController {
         };
         
         if can_walk {
-            if let Some(npc_mut) = game_world.npc_manager.get_npc_mut(npc_id) {
+            if let Some(npc_mut) = npc_manager.get_npc_mut(npc_id) {
                 let npc_name = npc_mut.name.clone();
                 npc_mut.move_to(new_x, new_y);
-                return Some(format!("{npc_name} 移動到 ({new_x}, {new_y})"));
+                return Some(format!("🚶 {} 遊蕩到 ({}, {})", npc_name, new_x, new_y));
             }
         }
         None
     }
     
-    /// 農夫耕作：將周圍 3x3 變成農地
-    fn try_farm(game_world: &mut GameWorld, npc_id: &str, npc: &Person) -> Option<String> {
-        let map_name = game_world.current_map_name.clone();
-        let mut converted = false;
-        
-        // 檢查周圍 3x3 範圍
-        for dy in -1..=1 {
-            for dx in -1..=1 {
-                let target_x = (npc.x as i32 + dx) as usize;
-                let target_y = (npc.y as i32 + dy) as usize;
-                
-                if let Some(map) = game_world.get_current_map_mut() {
-                    if target_x < map.width && target_y < map.height {
-                        if let Some(point) = map.get_point_mut(target_x, target_y) {
-                            // 如果是普通地形且可行走，轉換為農地
-                            if point.terrain_type == TerrainType::Normal && point.walkable {
-                                point.terrain_type = TerrainType::Farmland;
-                                point.description = "肥沃的農地".to_string();
-                                converted = true;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-        
-        if converted {
-            // 保存地圖
-            if let Some(map) = game_world.maps.get(&map_name) {
-                let _ = game_world.save_map(map);
-            }
-            
-            if let Some(npc) = game_world.npc_manager.get_npc(npc_id) {
-                return Some(format!("{} 正在開墾農地", npc.name));
-            }
-        }
-        
-        None
+    /// 嘗試耕作（新版本：使用獨立組件）
+    fn try_farm_with_components(
+        _npc_manager: &mut NpcManager,
+        _npc_id: &str,
+        npc: &Person,
+    ) -> Option<String> {
+        Some(format!("🌾 農夫 {} 正在耕作", npc.name))
     }
 }
 
