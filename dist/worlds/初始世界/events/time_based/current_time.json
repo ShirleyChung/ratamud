@@ -1,0 +1,24 @@
+{
+  "id": "test_current_time",
+  "name": "當前時間測試",
+  "description": "13:05 觸發一次（測試用）",
+  "trigger": {
+    "type": "time",
+    "schedule": "5 13 * * *"
+  },
+  "where": {
+    "map": "初始之地"
+  },
+  "actions": [
+    {
+      "type": "message",
+      "text": "🎯 13:05 測試事件觸發成功！"
+    }
+  ],
+  "state": {
+    "repeatable": true,
+    "cooldown": 0,
+    "max_triggers": -1,
+    "prerequisites": []
+  }
+}

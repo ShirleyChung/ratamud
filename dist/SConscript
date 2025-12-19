@@ -1,0 +1,139 @@
+# RataMUD C/C++ 範例構建腳本
+
+import os
+import subprocess
+
+Import('env')
+
+# 創建本地環境
+local_env = env.Clone()
+
+# 確保 dist 目錄存在
+dist_dir = local_env['DIST_DIR']
+if not os.path.exists(dist_dir):
+    os.makedirs(dist_dir)
+
+# 設定編譯選項
+local_env.Append(CPPPATH=['#/dist'])
+local_env.Append(LIBPATH=['#/' + dist_dir])
+local_env.Append(LIBS=['ratamud'])
+
+if local_env['RPATH']:
+    local_env.Append(LINKFLAGS=[local_env['RPATH']])
+
+# ===== Rust 函式庫 =====
+lib_name = f"libratamud.{local_env['LIB_EXT']}"
+lib_target = File('#/' + os.path.join(dist_dir, lib_name))
+
+rust_sources = Glob('#/src/*.rs') + Glob('#/src/**/*.rs')
+cargo_toml = File('#/Cargo.toml')
+
+def build_rust_lib(target, source, env):
+    cwd = Dir('#').abspath
+    build_type = env['BUILD_MODE']
+    cmd = [env['CARGO'], 'build', '--lib']
+    
+    if build_type == 'release':
+        cmd.append('--release')
+    
+    print(f"\n{env['COLORS']['cyan']}[CARGO] Building Rust library ({build_type})...{env['COLORS']['end']}")
+    
+    result = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
+    
+    if result.returncode != 0:
+        print(f"{env['COLORS']['red']}Cargo build failed:{env['COLORS']['end']}")
+        print(result.stderr)
+        return result.returncode
+    
+    # 複製到 dist
+    import shutil
+    src_lib = os.path.join(cwd, env['RUST_TARGET_DIR'], lib_name)
+    
+    if not os.path.exists(src_lib):
+        print(f"{env['COLORS']['red']}Error: Library not found at {src_lib}{env['COLORS']['end']}")
+        return 1
+    
+    shutil.copy2(src_lib, str(target[0]))
+    print(f"{env['COLORS']['green']}✓ Rust library: {target[0]}{env['COLORS']['end']}\n")
+    return None
+
+rust_lib = local_env.Command(
+    lib_target,
+    rust_sources + [cargo_toml],
+    build_rust_lib
+)
+
+local_env.Alias('lib', rust_lib)
+
+# ===== C 範例 =====
+c_src = '#/dist/example.c'
+if os.path.exists(Dir('#').abspath + '/dist/example.c'):
+    c_example = local_env.Program(
+        target='#/dist/example',
+        source=c_src
+    )
+    Depends(c_example, rust_lib)
+    local_env.Alias('c-example', c_example)
+    local_env.Alias('examples', c_example)
+
+# ===== C++ 測試 =====
+cpp_src = '#/dist/test.cpp'
+if os.path.exists(Dir('#').abspath + '/dist/test.cpp'):
+    cpp_test = local_env.Program(
+        target='#/dist/test',
+        source=cpp_src
+    )
+    Depends(cpp_test, rust_lib)
+    local_env.Alias('cpp-test', cpp_test)
+    local_env.Alias('examples', cpp_test)
+
+# ===== 運行測試 =====
+def run_program_action(target, source, env, program_name):
+    program = str(source[0])
+    print(f"\n{env['COLORS']['cyan']}{'='*60}{env['COLORS']['end']}")
+    print(f"{env['COLORS']['green']}Running: {program_name}{env['COLORS']['end']}")
+    print(f"{env['COLORS']['cyan']}{'='*60}{env['COLORS']['end']}\n")
+    
+    test_env = os.environ.copy()
+    if env['RPATH']:
+        lib_var = 'DYLD_LIBRARY_PATH' if env['LIB_EXT'] == 'dylib' else 'LD_LIBRARY_PATH'
+        test_env[lib_var] = env['DIST_DIR'] + ':' + test_env.get(lib_var, '')
+    
+    result = subprocess.run([program], env=test_env)
+    
+    if result.returncode != 0:
+        print(f"\n{env['COLORS']['red']}✗ {program_name} failed{env['COLORS']['end']}")
+    else:
+        print(f"\n{env['COLORS']['green']}✓ {program_name} completed{env['COLORS']['end']}")
+    
+    return None
+
+if os.path.exists(Dir('#').abspath + '/dist/example.c'):
+    def run_c_action(target, source, env):
+        return run_program_action(target, source, env, 'C Example')
+    
+    run_c = local_env.Command(
+        'run-c-example',
+        '#/dist/example',
+        run_c_action
+    )
+    local_env.Alias('run-c', run_c)
+    local_env.AlwaysBuild(run_c)
+
+if os.path.exists(Dir('#').abspath + '/dist/test.cpp'):
+    def run_cpp_action(target, source, env):
+        return run_program_action(target, source, env, 'C++ Test')
+    
+    run_cpp = local_env.Command(
+        'run-cpp-test',
+        '#/dist/test',
+        run_cpp_action
+    )
+    local_env.Alias('run-cpp', run_cpp)
+    local_env.AlwaysBuild(run_cpp)
+
+# ===== 清理 =====
+Clean(rust_lib, [local_env['RUST_TARGET_DIR']])
+
+# 返回
+Return('rust_lib')

@@ -1,0 +1,20 @@
+{
+  "id": "test_event",
+  "name": "測試事件",
+  "description": "每分鐘觸發的測試事件",
+  "trigger": {
+    "type": "time",
+    "schedule": "* * * * *"
+  },
+  "actions": [
+    {
+      "type": "message",
+      "text": "⏰ 測試事件觸發！"
+    }
+  ],
+  "state": {
+    "repeatable": true,
+    "cooldown": 0,
+    "max_triggers": -1
+  }
+}

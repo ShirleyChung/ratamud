@@ -1,0 +1,19 @@
+{
+  "name": "黃老闆",
+  "description": "一個商人",
+  "abilities": [],
+  "items": {},
+  "status": "正常",
+  "x": 51,
+  "y": 51,
+  "hp": 100000,
+  "mp": 100000,
+  "strength": 100,
+  "knowledge": 100,
+  "sociality": 100,
+  "age": 0,
+  "last_hunger_hour": 0,
+  "is_sleeping": false,
+  "last_mp_restore_minute": 0,
+  "max_mp": 100000
+}

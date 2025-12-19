@@ -19,3 +19,4 @@ pub mod output;
 pub mod settings;
 pub mod ui;
 pub mod app;
+pub mod ffi;
