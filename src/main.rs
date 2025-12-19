@@ -35,8 +35,6 @@ use input::InputHandler;
 use output::OutputManager;
 use person::Person;
 use world::GameWorld;
-use map::Map;
-use map::MapType;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 初始化終端原始模式和備用螢幕
@@ -44,10 +42,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen)?;
     let backend = CrosstermBackend::new(stdout);
-    let mut terminal = Terminal::new(backend)?;
+    let terminal = Terminal::new(backend)?;
 
     // 初始化輸入和輸出管理器
-    let mut input_handler = InputHandler::new();
+    let input_handler = InputHandler::new();
     let mut output_manager = OutputManager::new();
     
     // 載入遊戲設定
@@ -105,52 +103,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         Err(e) => {
             output_manager.log(format!("⚠️  載入事件失敗: {e}"));
         }
+    }    
+    match game_world.initialize_maps() {
+        Ok((map_count, logs)) => {
+            for log in logs {
+                output_manager.log(log);
+            }
+            output_manager.log(format!("已加載 {} 個地圖", map_count));
+        }
+        Err(e) => {
+            output_manager.log(format!("⚠️  載入地圖失敗: {e}"));
+        }
     }
-    
-    // 更新世界元數據，添加4個地圖名稱
-    game_world.metadata.maps = vec![
-        "初始之地".to_string(),
-        "森林".to_string(),
-        "洞穴".to_string(),
-        "沙漠".to_string(),
-        "山脈".to_string(),
-    ];
-    
-    // 建立 maps 資料夾
-    std::fs::create_dir_all(game_world.get_maps_dir())?;
-    
-    // 生成並保存4張地圖
-    let maps_config = vec![
-        ("初始之地", MapType::Normal),
-        ("森林", MapType::Forest),
-        ("洞穴", MapType::Cave),
-        ("沙漠", MapType::Desert),
-        ("山脈", MapType::Mountain),
-    ];
-
-    for (map_name, map_type) in maps_config {
-        let map_path = format!("{}/{}.json", game_world.get_maps_dir(), map_name);
-        
-        let map = if std::path::Path::new(&map_path).exists() {
-            // 如果檔案存在，則加載（不要重新初始化物品）
-            Map::load(&map_path)?
-        } else {
-            // 否則生成新地圖
-            let mut new_map = Map::new_with_type(map_name.to_string(), 100, 100, map_type);
-            // 只在新地圖時初始化物品
-            new_map.initialize_items();
-            // 保存新地圖
-            new_map.save(&map_path)?;
-            new_map
-        };
-        output_manager.log(format!("地圖已加載: {}", map.name));
-        let (walkable, unwalkable) = map.get_stats();
-        output_manager.log(format!("{map_name} - 可行走點: {walkable}, 不可行走點: {unwalkable}"));
-        game_world.add_map(map);
-    }
-    
-    // 保存世界元數據
-    let _ = game_world.save_metadata();
     
     // 顯示當前時間
     output_manager.log(format!("⏰ {}", game_world.format_time()));
@@ -168,42 +132,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         output_manager.log("已保存新角色: Me".to_string());
     }
     
-    // 先載入 persons 目錄下的所有 NPC 文件
+    // 載入所有 NPC
     output_manager.log("開始載入 NPC...".to_string());
-    let mut loaded_npc_count = 0;
-    
-    if let Ok(entries) = std::fs::read_dir(&person_dir) {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.extension().and_then(|s| s.to_str()) == Some("json") {
-                if let Some(file_stem) = path.file_stem().and_then(|s| s.to_str()) {
-                    // 跳過 "me" 文件，因為已經單獨載入了
-                    if file_stem == "me" {
-                        continue;
-                    }
-                    
-                    // 嘗試載入 NPC
-                    if let Ok(npc) = Person::load(&person_dir, file_stem) {
-                        let npc_name = npc.name.clone();
-                        let npc_x = npc.x;
-                        let npc_y = npc.y;
-                        
-                        // 使用文件名作為 ID，名稱作為別名
-                        game_world.npc_manager.add_npc(
-                            file_stem.to_string(), 
-                            npc, 
-                            vec![npc_name.to_lowercase()]
-                        );
-                        
-                        loaded_npc_count += 1;
-                        output_manager.log(format!("已載入 NPC: {npc_name} 在位置 ({npc_x}, {npc_y})"));
-                    }
-                }
+    match game_world.npc_manager.load_all_from_directory(&person_dir, vec!["me"]) {
+        Ok(count) => {
+            output_manager.log(format!("從文件載入了 {} 個 NPC", count));
+            
+            // 記錄每個 NPC 的詳細資訊
+            for npc in game_world.npc_manager.get_all_npcs() {
+                output_manager.log(format!("已載入 NPC: {} 在位置 ({}, {})", npc.name, npc.x, npc.y));
             }
         }
-    }    
-    output_manager.log(format!("從文件載入了 {loaded_npc_count} 個 NPC"));    
-    output_manager.log(format!("已加載 {} 個地圖", game_world.map_count()));
+        Err(e) => {
+            output_manager.log(format!("⚠️  載入 NPC 失敗: {e}"));
+        }
+    }
 
     // 顯示歡迎訊息
     show_welcome_message(&mut output_manager, &game_world);
@@ -215,7 +158,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // 運行主迴圈
-    app::run_main_loop(&mut terminal, &mut input_handler, &mut output_manager, &mut game_world, &mut me)?;
+    app::run_main_loop(terminal, input_handler, output_manager, game_world, me)?;
 
     // 清理終端設定並返回到常規模式
     disable_raw_mode()?;

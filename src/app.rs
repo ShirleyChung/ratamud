@@ -57,11 +57,11 @@ fn create_npc_thread(
 
 /// 應用程式主迴圈 - 將 main.rs 中的事件迴圈邏輯提取到此
 pub fn run_main_loop(
-    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
-    input_handler: &mut InputHandler,
-    output_manager: &mut OutputManager,
-    game_world: &mut GameWorld,
-    me: &mut Person,
+    mut terminal: Terminal<CrosstermBackend<io::Stdout>>,
+    mut input_handler: InputHandler,
+    mut output_manager: OutputManager,
+    mut game_world: GameWorld,
+    mut me: Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
     
     let mut should_exit = false;
@@ -87,11 +87,11 @@ pub fn run_main_loop(
     
     'main_loop: loop {
         // 同步 AI thread 的最新變更到 game_world
-        sync_from_ai_thread(&npc_manager, &maps, game_world);
+        sync_from_ai_thread(&npc_manager, &maps, &mut game_world);
         
         // NPC 位置更新後，如果小地圖已開啟，更新小地圖顯示
         if output_manager.is_minimap_open() {
-            update_minimap_display(output_manager, game_world, me);
+            update_minimap_display(&mut output_manager, &game_world, &me);
         }
         
         // 更新狀態列（檢查訊息是否過期）
@@ -117,7 +117,7 @@ pub fn run_main_loop(
         // 定期檢查並觸發事件
         let now = Instant::now();
         if now.duration_since(last_event_check) >= event_check_interval {
-            check_and_execute_events(game_world, me, output_manager);
+            check_and_execute_events(&mut game_world, &mut me, &mut output_manager);
             last_event_check = now;
         }
         // 檢查是否有鍵盤事件（16ms 超時，約60fps）
@@ -147,12 +147,12 @@ pub fn run_main_loop(
                         ) {
                             if let CommandResult::Exit = result {
                                 // 退出前先從 AI thread 同步最新的 NPC 狀態
-                                sync_from_ai_thread(&npc_manager, &maps, game_world);
-                                handle_command_result(result, output_manager, game_world, me)?;
+                                sync_from_ai_thread(&npc_manager, &maps, &mut game_world);
+                                handle_command_result(result, &mut output_manager, &mut game_world, &mut me)?;
                                 should_exit = true;
                             } else {
-                                handle_command_result(result, output_manager, game_world, me)?;
-                                sync_to_ai_thread(&npc_manager, &maps, &current_map, game_world);
+                                handle_command_result(result, &mut output_manager, &mut game_world, &mut me)?;
+                                sync_to_ai_thread(&npc_manager, &maps, &current_map, &game_world);
                             }
                         }
                     }
@@ -193,12 +193,12 @@ pub fn run_main_loop(
                         ) {
                             if let CommandResult::Exit = result {
                                 // 退出前先從 AI thread 同步最新的 NPC 狀態
-                                sync_from_ai_thread(&npc_manager, &maps, game_world);
-                                handle_command_result(result, output_manager, game_world, me)?;
+                                sync_from_ai_thread(&npc_manager, &maps, &mut game_world);
+                                handle_command_result(result, &mut output_manager, &mut game_world, &mut me)?;
                                 should_exit = true;
                             } else {
-                                handle_command_result(result, output_manager, game_world, me)?;
-                                sync_to_ai_thread(&npc_manager, &maps, &current_map, game_world);
+                                handle_command_result(result, &mut output_manager, &mut game_world, &mut me)?;
+                                sync_to_ai_thread(&npc_manager, &maps, &current_map, &game_world);
                             }
                         }
                     }
@@ -220,12 +220,12 @@ pub fn run_main_loop(
                     ) {
                         if let CommandResult::Exit = result {
                             // 退出前先從 AI thread 同步最新的 NPC 狀態
-                            sync_from_ai_thread(&npc_manager, &maps, game_world);
-                            handle_command_result(result, output_manager, game_world, me)?;
+                            sync_from_ai_thread(&npc_manager, &maps, &mut game_world);
+                            handle_command_result(result, &mut output_manager, &mut game_world, &mut me)?;
                             should_exit = true;
                         } else {
-                            handle_command_result(result, output_manager, game_world, me)?;
-                            sync_to_ai_thread(&npc_manager, &maps, &current_map, game_world);
+                            handle_command_result(result, &mut output_manager, &mut game_world, &mut me)?;
+                            sync_to_ai_thread(&npc_manager, &maps, &current_map, &game_world);
                         }
                     }
                 }
@@ -234,7 +234,7 @@ pub fn run_main_loop(
         }
         
         // 繪製前同步 AI thread 的最新變更
-        sync_from_ai_thread(&npc_manager, &maps, game_world);
+        sync_from_ai_thread(&npc_manager, &maps, &mut game_world);
         
         // 繪製終端畫面
         terminal.draw(|f| {

@@ -171,4 +171,37 @@ impl NpcManager {
             _ => 'N',  // 預設為 N (NPC)
         }
     }
+    
+    /// 從目錄載入所有 NPC（跳過指定的文件如 "me"）
+    pub fn load_all_from_directory(&mut self, person_dir: &str, skip_files: Vec<&str>) -> Result<usize, Box<dyn std::error::Error>> {
+        std::fs::create_dir_all(person_dir)?;
+        let mut loaded_count = 0;
+        
+        if let Ok(entries) = std::fs::read_dir(person_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.extension().and_then(|s| s.to_str()) == Some("json") {
+                    if let Some(file_stem) = path.file_stem().and_then(|s| s.to_str()) {
+                        // 跳過指定的文件
+                        if skip_files.contains(&file_stem) {
+                            continue;
+                        }
+                        
+                        // 嘗試載入 NPC
+                        if let Ok(npc) = Person::load(person_dir, file_stem) {
+                            // 使用文件名作為 ID，名稱作為別名
+                            self.add_npc(
+                                file_stem.to_string(), 
+                                npc.clone(), 
+                                vec![npc.name.to_lowercase()]
+                            );
+                            loaded_count += 1;
+                        }
+                    }
+                }
+            }
+        }
+        
+        Ok(loaded_count)
+    }
 }

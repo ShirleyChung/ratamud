@@ -3,7 +3,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use std::fs;
 use std::path::Path;
 use serde::{Deserialize, Serialize};
-use crate::map::Map;
+use crate::map::{Map, MapType};
 use crate::person::Person;
 use crate::time_updatable::{TimeInfo, TimeUpdatable};
 
@@ -428,6 +428,7 @@ impl GameWorld {
     }
 
     // 獲取地圖總數
+    #[allow(dead_code)]
     pub fn map_count(&self) -> usize {
         self.maps.len()
     }
@@ -464,6 +465,56 @@ impl GameWorld {
             let _ = self.load_map(&map_name);
         }
         Ok(())
+    }
+    
+    /// 初始化並載入所有地圖
+    /// 返回 (總地圖數, 日誌訊息列表)
+    pub fn initialize_maps(&mut self) -> Result<(usize, Vec<String>), Box<dyn std::error::Error>> {
+        // 初始化並載入所有地圖
+        let maps_config = vec![
+            ("初始之地", MapType::Normal),
+            ("森林", MapType::Forest),
+            ("洞穴", MapType::Cave),
+            ("沙漠", MapType::Desert),
+            ("山脈", MapType::Mountain),
+        ];
+        
+        let mut logs = Vec::new();
+        
+        // 更新世界元數據
+        self.metadata.maps = maps_config.iter().map(|(name, _)| name.to_string()).collect();
+        
+        // 建立 maps 資料夾
+        std::fs::create_dir_all(self.get_maps_dir())?;
+        
+        // 生成並保存地圖
+        for (map_name, map_type) in maps_config {
+            let map_path = format!("{}/{}.json", self.get_maps_dir(), map_name);
+            
+            let map = if std::path::Path::new(&map_path).exists() {
+                // 如果檔案存在，則加載（不要重新初始化物品）
+                Map::load(&map_path)?
+            } else {
+                // 否則生成新地圖
+                let mut new_map = Map::new_with_type(map_name.to_string(), 100, 100, map_type);
+                // 只在新地圖時初始化物品
+                new_map.initialize_items();
+                // 保存新地圖
+                new_map.save(&map_path)?;
+                new_map
+            };
+            
+            logs.push(format!("地圖已加載: {}", map.name));
+            let (walkable, unwalkable) = map.get_stats();
+            logs.push(format!("{} - 可行走點: {}, 不可行走點: {}", map_name, walkable, unwalkable));
+            
+            self.add_map(map);
+        }
+        
+        // 保存世界元數據
+        self.save_metadata()?;
+        
+        Ok((self.maps.len(), logs))
     }
 
     // 保存世界元數據

@@ -3,11 +3,11 @@
   "description": "精明的商人，販售各種物品",
   "abilities": [],
   "items": {
-    "魔法書": 10,
-    "治療藥水": 100,
     "匕首": 10,
+    "治療藥水": 100,
     "木劍": 10,
-    "魔力藥水": 100
+    "魔力藥水": 100,
+    "魔法書": 10
   },
   "status": "",
   "x": 66,
@@ -20,7 +20,7 @@
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 8749,
+  "age": 8990,
   "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
