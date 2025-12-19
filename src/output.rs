@@ -531,9 +531,21 @@ impl OutputManager {
                     if !npcs_here.is_empty() {
                         let npc = npcs_here[0];
                         let npc_char = crate::npc_manager::NpcManager::get_display_char(&npc.name);
+                        // 根據 NPC 類型設定顏色
+                        let npc_color = match npc.name.as_str() {
+                            "商人" => Color::Green,
+                            "農夫" => Color::Yellow,
+                            "醫生" => Color::Cyan,
+                            "工人" => Color::Magenta,
+                            "路人" | "旅者" => Color::LightBlue,
+                            "戰士" => Color::Red,
+                            "工程師" => Color::LightGreen,
+                            "老師" => Color::LightYellow,
+                            _ => Color::Blue,
+                        };
                         line_spans.push(Span::styled(
                             npc_char.to_string(),
-                            Style::default().fg(Color::White).add_modifier(Modifier::BOLD)
+                            Style::default().fg(npc_color).add_modifier(Modifier::BOLD)
                         ));
                     } else if let Some(point) = map.get_point(map_x, map_y) {
                         // 檢查是否有物品
