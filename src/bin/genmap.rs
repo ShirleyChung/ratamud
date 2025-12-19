@@ -1,4 +1,4 @@
-use ratatui_demo::map::{Map, MapType};
+use ratamud::map::{Map, MapType};
 use std::fs;
 use std::path::Path;
 

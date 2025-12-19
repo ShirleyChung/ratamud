@@ -1,5 +1,5 @@
 [package]
-name = "ratatui_demo"
+name = "ratamud"
 version = "0.1.0"
 edition = "2021"
 

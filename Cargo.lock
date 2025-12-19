@@ -384,6 +384,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ratamud"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "crossterm",
+ "once_cell",
+ "rand",
+ "ratatui",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "ratatui"
 version = "0.26.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -401,19 +414,6 @@ dependencies = [
  "unicode-segmentation",
  "unicode-truncate",
  "unicode-width",
-]
-
-[[package]]
-name = "ratatui_demo"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "crossterm",
- "once_cell",
- "rand",
- "ratatui",
- "serde",
- "serde_json",
 ]
 
 [[package]]
