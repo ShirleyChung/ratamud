@@ -65,17 +65,31 @@ int main() {
     ratamud_set_player_hp(player, hp - 10);
     printf("受到傷害後 HP: %d\n", ratamud_get_player_hp(player));
     
-    // 載入地圖
-    printf("\n載入地圖: 初始之地\n");
-    if (ratamud_load_map(world, " 初始之地") == 0) {
-        printf("✓ 地圖載入成功\n");
-        char* new_map = ratamud_get_current_map(world);
-        if (new_map) {
-            printf("當前地圖: %s\n", new_map);
-            ratamud_free_string(new_map);
+    // 載入地圖（測試多個地圖）
+    const char* maps_to_try[] = {"初始之地", "森林", "洞穴", "沙漠"};
+    int maps_count = sizeof(maps_to_try) / sizeof(maps_to_try[0]);
+    
+    printf("\n嘗試載入地圖...\n");
+    int map_loaded = 0;
+    for (int i = 0; i < maps_count; i++) {
+        printf("嘗試載入: %s...", maps_to_try[i]);
+        if (ratamud_load_map(world, maps_to_try[i]) == 0) {
+            printf(" ✓ 成功\n");
+            char* new_map = ratamud_get_current_map(world);
+            if (new_map) {
+                printf("當前地圖: %s\n", new_map);
+                ratamud_free_string(new_map);
+            }
+            map_loaded = 1;
+            break;
+        } else {
+            printf(" ✗ 失敗\n");
         }
-    } else {
-        printf("✗ 地圖載入失敗（可能地圖不存在）\n");
+    }
+    
+    if (!map_loaded) {
+        printf("注意: 所有地圖載入都失敗（可能需要在正確的目錄運行程序）\n");
+        printf("請確保從專案根目錄執行程式，以便訪問 worlds/初始世界/maps/ 目錄\n");
     }
     
     // 清理資源

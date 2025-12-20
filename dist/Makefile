@@ -5,6 +5,7 @@ CC = gcc
 CXXFLAGS = -std=c++17 -Wall -Wextra
 CFLAGS = -Wall -Wextra
 LDFLAGS = -L. -lratamud
+ROOT_DIR = ..
 
 # macOS 特定設定
 ifeq ($(shell uname -s),Darwin)
@@ -23,7 +24,7 @@ ifeq ($(OS),Windows_NT)
     LIB_EXT = dll
 endif
 
-.PHONY: all clean test run-c run-cpp help
+.PHONY: all clean test run-c run-cpp run help
 
 all: example test
 
@@ -39,19 +40,24 @@ test: test.cpp ratamud.h libratamud.$(LIB_EXT)
 	$(CXX) $(CXXFLAGS) -o test test.cpp $(LDFLAGS)
 	@echo "✓ C++ 測試編譯完成"
 
-# 運行 C 範例
+# 運行 C 範例（從根目錄運行以訪問地圖文件）
 run-c: example
 	@echo "\n========================================"
 	@echo "運行 C 範例程式"
 	@echo "========================================"
-	./example
+	@echo "注意：需要從專案根目錄運行以訪問地圖文件"
+	cd $(ROOT_DIR) && dist/example
 
-# 運行 C++ 測試
+# 運行 C++ 測試（從根目錄運行以訪問地圖文件）
 run-cpp: test
 	@echo "\n========================================"
 	@echo "運行 C++ 測試程式"
 	@echo "========================================"
-	./test
+	@echo "注意：需要從專案根目錄運行以訪問地圖文件"
+	cd $(ROOT_DIR) && dist/test
+
+# 快捷命令：運行 C 範例
+run: run-c
 
 # 運行所有測試
 run-all: run-c run-cpp
@@ -70,13 +76,17 @@ help:
 	@echo "  all       - 編譯所有範例（預設）"
 	@echo "  example   - 編譯 C 範例"
 	@echo "  test      - 編譯 C++ 測試"
-	@echo "  run-c     - 運行 C 範例"
-	@echo "  run-cpp   - 運行 C++ 測試"
+	@echo "  run       - 運行 C 範例（從根目錄）"
+	@echo "  run-c     - 運行 C 範例（從根目錄）"
+	@echo "  run-cpp   - 運行 C++ 測試（從根目錄）"
 	@echo "  run-all   - 運行所有測試"
 	@echo "  clean     - 清理編譯產物"
 	@echo "  help      - 顯示此幫助資訊"
 	@echo ""
 	@echo "範例:"
 	@echo "  make              # 編譯所有範例"
+	@echo "  make run          # 運行 C 範例"
 	@echo "  make run-cpp      # 運行 C++ 測試"
 	@echo "  make clean        # 清理"
+	@echo ""
+	@echo "注意：程式會從專案根目錄執行以訪問 worlds/初始世界/maps/ 目錄"

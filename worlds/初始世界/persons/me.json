@@ -1,5 +1,5 @@
 {
-  "name": "Iam",
+  "name": "勇士",
   "description": "冒險的勇士，探索未知的世界",
   "abilities": [
     "劍術",
@@ -7,28 +7,23 @@
     "探險"
   ],
   "items": {
-    "鑰匙": 2,
-    "魔力藥水": 1,
-    "木劍": 1,
-    "匕首": 1,
     "治療藥水": 1,
-    "弓": 2,
     "魔法書": 1,
-    "火把": 1
+    "木劍": 1
   },
   "status": "",
-  "x": 53,
+  "x": 52,
   "y": 56,
   "map": "初始之地",
-  "hp": 98407,
-  "mp": 98761,
+  "hp": 99872,
+  "mp": 99965,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 187372,
-  "last_hunger_hour": 23,
+  "age": 1701,
+  "last_hunger_hour": 7,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "dialogues": {},
