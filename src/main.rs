@@ -20,6 +20,9 @@ mod event;
 mod event_scheduler;
 mod event_executor;
 mod event_loader;
+mod callback;  // 新增 callback 模組
+mod command_processor;  // 新增：命令處理器
+mod game_engine;        // 新增：遊戲引擎
 
 use std::io;
 use crossterm::{
@@ -109,7 +112,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             for log in logs {
                 output_manager.log(log);
             }
-            output_manager.log(format!("已加載 {} 個地圖", map_count));
+            output_manager.log(format!("已加載 {map_count} 個地圖"));
         }
         Err(e) => {
             output_manager.log(format!("⚠️  載入地圖失敗: {e}"));
@@ -136,7 +139,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     output_manager.log("開始載入 NPC...".to_string());
     match game_world.npc_manager.load_all_from_directory(&person_dir, vec!["me"]) {
         Ok(count) => {
-            output_manager.log(format!("從文件載入了 {} 個 NPC", count));
+            output_manager.log(format!("從文件載入了 {count} 個 NPC"));
             
             // 記錄每個 NPC 的詳細資訊
             for npc in game_world.npc_manager.get_all_npcs() {

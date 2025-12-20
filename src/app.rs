@@ -1699,11 +1699,14 @@ fn handle_switch_control(
     game_world: &mut GameWorld,
     me: &mut Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // 步驟1: 如果當前控制的是 NPC，先把狀態同步回去
+    // 步驟1: 如果當前控制的是 NPC，先把狀態同步回去並重新加入 NPC 列表
     if let Some(current_id) = &game_world.current_controlled_id {
-        if let Some(npc) = game_world.npc_manager.get_npc_mut(current_id) {
-            *npc = me.clone();
-        }
+        // 將當前操控的角色（me）加回 NPC 列表
+        let npc_to_restore = me.clone();
+        let id = current_id.clone();
+        // 使用名字作為別名
+        let aliases = vec![npc_to_restore.name.clone()];
+        game_world.npc_manager.add_npc(id, npc_to_restore, aliases);
     }
     
     // 步驟2: 如果是第一次切換，備份原始玩家
@@ -1724,11 +1727,10 @@ fn handle_switch_control(
         return Ok(());
     }
     
-    // 步驟4: 切換到指定 NPC
-    if let Some(npc) = game_world.npc_manager.get_npc(&npc_name) {
-        let npc_clone = npc.clone();
+    // 步驟4: 切換到指定 NPC（並從 NPC 列表中移除）
+    if let Some(npc) = game_world.npc_manager.remove_npc(&npc_name) {
         let npc_id = npc_name.clone();
-        *me = npc_clone;
+        *me = npc;  // 直接使用移除的 NPC，不需要克隆
         game_world.current_controlled_id = Some(npc_id);
         
         output_manager.print(format!("已切換控制角色為: {}", me.name));

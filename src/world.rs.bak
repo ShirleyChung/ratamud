@@ -506,7 +506,7 @@ impl GameWorld {
             
             logs.push(format!("地圖已加載: {}", map.name));
             let (walkable, unwalkable) = map.get_stats();
-            logs.push(format!("{map_name} - 可行走點: {walkable}, 不可行走點: {unwalkable}"));
+            logs.push(format!("{} - 可行走點: {}, 不可行走點: {}", map_name, walkable, unwalkable));
             
             self.add_map(map);
         }

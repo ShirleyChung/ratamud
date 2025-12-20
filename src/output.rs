@@ -74,6 +74,9 @@ impl OutputManager {
         // 將 scroll 設為一個很大的值，render_output 會自動限制它
         self.scroll = usize::MAX;
         
+        // 🔔 觸發輸出回調，通知外部平台
+        crate::callback::trigger_output_callback(&message);
+        
         // 如果啟用打字機效果，啟動對最新訊息的打字效果
         if self.typewriter_enabled && !message.is_empty() {
             self.typewriter = Some(TypewriterState {
