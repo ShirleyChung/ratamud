@@ -18,6 +18,7 @@ use crate::settings::GameSettings;
 use crate::person::Person;
 use crate::observable::WorldInfo;
 use crate::input::CommandResult;
+use crate::quest::{QuestReward, QuestStatus};
 use crate::item_registry;
 use crate::ui::{InputDisplay, HeaderDisplay};
 
@@ -444,8 +445,21 @@ fn handle_command_result(
         CommandResult::Sell(npc_name, item, quantity) => handle_sell(npc_name, item, quantity, output_manager, game_world, me)?,
         CommandResult::SetDialogue(npc_name, scene, dialogue) => handle_set_dialogue(npc_name, scene, dialogue, output_manager, game_world)?,
         CommandResult::SetEagerness(npc_name, eagerness) => handle_set_eagerness(npc_name, eagerness, output_manager, game_world)?,
+        CommandResult::SetRelationship(npc_name, relationship) => handle_set_relationship(npc_name, relationship, output_manager, game_world)?,
+        CommandResult::ChangeRelationship(npc_name, delta) => handle_change_relationship(npc_name, delta, output_manager, game_world)?,
+        CommandResult::Talk(npc_name) => handle_talk(npc_name, output_manager, game_world, me)?,
         CommandResult::ListNpcs => handle_list_npcs(output_manager, game_world),
+        CommandResult::CheckNpc(npc_name) => handle_check_npc(npc_name, output_manager, game_world),
         CommandResult::ToggleTypewriter => handle_toggle_typewriter(output_manager),
+        // 任務系統
+        CommandResult::QuestList => handle_quest_list(output_manager, game_world),
+        CommandResult::QuestActive => handle_quest_active(output_manager, game_world),
+        CommandResult::QuestAvailable => handle_quest_available(output_manager, game_world),
+        CommandResult::QuestCompleted => handle_quest_completed(output_manager, game_world),
+        CommandResult::QuestInfo(quest_id) => handle_quest_info(quest_id, output_manager, game_world),
+        CommandResult::QuestStart(quest_id) => handle_quest_start(quest_id, output_manager, game_world)?,
+        CommandResult::QuestComplete(quest_id) => handle_quest_complete(quest_id, output_manager, game_world, me)?,
+        CommandResult::QuestAbandon(quest_id) => handle_quest_abandon(quest_id, output_manager, game_world)?,
     }
     
     // 所有命令執行後，如果小地圖已打開，更新小地圖資料
@@ -1938,6 +1952,18 @@ fn handle_list_npcs(
     }
 }
 
+fn handle_check_npc(
+    npc_name: String,
+    output_manager: &mut OutputManager,
+    game_world: &GameWorld,
+) {
+    if let Some(npc) = game_world.npc_manager.get_npc(&npc_name) {
+        output_manager.print(npc.show_detail());
+    } else {
+        output_manager.print(format!("找不到 NPC: {npc_name}"));
+    }
+}
+
 /// 處理打字機效果切換
 fn handle_toggle_typewriter(output_manager: &mut OutputManager) {
     if output_manager.is_typing() || output_manager.typewriter_enabled {
@@ -1994,4 +2020,325 @@ fn handle_set_eagerness(
     Ok(())
 }
 
+fn handle_set_relationship(
+    npc_name: String,
+    relationship: i32,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let result = if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_name) {
+        npc.relationship = relationship;
+        npc.change_relationship(0); // 觸發狀態更新
+        
+        Some(format!(
+            "已設置 {} 的好感度為 {} ({})",
+            npc_name,
+            relationship,
+            npc.get_relationship_description()
+        ))
+    } else {
+        None
+    };
+    
+    if let Some(msg) = result {
+        // 保存 NPC
+        let person_dir = format!("{}/persons", game_world.world_dir);
+        game_world.npc_manager.save_all(&person_dir)?;
+        
+        output_manager.print(msg);
+    } else {
+        output_manager.set_status(format!("找不到 NPC: {npc_name}"));
+    }
+    
+    Ok(())
+}
 
+fn handle_change_relationship(
+    npc_name: String,
+    delta: i32,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let result = if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_name) {
+        let old_rel = npc.relationship;
+        npc.change_relationship(delta);
+        let new_rel = npc.relationship;
+        
+        let change_text = if delta > 0 { "提升" } else { "降低" };
+        Some(format!(
+            "{} 的好感度從 {} {} 到 {} ({})",
+            npc_name,
+            old_rel,
+            change_text,
+            new_rel,
+            npc.get_relationship_description()
+        ))
+    } else {
+        None
+    };
+    
+    if let Some(msg) = result {
+        // 保存 NPC
+        let person_dir = format!("{}/persons", game_world.world_dir);
+        game_world.npc_manager.save_all(&person_dir)?;
+        
+        output_manager.print(msg);
+    } else {
+        output_manager.set_status(format!("找不到 NPC: {npc_name}"));
+    }
+    
+    Ok(())
+}
+
+fn handle_talk(
+    npc_name: String,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &mut Person,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // 檢查 NPC 是否在附近
+    if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_name) {
+        // 檢查距離（需要在同一地圖且距離不超過3格）
+        if npc.map != me.map {
+            output_manager.set_status(format!("{npc_name} 不在這張地圖上"));
+            return Ok(());
+        }
+        
+        let distance = ((npc.x as i32 - me.x as i32).abs() + (npc.y as i32 - me.y as i32).abs()) as usize;
+        if distance > 3 {
+            output_manager.set_status(format!("{npc_name} 距離太遠了"));
+            return Ok(());
+        }
+        
+        // 標記為已見過玩家
+        if !npc.met_player {
+            npc.mark_met_player();
+            output_manager.print(format!("這是你第一次遇見 {}", npc.name));
+        }
+        
+        // 增加互動次數
+        npc.increment_interaction();
+        
+        // 嘗試對話
+        if let Some(dialogue) = npc.try_talk("對話") {
+            output_manager.print(format!("{}: {}", npc.name, dialogue));
+            
+            // 互動後小幅提升好感度
+            npc.change_relationship(1);
+        } else {
+            output_manager.print(format!("{} 似乎不想說話...", npc.name));
+        }
+        
+        // 保存 NPC
+        let person_dir = format!("{}/persons", game_world.world_dir);
+        game_world.npc_manager.save_all(&person_dir)?;
+        
+    } else {
+        output_manager.set_status(format!("找不到 NPC: {npc_name}"));
+    }
+    
+    Ok(())
+}
+
+
+
+// ==================== 任務系統處理函數 ====================
+
+fn handle_quest_list(
+    output_manager: &mut OutputManager,
+    game_world: &GameWorld,
+) {
+    let quests: Vec<_> = game_world.quest_manager.quests.values().collect();
+    
+    if quests.is_empty() {
+        output_manager.print("目前沒有任何任務".to_string());
+        return;
+    }
+    
+    let mut output = String::from("=== 所有任務 ===\n");
+    for quest in quests {
+        let status = match quest.status {
+            QuestStatus::NotStarted => "未開始",
+            QuestStatus::InProgress => "進行中",
+            QuestStatus::Completed => "已完成",
+            QuestStatus::Failed => "失敗",
+        };
+        output.push_str(&format!("[{}] {} ({})\n", quest.id, quest.name, status));
+    }
+    output_manager.print(output);
+}
+
+fn handle_quest_active(
+    output_manager: &mut OutputManager,
+    game_world: &GameWorld,
+) {
+    let quests = game_world.quest_manager.get_active_quests();
+    
+    if quests.is_empty() {
+        output_manager.print("目前沒有進行中的任務".to_string());
+        return;
+    }
+    
+    let mut output = String::from("=== 進行中的任務 ===\n");
+    for quest in quests {
+        output.push_str(&format!("[{}] {}\n", quest.id, quest.name));
+        output.push_str(&format!("  {}\n", quest.description));
+        
+        // 顯示進度
+        for condition in &quest.conditions {
+            output.push_str(&format!("  {}\n", condition.description()));
+        }
+    }
+    output_manager.print(output);
+}
+
+fn handle_quest_available(
+    output_manager: &mut OutputManager,
+    game_world: &GameWorld,
+) {
+    let quests = game_world.quest_manager.get_available_quests();
+    
+    if quests.is_empty() {
+        output_manager.print("目前沒有可接取的任務".to_string());
+        return;
+    }
+    
+    let mut output = String::from("=== 可接取的任務 ===\n");
+    for quest in quests {
+        output.push_str(&format!("[{}] {}\n", quest.id, quest.name));
+        output.push_str(&format!("  {}\n", quest.description));
+    }
+    output_manager.print(output);
+}
+
+fn handle_quest_completed(
+    output_manager: &mut OutputManager,
+    game_world: &GameWorld,
+) {
+    let quests = game_world.quest_manager.get_completed_quests();
+    
+    if quests.is_empty() {
+        output_manager.print("還沒有完成任何任務".to_string());
+        return;
+    }
+    
+    let mut output = String::from("=== 已完成的任務 ===\n");
+    for quest in quests {
+        output.push_str(&format!("[{}] {}\n", quest.id, quest.name));
+    }
+    output_manager.print(output);
+}
+
+fn handle_quest_info(
+    quest_id: String,
+    output_manager: &mut OutputManager,
+    game_world: &GameWorld,
+) {
+    if let Some(quest) = game_world.quest_manager.get_quest(&quest_id) {
+        output_manager.print(quest.show_detail());
+    } else {
+        output_manager.set_status(format!("找不到任務: {quest_id}"));
+    }
+}
+
+fn handle_quest_start(
+    quest_id: String,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+) -> Result<(), Box<dyn std::error::Error>> {
+    match game_world.quest_manager.start_quest(&quest_id) {
+        Ok(msg) => {
+            output_manager.print(msg);
+            
+            // 保存任務狀態
+            let quest_dir = format!("{}/quests", game_world.world_dir);
+            game_world.quest_manager.save_to_directory(&quest_dir)?;
+        }
+        Err(err) => {
+            output_manager.set_status(err);
+        }
+    }
+    Ok(())
+}
+
+fn handle_quest_complete(
+    quest_id: String,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &mut Person,
+) -> Result<(), Box<dyn std::error::Error>> {
+    match game_world.quest_manager.complete_quest(&quest_id) {
+        Ok(rewards) => {
+            output_manager.print(format!("完成任務: {quest_id}"));
+            output_manager.print("獲得獎勵:".to_string());
+            
+            // 發放獎勵
+            for reward in rewards {
+                match reward {
+                    QuestReward::Item { item, count } => {
+                        *me.items.entry(item.clone()).or_insert(0) += count;
+                        output_manager.print(format!("  • {item} x{count}"));
+                    }
+                    QuestReward::Experience { amount } => {
+                        output_manager.print(format!("  • 經驗值 +{amount}"));
+                    }
+                    QuestReward::Relationship { npc_id, change } => {
+                        if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_id) {
+                            npc.change_relationship(change);
+                            output_manager.print(format!("  • {npc_id} 好感度 {change:+}"));
+                        }
+                    }
+                    QuestReward::UnlockDialogue { npc_id, scene, text } => {
+                        if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_id) {
+                            npc.set_dialogue(scene.clone(), text);
+                            output_manager.print(format!("  • 解鎖 {npc_id} 的 {scene} 對話"));
+                        }
+                    }
+                    QuestReward::StatBoost { stat, amount } => {
+                        match stat.as_str() {
+                            "hp" => me.max_hp += amount,
+                            "mp" => me.max_mp += amount,
+                            "strength" => me.strength += amount,
+                            "knowledge" => me.knowledge += amount,
+                            "sociality" => me.sociality += amount,
+                            _ => {}
+                        }
+                        output_manager.print(format!("  • {stat} +{amount}"));
+                    }
+                }
+            }
+            
+            // 保存
+            let quest_dir = format!("{}/quests", game_world.world_dir);
+            game_world.quest_manager.save_to_directory(&quest_dir)?;
+            
+            let person_dir = format!("{}/persons", game_world.world_dir);
+            game_world.npc_manager.save_all(&person_dir)?;
+            me.save(&person_dir, "me")?;
+        }
+        Err(err) => {
+            output_manager.set_status(err);
+        }
+    }
+    Ok(())
+}
+
+fn handle_quest_abandon(
+    quest_id: String,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+) -> Result<(), Box<dyn std::error::Error>> {
+    match game_world.quest_manager.abandon_quest(&quest_id) {
+        Ok(msg) => {
+            output_manager.print(msg);
+            
+            // 保存任務狀態
+            let quest_dir = format!("{}/quests", game_world.world_dir);
+            game_world.quest_manager.save_to_directory(&quest_dir)?;
+        }
+        Err(err) => {
+            output_manager.set_status(err);
+        }
+    }
+    Ok(())
+}

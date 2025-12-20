@@ -229,9 +229,45 @@ impl GameEngine {
                 format!("設置 {npc} 的熱情度為 {eagerness}")
             }
             
+            CommandResult::SetRelationship(npc, relationship) => {
+                format!("設置 {npc} 的好感度為 {relationship}")
+            }
+            
+            CommandResult::ChangeRelationship(npc, delta) => {
+                format!("改變 {npc} 的好感度 {delta:+}")
+            }
+            
+            CommandResult::Talk(npc_name) => {
+                // 與 NPC 對話
+                if let Some(npc) = self.world.npc_manager.get_npc(&npc_name) {
+                    format!("與 {} 對話...", npc.name)
+                } else {
+                    format!("找不到 NPC: {npc_name}")
+                }
+            }
+            
+            CommandResult::CheckNpc(npc_name) => {
+                // 查找 NPC 並顯示詳細資訊
+                if let Some(npc) = self.world.npc_manager.get_npc(&npc_name) {
+                    npc.show_detail()
+                } else {
+                    format!("找不到 NPC: {npc_name}")
+                }
+            }
+            
             CommandResult::ToggleTypewriter => {
                 "切換打字機效果".to_string()
             }
+            
+            // 任務系統
+            CommandResult::QuestList => "顯示所有任務".to_string(),
+            CommandResult::QuestActive => "顯示進行中的任務".to_string(),
+            CommandResult::QuestAvailable => "顯示可接取的任務".to_string(),
+            CommandResult::QuestCompleted => "顯示已完成的任務".to_string(),
+            CommandResult::QuestInfo(quest_id) => format!("查看任務: {quest_id}"),
+            CommandResult::QuestStart(quest_id) => format!("開始任務: {quest_id}"),
+            CommandResult::QuestComplete(quest_id) => format!("完成任務: {quest_id}"),
+            CommandResult::QuestAbandon(quest_id) => format!("放棄任務: {quest_id}"),
             
             CommandResult::Output(msg) => {
                 msg

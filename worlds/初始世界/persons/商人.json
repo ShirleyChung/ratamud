@@ -3,29 +3,33 @@
   "description": "精明的商人，販售各種物品",
   "abilities": [],
   "items": {
-    "魔法書": 10,
-    "魔力藥水": 100,
-    "匕首": 10,
     "治療藥水": 100,
-    "木劍": 10
+    "匕首": 10,
+    "木劍": 10,
+    "魔法書": 10,
+    "魔力藥水": 100
   },
   "status": "",
   "x": 66,
   "y": 63,
   "map": "初始之地",
-  "hp": 99500,
+  "hp": 99300,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 9341,
-  "last_hunger_hour": 7,
+  "age": 9431,
+  "last_hunger_hour": 14,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "dialogues": {
     "見面": "Welcome! I have the finest goods in town!"
   },
-  "talk_eagerness": 100
+  "talk_eagerness": 100,
+  "relationship": 0,
+  "dialogue_state": "",
+  "met_player": false,
+  "interaction_count": 0
 }

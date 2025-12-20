@@ -7,19 +7,23 @@
   "x": 53,
   "y": 56,
   "map": "初始之地",
-  "hp": 99500,
+  "hp": 99900,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 10926,
-  "last_hunger_hour": 7,
+  "age": 11016,
+  "last_hunger_hour": 14,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "dialogues": {
     "見面": "啊，是你啊！最近生意還不錯，要不要看看我的新貨？"
   },
-  "talk_eagerness": 95
+  "talk_eagerness": 95,
+  "relationship": 0,
+  "dialogue_state": "",
+  "met_player": false,
+  "interaction_count": 0
 }

@@ -7,19 +7,23 @@
   "x": 45,
   "y": 54,
   "map": "森林",
-  "hp": 99600,
+  "hp": 99400,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 4997,
-  "last_hunger_hour": 7,
+  "age": 5087,
+  "last_hunger_hour": 14,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "dialogues": {
     "見面": "你好～我是小鹿，正在這裡擺攤呢！"
   },
-  "talk_eagerness": 90
+  "talk_eagerness": 90,
+  "relationship": 0,
+  "dialogue_state": "",
+  "met_player": false,
+  "interaction_count": 0
 }

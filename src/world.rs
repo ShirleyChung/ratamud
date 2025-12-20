@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use crate::map::{Map, MapType};
 use crate::person::Person;
 use crate::time_updatable::{TimeInfo, TimeUpdatable};
+use crate::quest::QuestManager;
 
 // 世界時間結構體
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -352,6 +353,7 @@ pub struct GameWorld {
     pub time_thread: Option<crate::time_thread::TimeThread>,
     pub npc_ai_thread: Option<crate::npc_ai_thread::NpcAiThread>,
     pub npc_manager: crate::npc_manager::NpcManager,
+    pub quest_manager: QuestManager,
     pub current_controlled_id: Option<String>,  // 當前操控的角色 ID (None = 原始玩家)
     pub original_player: Option<Person>,         // 原始玩家資料備份
     pub player: Person,
@@ -387,6 +389,7 @@ impl GameWorld {
             time_thread: Some(time_thread),
             npc_ai_thread: None,  // 稍後初始化
             npc_manager: crate::npc_manager::NpcManager::new(),
+            quest_manager: QuestManager::new(),
             current_controlled_id: None,
             original_player: Some(player.clone()),
             player,

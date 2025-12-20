@@ -7,19 +7,23 @@
   "x": 51,
   "y": 50,
   "map": "初始之地",
-  "hp": 99500,
+  "hp": 99300,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 9341,
-  "last_hunger_hour": 7,
+  "age": 9431,
+  "last_hunger_hour": 14,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "dialogues": {
     "見面": "哎呀！有客人來了！今天有特價優惠喔！"
   },
-  "talk_eagerness": 100
+  "talk_eagerness": 100,
+  "relationship": 0,
+  "dialogue_state": "",
+  "met_player": false,
+  "interaction_count": 0
 }

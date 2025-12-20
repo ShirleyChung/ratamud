@@ -8,6 +8,7 @@ mod person;
 mod npc_manager;
 mod npc_ai;
 mod trade;
+mod quest;
 mod map;
 mod time_updatable;
 mod time_thread;
@@ -148,6 +149,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Err(e) => {
             output_manager.log(format!("⚠️  載入 NPC 失敗: {e}"));
+        }
+    }
+    
+    // 載入任務
+    output_manager.log("開始載入任務...".to_string());
+    let quest_dir = format!("{}/quests", game_world.world_dir);
+    match game_world.quest_manager.load_from_directory(&quest_dir) {
+        Ok(count) => {
+            output_manager.log(format!("從文件載入了 {count} 個任務"));
+        }
+        Err(e) => {
+            output_manager.log(format!("⚠️  載入任務失敗: {e}"));
         }
     }
 

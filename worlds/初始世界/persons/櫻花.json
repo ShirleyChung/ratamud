@@ -4,26 +4,31 @@
   "abilities": [],
   "items": {
     "蘋果": 1,
+    "舊布料": 3,
     "盾牌": 2,
-    "舊布料": 3
+    "鎬": 3
   },
   "status": "",
-  "x": 57,
-  "y": 42,
+  "x": 55,
+  "y": 40,
   "map": "初始之地",
-  "hp": 99314,
+  "hp": 99034,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 5645,
-  "last_hunger_hour": 7,
+  "age": 5735,
+  "last_hunger_hour": 14,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "dialogues": {
     "見面": "你好呀！需要醫療協助嗎？"
   },
-  "talk_eagerness": 85
+  "talk_eagerness": 85,
+  "relationship": 0,
+  "dialogue_state": "",
+  "met_player": false,
+  "interaction_count": 0
 }

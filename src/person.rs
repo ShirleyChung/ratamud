@@ -33,6 +33,14 @@ pub struct Person {
     pub dialogues: HashMap<String, String>,  // 台詞 (場景 -> 台詞內容)
     #[serde(default = "default_talk_eagerness")]
     pub talk_eagerness: u8,          // 說話積極度 (0-100)
+    #[serde(default)]
+    pub relationship: i32,           // 好感度 (-100 到 100)
+    #[serde(default)]
+    pub dialogue_state: String,      // 當前對話狀態 (例如: "初見", "熟識", "好友")
+    #[serde(default)]
+    pub met_player: bool,            // 是否見過玩家
+    #[serde(default)]
+    pub interaction_count: u32,      // 互動次數
 }
 
 fn default_talk_eagerness() -> u8 {
@@ -67,6 +75,10 @@ impl Person {
             last_mp_restore_minute: 0,
             dialogues: HashMap::new(),
             talk_eagerness: 100,
+            relationship: 0,
+            dialogue_state: "初見".to_string(),
+            met_player: false,
+            interaction_count: 0,
         }
     }
 
@@ -78,6 +90,84 @@ impl Person {
     /// 設置說話積極度 (0-100)
     pub fn set_talk_eagerness(&mut self, eagerness: u8) {
         self.talk_eagerness = eagerness.min(100);
+    }
+    
+    /// 顯示 Person 的詳細資料
+    pub fn show_detail(&self) -> String {
+        let mut info = String::new();
+        
+        // 標題
+        info.push_str(&format!(" {} \n", self.name));
+        
+        // 基本資訊 - 緊湊格式
+        info.push_str(&format!("│ {}\n", self.description));
+        info.push_str(&format!("│ 位置: ({}, {}) @ {}\n", self.x, self.y, self.map));
+        info.push_str(&format!("│ 狀態: {}\n", self.status));
+        
+        // 屬性 - 兩列排版
+        info.push_str(&format!("│ HP: {:>3}/{:<3}  力量: {}\n", 
+            self.hp, self.max_hp, self.strength));
+        info.push_str(&format!("│ MP: {:>3}/{:<3}  知識: {}\n", 
+            self.mp, self.max_mp, self.knowledge));
+        info.push_str(&format!("│ 年齡: {}秒   交誼: {}\n", 
+            self.age, self.sociality));
+        
+        // 關係信息
+        if self.met_player || self.relationship != 0 || self.interaction_count > 0 {
+            info.push_str("├─────────────────────────\n");
+            info.push_str(&format!("│ 關係: {}\n", self.get_relationship_description()));
+            if self.met_player {
+                info.push_str(&format!("│ 互動次數: {}\n", self.interaction_count));
+            }
+        }
+        
+        // 持有物品
+        if !self.items.is_empty() {
+            info.push_str("├─────────────────────────\n");
+            info.push_str("│ 持有物品:\n");
+            for (item_name, quantity) in &self.items {
+                info.push_str(&format!("│  • {item_name} x{quantity}\n"));
+            }
+        }
+        
+        // 能力
+        if !self.abilities.is_empty() {
+            info.push_str("├─────────────────────────\n");
+            info.push_str("│ 能力:\n");
+            for ability in &self.abilities {
+                info.push_str(&format!("│  • {ability}\n"));
+            }
+        }
+        
+        // 對話設置
+        if !self.dialogues.is_empty() {
+            info.push_str("├─────────────────────────\n");
+            info.push_str(&format!("│ 對話 (積極度: {}%)\n", self.talk_eagerness));
+            for (scene, dialogue) in &self.dialogues {
+                // 將長對話換行顯示
+                let max_len = 40;
+                if dialogue.chars().count() > max_len {
+                    info.push_str(&format!("│  [{scene}]\n"));
+                    let chars: Vec<char> = dialogue.chars().collect();
+                    let mut start = 0;
+                    while start < chars.len() {
+                        let end = (start + max_len).min(chars.len());
+                        let line: String = chars[start..end].iter().collect();
+                        info.push_str(&format!("│    {line}\n"));
+                        start = end;
+                    }
+                } else {
+                    info.push_str(&format!("│  [{scene}] {dialogue}\n"));
+                }
+            }
+        } else if self.talk_eagerness > 0 {
+            info.push_str("├─────────────────────────\n");
+            info.push_str(&format!("│ 說話積極度: {}%\n", self.talk_eagerness));
+        }
+        
+        info.push_str("└─────────────────────────\n");
+        
+        info
     }
 
     /// 獲取台詞（如果有）
@@ -93,13 +183,85 @@ impl Person {
         let mut rng = rand::thread_rng();
         let roll: u8 = rng.gen_range(0..100);                
         if roll < self.talk_eagerness {
-            if let Some(dialogue) = self.dialogues.get(scene) {
-                return Some(dialogue.clone());
+            if let Some(dialogue) = self.get_context_dialogue(scene) {
+                return Some(dialogue);
             } else {
-                return Some(format!("{} 想說些什麼，但不知道該說什麼。", self.name)); // 無台詞時的回應
+                return Some(format!("{} 想說些什麼，但不知道該說什麼。", self.name));
             }
         }
         None
+    }
+
+    /// 根據好感度和狀態動態選擇對話
+    pub fn get_context_dialogue(&self, scene: &str) -> Option<String> {
+        // 先嘗試帶狀態的對話鍵
+        let state_key = format!("{}:{}", scene, self.dialogue_state);
+        if let Some(dialogue) = self.dialogues.get(&state_key) {
+            return Some(dialogue.clone());
+        }
+        
+        // 再嘗試帶好感度等級的對話鍵
+        let relationship_level = if self.relationship >= 70 {
+            "摯友"
+        } else if self.relationship >= 30 {
+            "好友"
+        } else if self.relationship >= 0 {
+            "普通"
+        } else if self.relationship >= -30 {
+            "冷淡"
+        } else {
+            "敵對"
+        };
+        
+        let rel_key = format!("{scene}:{relationship_level}");
+        if let Some(dialogue) = self.dialogues.get(&rel_key) {
+            return Some(dialogue.clone());
+        }
+        
+        // 最後使用基礎對話
+        self.dialogues.get(scene).cloned()
+    }
+    
+    /// 改變好感度
+    pub fn change_relationship(&mut self, delta: i32) {
+        self.relationship = (self.relationship + delta).clamp(-100, 100);
+        self.update_dialogue_state();
+    }
+    
+    /// 更新對話狀態
+    fn update_dialogue_state(&mut self) {
+        self.dialogue_state = match self.relationship {
+            r if r >= 70 => "摯友".to_string(),
+            r if r >= 30 => "好友".to_string(),
+            r if r >= 0 => "普通".to_string(),
+            r if r >= -30 => "冷淡".to_string(),
+            _ => "敵對".to_string(),
+        };
+    }
+    
+    /// 標記為已見過玩家
+    pub fn mark_met_player(&mut self) {
+        if !self.met_player {
+            self.met_player = true;
+            // 初見時通常給予一些好感度
+            self.change_relationship(5);
+        }
+    }
+    
+    /// 增加互動次數
+    pub fn increment_interaction(&mut self) {
+        self.interaction_count += 1;
+    }
+    
+    /// 獲取關係等級描述
+    pub fn get_relationship_description(&self) -> String {
+        match self.relationship {
+            r if r >= 70 => format!("摯友 ({r})"),
+            r if r >= 30 => format!("好友 ({r})"),
+            r if r >= 0 => format!("普通 ({r})"),
+            r if r >= -30 => format!("冷淡 ({r})"),
+            r => format!("敵對 ({r})"),
+        }
     }
 
         /// 消耗 MP，並檢查是否進入睡眠狀態
@@ -315,5 +477,95 @@ impl TimeUpdatable for Person {
         else {
             self.set_status("".to_string());
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_relationship_system() {
+        let mut person = Person::new("測試NPC".to_string(), "測試用NPC".to_string());
+        
+        // 測試初始狀態
+        assert_eq!(person.relationship, 0);
+        assert_eq!(person.dialogue_state, "初見");
+        assert_eq!(person.met_player, false);
+        assert_eq!(person.interaction_count, 0);
+        
+        // 測試好感度改變
+        person.change_relationship(50);
+        assert_eq!(person.relationship, 50);
+        assert_eq!(person.dialogue_state, "好友");
+        
+        person.change_relationship(30);
+        assert_eq!(person.relationship, 80);
+        assert_eq!(person.dialogue_state, "摯友");
+        
+        // 測試超出上限（應該被限制在 100）
+        person.change_relationship(50);
+        assert_eq!(person.relationship, 100);
+        
+        // 測試降低到負值
+        person.change_relationship(-150);
+        assert_eq!(person.relationship, -50); // 100 - 150 = -50
+        assert_eq!(person.dialogue_state, "敵對");
+        
+        // 測試標記已見過玩家
+        person.mark_met_player();
+        assert!(person.met_player);
+        assert_eq!(person.relationship, -45); // -50 + 5
+        
+        // 第二次調用不應該再加好感度
+        person.mark_met_player();
+        assert_eq!(person.relationship, -45);
+    }
+    
+    #[test]
+    fn test_context_dialogue() {
+        let mut person = Person::new("商人".to_string(), "測試商人".to_string());
+        
+        // 設置不同等級的對話
+        person.set_dialogue("對話:敵對".to_string(), "走開！".to_string());
+        person.set_dialogue("對話:普通".to_string(), "你好".to_string());
+        person.set_dialogue("對話:好友".to_string(), "嘿朋友！".to_string());
+        person.set_dialogue("對話".to_string(), "預設對話".to_string());
+        
+        // 測試敵對狀態
+        person.relationship = -50;
+        person.change_relationship(0); // 更新狀態
+        assert_eq!(person.get_context_dialogue("對話"), Some("走開！".to_string()));
+        
+        // 測試普通狀態
+        person.change_relationship(60); // -50 + 60 = 10
+        assert_eq!(person.get_context_dialogue("對話"), Some("你好".to_string()));
+        
+        // 測試好友狀態
+        person.change_relationship(30); // 10 + 30 = 40
+        assert_eq!(person.get_context_dialogue("對話"), Some("嘿朋友！".to_string()));
+        
+        // 測試沒有對應對話時回退到基礎對話
+        assert_eq!(person.get_context_dialogue("告別"), None);
+    }
+    
+    #[test]
+    fn test_relationship_description() {
+        let mut person = Person::new("NPC".to_string(), "測試".to_string());
+        
+        person.relationship = 80;
+        assert!(person.get_relationship_description().contains("摯友"));
+        
+        person.relationship = 50;
+        assert!(person.get_relationship_description().contains("好友"));
+        
+        person.relationship = 10;
+        assert!(person.get_relationship_description().contains("普通"));
+        
+        person.relationship = -20;
+        assert!(person.get_relationship_description().contains("冷淡"));
+        
+        person.relationship = -50;
+        assert!(person.get_relationship_description().contains("敵對"));
     }
 }

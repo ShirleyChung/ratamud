@@ -1,0 +1,28 @@
+{
+  "id": "tutorial_talk_to_merchant",
+  "name": "與商人對話",
+  "description": "去找商人並與他對話，學習如何與NPC互動",
+  "prerequisites": [],
+  "conditions": [
+    {
+      "type": "talk_to_npc",
+      "npc_id": "商人",
+      "completed": false
+    }
+  ],
+  "rewards": [
+    {
+      "type": "item",
+      "item": "金幣",
+      "count": 10
+    },
+    {
+      "type": "relationship",
+      "npc_id": "商人",
+      "change": 10
+    }
+  ],
+  "status": "NotStarted",
+  "giver": "系統",
+  "repeatable": false
+}

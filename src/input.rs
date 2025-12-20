@@ -408,6 +408,89 @@ impl InputHandler {
                     CommandResult::SetEagerness(npc, eagerness)
                 }
             },
+            "setrelationship" | "setrel" => {
+                // setrelationship <npc> <好感度> 命令，設置 NPC 好感度 (-100~100)
+                // 範例: setrelationship 商人 50
+                if parts.len() < 3 {
+                    CommandResult::Error("Usage: setrelationship <npc> <好感度(-100~100)>".to_string())
+                } else {
+                    let npc = parts[1].to_string();
+                    let relationship = parts[2].parse::<i32>().unwrap_or(0).clamp(-100, 100);
+                    CommandResult::SetRelationship(npc, relationship)
+                }
+            },
+            "changerelationship" | "changerel" | "addrel" => {
+                // changerelationship <npc> <變化量> 命令，改變 NPC 好感度
+                // 範例: changerelationship 商人 10
+                if parts.len() < 3 {
+                    CommandResult::Error("Usage: changerelationship <npc> <變化量>".to_string())
+                } else {
+                    let npc = parts[1].to_string();
+                    let delta = parts[2].parse::<i32>().unwrap_or(0);
+                    CommandResult::ChangeRelationship(npc, delta)
+                }
+            },
+            "talk" | "speak" => {
+                // talk <npc> 命令，與 NPC 對話
+                // 範例: talk 商人
+                if parts.len() < 2 {
+                    CommandResult::Error("Usage: talk <npc>".to_string())
+                } else {
+                    let npc_name = parts[1..].join(" ");
+                    CommandResult::Talk(npc_name)
+                }
+            },
+            "check" | "inspect" | "examine" => {
+                // check <npc> 命令，查看 NPC 的詳細資訊
+                if parts.len() < 2 {
+                    CommandResult::Error("Usage: check <npc>".to_string())
+                } else {
+                    let npc_name = parts[1..].join(" ");
+                    CommandResult::CheckNpc(npc_name)
+                }
+            },
+            "quest" => {
+                // quest 命令系列
+                if parts.len() < 2 {
+                    CommandResult::QuestList
+                } else {
+                    match parts[1] {
+                        "list" | "all" => CommandResult::QuestList,
+                        "active" | "current" => CommandResult::QuestActive,
+                        "available" => CommandResult::QuestAvailable,
+                        "completed" | "done" => CommandResult::QuestCompleted,
+                        "info" | "show" => {
+                            if parts.len() < 3 {
+                                CommandResult::Error("Usage: quest info <任務ID>".to_string())
+                            } else {
+                                CommandResult::QuestInfo(parts[2].to_string())
+                            }
+                        },
+                        "start" | "accept" => {
+                            if parts.len() < 3 {
+                                CommandResult::Error("Usage: quest start <任務ID>".to_string())
+                            } else {
+                                CommandResult::QuestStart(parts[2].to_string())
+                            }
+                        },
+                        "complete" | "finish" => {
+                            if parts.len() < 3 {
+                                CommandResult::Error("Usage: quest complete <任務ID>".to_string())
+                            } else {
+                                CommandResult::QuestComplete(parts[2].to_string())
+                            }
+                        },
+                        "abandon" | "cancel" => {
+                            if parts.len() < 3 {
+                                CommandResult::Error("Usage: quest abandon <任務ID>".to_string())
+                            } else {
+                                CommandResult::QuestAbandon(parts[2].to_string())
+                            }
+                        },
+                        _ => CommandResult::Error(format!("Unknown quest subcommand: {}", parts[1])),
+                    }
+                }
+            },
             _ => CommandResult::Error(format!("Unknown command: {}", parts[0])),
         };
         result
@@ -468,8 +551,21 @@ pub enum CommandResult {
     Sell(String, String, u32),       // 出售物品 (NPC, 物品, 數量)
     SetDialogue(String, String, String), // 設置 NPC 台詞 (NPC, 場景, 台詞)
     SetEagerness(String, u8),        // 設置 NPC 說話積極度 (NPC, 積極度0-100)
+    SetRelationship(String, i32),    // 設置 NPC 好感度 (NPC, 好感度-100~100)
+    ChangeRelationship(String, i32), // 改變 NPC 好感度 (NPC, 變化量)
+    Talk(String),                    // 與 NPC 對話 (NPC名稱/ID)
     ListNpcs,                        // 列出所有 NPC
+    CheckNpc(String),                // 查看 NPC 詳細資訊 (NPC名稱/ID)
     ToggleTypewriter,                // 切換打字機效果
+    // 任務系統
+    QuestList,                       // 列出所有任務
+    QuestActive,                     // 列出進行中的任務
+    QuestAvailable,                  // 列出可接取的任務
+    QuestCompleted,                  // 列出已完成的任務
+    QuestInfo(String),               // 查看任務詳情 (任務ID)
+    QuestStart(String),              // 開始任務 (任務ID)
+    QuestComplete(String),           // 完成任務 (任務ID)
+    QuestAbandon(String),            // 放棄任務 (任務ID)
     Help,                            // 顯示幫助訊息
 }
 

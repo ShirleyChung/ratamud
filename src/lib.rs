@@ -6,6 +6,7 @@ pub mod person;
 pub mod npc_manager;
 pub mod npc_ai;
 pub mod trade;
+pub mod quest;
 pub mod world;
 pub mod event;
 pub mod event_loader;
