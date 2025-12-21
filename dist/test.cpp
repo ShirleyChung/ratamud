@@ -63,7 +63,7 @@ public:
     
     std::pair<int, int> getPosition() const {
         int x, y;
-        if (ratamud_get_player_position(player_, &x, &y) == 0) {
+        if (ratamud_player_get_position(player_, &x, &y) == 0) {
             return {x, y};
         }
         return {-1, -1};
@@ -82,7 +82,7 @@ public:
     }
     
     std::string getInfo() const {
-        RataMUDString info(ratamud_get_player_info(player_));
+        RataMUDString info(ratamud_player_get_info(player_));
         return info.to_string();
     }
 };
@@ -115,7 +115,7 @@ public:
     }
     
     std::string getCurrentMap() const {
-        RataMUDString map(ratamud_get_current_map(world_));
+        RataMUDString map(ratamud_world_get_current_map(world_));
         return map.to_string();
     }
 };

@@ -198,9 +198,9 @@ pub extern "C" fn ratamud_get_player_name(player: *const Person) -> *mut c_char 
     }
 }
 
-/// 獲取玩家資訊（JSON）
+/// 獲取玩家資訊（JSON）- 需要 Person 指針
 #[no_mangle]
-pub extern "C" fn ratamud_get_player_info(player: *const Person) -> *mut c_char {
+pub extern "C" fn ratamud_player_get_info(player: *const Person) -> *mut c_char {
     if player.is_null() {
         return ptr::null_mut();
     }
@@ -246,9 +246,9 @@ pub extern "C" fn ratamud_set_player_hp(player: *mut Person, hp: c_int) -> c_int
     0
 }
 
-/// 獲取玩家位置
+/// 獲取玩家位置 - 需要 Person 指針
 #[no_mangle]
-pub extern "C" fn ratamud_get_player_position(player: *const Person, x: *mut c_int, y: *mut c_int) -> c_int {
+pub extern "C" fn ratamud_player_get_position(player: *const Person, x: *mut c_int, y: *mut c_int) -> c_int {
     if player.is_null() || x.is_null() || y.is_null() {
         return -1;
     }
@@ -274,9 +274,9 @@ pub extern "C" fn ratamud_set_player_position(player: *mut Person, x: c_int, y: 
     0
 }
 
-/// 獲取當前地圖名稱
+/// 獲取當前地圖名稱 - 需要 GameWorld 指針
 #[no_mangle]
-pub extern "C" fn ratamud_get_current_map(world: *const GameWorld) -> *mut c_char {
+pub extern "C" fn ratamud_world_get_current_map(world: *const GameWorld) -> *mut c_char {
     if world.is_null() {
         return ptr::null_mut();
     }
@@ -297,5 +297,182 @@ pub extern "C" fn ratamud_free_string(s: *mut c_char) {
         unsafe {
             let _ = CString::from_raw(s);
         }
+    }
+}
+
+// ===== 簡化的全局 API（用於簡單的 C 集成）=====
+
+use std::sync::Mutex;
+use once_cell::sync::Lazy;
+
+static GLOBAL_ENGINE: Lazy<Mutex<Option<Box<GameEngine>>>> = Lazy::new(|| Mutex::new(None));
+
+/// 初始化遊戲（使用全局引擎）
+#[no_mangle]
+pub extern "C" fn ratamud_init() -> c_int {
+    let mut engine_guard = match GLOBAL_ENGINE.lock() {
+        Ok(guard) => guard,
+        Err(_) => return -1,
+    };
+    
+    if engine_guard.is_some() {
+        return -1; // 已經初始化
+    }
+    
+    let engine = GameEngine::new("玩家", "冒險者");
+    *engine_guard = Some(Box::new(engine));
+    0
+}
+
+/// 清理遊戲資源
+#[no_mangle]
+pub extern "C" fn ratamud_cleanup() {
+    let mut engine_guard = match GLOBAL_ENGINE.lock() {
+        Ok(guard) => guard,
+        Err(_) => return,
+    };
+    
+    *engine_guard = None;
+}
+
+/// 處理命令
+#[no_mangle]
+pub extern "C" fn ratamud_process_command(command: *const c_char) -> c_int {
+    if command.is_null() {
+        return -1;
+    }
+    
+    let c_str = unsafe { CStr::from_ptr(command) };
+    let cmd = match c_str.to_str() {
+        Ok(s) => s,
+        Err(_) => return -1,
+    };
+    
+    let mut engine_guard = match GLOBAL_ENGINE.lock() {
+        Ok(guard) => guard,
+        Err(_) => return -1,
+    };
+    
+    let engine = match engine_guard.as_mut() {
+        Some(e) => e,
+        None => return -1,
+    };
+    
+    let (should_continue, _result) = engine.process_command(cmd);
+    
+    if should_continue {
+        1
+    } else {
+        0
+    }
+}
+
+/// 獲取輸出
+#[no_mangle]
+pub extern "C" fn ratamud_get_output() -> *mut c_char {
+    let mut engine_guard = match GLOBAL_ENGINE.lock() {
+        Ok(guard) => guard,
+        Err(_) => return ptr::null_mut(),
+    };
+    
+    let engine = match engine_guard.as_mut() {
+        Some(e) => e,
+        None => return ptr::null_mut(),
+    };
+    
+    let output = engine.get_output();
+    let combined = output.join("\n");
+    
+    match CString::new(combined) {
+        Ok(c_str) => c_str.into_raw(),
+        Err(_) => ptr::null_mut(),
+    }
+}
+
+/// 更新遊戲（全局引擎）
+#[no_mangle]
+pub extern "C" fn ratamud_update(delta_ms: c_int) -> c_int {
+    if delta_ms < 0 {
+        return -1;
+    }
+    
+    let mut engine_guard = match GLOBAL_ENGINE.lock() {
+        Ok(guard) => guard,
+        Err(_) => return -1,
+    };
+    
+    let engine = match engine_guard.as_mut() {
+        Some(e) => e,
+        None => return -1,
+    };
+    
+    engine.update(delta_ms as u32);
+    0
+}
+
+/// 獲取玩家資訊（使用全局引擎）
+#[no_mangle]
+pub extern "C" fn ratamud_get_player_info() -> *mut c_char {
+    let engine_guard = match GLOBAL_ENGINE.lock() {
+        Ok(guard) => guard,
+        Err(_) => return ptr::null_mut(),
+    };
+    
+    let engine = match engine_guard.as_ref() {
+        Some(e) => e,
+        None => return ptr::null_mut(),
+    };
+    
+    let state_json = engine.get_state_json();
+    
+    match CString::new(state_json) {
+        Ok(c_str) => c_str.into_raw(),
+        Err(_) => ptr::null_mut(),
+    }
+}
+
+/// 獲取玩家位置（使用全局引擎）
+#[no_mangle]
+pub extern "C" fn ratamud_get_player_position(x: *mut c_int, y: *mut c_int) -> c_int {
+    if x.is_null() || y.is_null() {
+        return -1;
+    }
+    
+    let engine_guard = match GLOBAL_ENGINE.lock() {
+        Ok(guard) => guard,
+        Err(_) => return -1,
+    };
+    
+    let engine = match engine_guard.as_ref() {
+        Some(e) => e,
+        None => return -1,
+    };
+    
+    let player = &engine.player;
+    unsafe {
+        *x = player.x as c_int;
+        *y = player.y as c_int;
+    }
+    0
+}
+
+/// 獲取當前地圖（使用全局引擎）
+#[no_mangle]
+pub extern "C" fn ratamud_get_current_map() -> *mut c_char {
+    let engine_guard = match GLOBAL_ENGINE.lock() {
+        Ok(guard) => guard,
+        Err(_) => return ptr::null_mut(),
+    };
+    
+    let engine = match engine_guard.as_ref() {
+        Some(e) => e,
+        None => return ptr::null_mut(),
+    };
+    
+    let map_name = engine.world.current_map_name.clone();
+    
+    match CString::new(map_name) {
+        Ok(c_str) => c_str.into_raw(),
+        Err(_) => ptr::null_mut(),
     }
 }
