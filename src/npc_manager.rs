@@ -78,7 +78,8 @@ impl NpcManager {
         self.npcs.keys().cloned().collect()
     }
 
-    /// 獲取指定位置的 NPC
+    /// 獲取指定位置的 NPC（不過濾地圖，保留供特殊用途）
+    #[allow(dead_code)]
     pub fn get_npcs_at(&self, x: usize, y: usize) -> Vec<&Person> {
         self.npcs.values()
             .filter(|npc| npc.x == x && npc.y == y)

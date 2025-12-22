@@ -494,7 +494,7 @@ impl OutputManager {
     }
     
     // 渲染大地圖
-    pub fn render_big_map(&self, area: Rect, map: &crate::map::Map, player_x: usize, player_y: usize, npc_manager: &crate::npc_manager::NpcManager) -> Paragraph<'_> {
+    pub fn render_big_map(&self, area: Rect, map: &crate::map::Map, player_x: usize, player_y: usize, npc_manager: &crate::npc_manager::NpcManager, current_map_name: &str) -> Paragraph<'_> {
         let visible_width = area.width.saturating_sub(2) as usize;
         let visible_height = area.height.saturating_sub(2) as usize;
         
@@ -529,8 +529,8 @@ impl OutputManager {
                 if map_x == player_x && map_y == player_y {
                     line_spans.push(Span::styled("P", Style::default().fg(Color::Red).add_modifier(Modifier::BOLD)));
                 } else {
-                    // 檢查是否有 NPC
-                    let npcs_here = npc_manager.get_npcs_at(map_x, map_y);
+                    // 檢查是否有 NPC（只顯示當前地圖的 NPC）
+                    let npcs_here = npc_manager.get_npcs_at_in_map(current_map_name, map_x, map_y);
                     if !npcs_here.is_empty() {
                         let npc = npcs_here[0];
                         let npc_char = crate::npc_manager::NpcManager::get_display_char(&npc.name);

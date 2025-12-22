@@ -346,7 +346,7 @@ pub fn run_main_loop(
                         height: map_height,
                     };
                     
-                    let map_widget = output_manager.render_big_map(map_area, current_map, me.x, me.y, &game_world.npc_manager);
+                    let map_widget = output_manager.render_big_map(map_area, current_map, me.x, me.y, &game_world.npc_manager, &game_world.current_map_name);
                     let safe_area = clamp_rect(map_area, size.width, size.height);
                     f.render_widget(Clear, safe_area);
                     f.render_widget(map_widget, safe_area);
