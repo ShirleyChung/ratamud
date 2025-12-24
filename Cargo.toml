@@ -11,10 +11,6 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 name = "main"
 path = "src/main.rs"
 
-[[bin]]
-name = "genmap"
-path = "src/bin/genmap.rs"
-
 [dependencies]
 ratatui = "0.26"
 crossterm = "0.27"
