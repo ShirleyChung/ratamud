@@ -39,6 +39,8 @@ use input::InputHandler;
 use output::OutputManager;
 use person::Person;
 use world::GameWorld;
+use ui::Menu;
+
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 初始化終端原始模式和備用螢幕
@@ -48,9 +50,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let backend = CrosstermBackend::new(stdout);
     let terminal = Terminal::new(backend)?;
 
-    // 初始化輸入和輸出管理器
+    // 初始化 InputHandler, OutputManager, GameWorld, Person
     let input_handler = InputHandler::new();
     let mut output_manager = OutputManager::new();
+    
+    // 初始化 Menu 狀態
+    let menu: Option<Menu> = None;
     
     // 載入遊戲設定
     use settings::GameSettings;
@@ -174,7 +179,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // 運行主迴圈
-    app::run_main_loop(terminal, input_handler, output_manager, game_world, me)?;
+    app::run_main_loop(terminal, input_handler, output_manager, game_world, me, menu)?;
 
     // 清理終端設定並返回到常規模式
     disable_raw_mode()?;
