@@ -365,11 +365,12 @@ fn handle_command_result(
         CommandResult::Trade(npc_name) => handle_trade(npc_name, output_manager, game_world, me)?,
         CommandResult::Buy(npc_name, item, quantity) => handle_buy(npc_name, item, quantity, output_manager, game_world, me)?,
         CommandResult::Sell(npc_name, item, quantity) => handle_sell(npc_name, item, quantity, output_manager, game_world, me)?,
-        CommandResult::SetDialogue(npc_name, scene, dialogue) => handle_set_dialogue(npc_name, scene, dialogue, output_manager, game_world)?,
+        CommandResult::SetDialogue(npc_name, topic, dialogue) => handle_set_dialogue(npc_name, topic, dialogue, output_manager, game_world)?,
+        CommandResult::SetDialogueWithConditions(npc_name, topic, dialogue, conditions) => handle_set_dialogue_with_conditions(npc_name, topic, dialogue, conditions, output_manager, game_world)?,
         CommandResult::SetEagerness(npc_name, eagerness) => handle_set_eagerness(npc_name, eagerness, output_manager, game_world)?,
         CommandResult::SetRelationship(npc_name, relationship) => handle_set_relationship(npc_name, relationship, output_manager, game_world)?,
         CommandResult::ChangeRelationship(npc_name, delta) => handle_change_relationship(npc_name, delta, output_manager, game_world)?,
-        CommandResult::Talk(npc_name) => handle_talk(npc_name, output_manager, game_world, me)?,
+        CommandResult::Talk(npc_name, topic) => handle_talk(npc_name, topic, output_manager, game_world, me)?,
         CommandResult::ListNpcs => handle_list_npcs(output_manager, game_world),
         CommandResult::CheckNpc(npc_name) => handle_check_npc(npc_name, output_manager, game_world),
         CommandResult::ToggleTypewriter => handle_toggle_typewriter(output_manager),
@@ -1883,14 +1884,14 @@ fn handle_toggle_typewriter(output_manager: &mut OutputManager) {
 /// 處理設置 NPC 對話
 fn handle_set_dialogue(
     npc_name: String,
-    scene: String,
+    topic: String,
     dialogue: String,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
 ) -> Result<(), Box<dyn std::error::Error>> {
     if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_name) {
-        npc.set_dialogue(scene.clone(), dialogue.clone()); // Corrected: clone String arguments
-        output_manager.print(format!("已設置 {} 在場景「{}」的對話", npc.name, scene));
+        npc.set_dialogue(topic.clone(), dialogue.clone());
+        output_manager.print(format!("已設置 {} 在話題「{}」的對話", npc.name, topic));
         
         // 保存 NPC
         let person_dir = format!("{}/persons", game_world.world_dir);
@@ -1899,6 +1900,89 @@ fn handle_set_dialogue(
         output_manager.set_status(format!("找不到 NPC: {npc_name}"));
     }
     Ok(())
+}
+
+/// 處理設置帶條件的 NPC 對話
+fn handle_set_dialogue_with_conditions(
+    npc_name: String,
+    topic: String,
+    dialogue: String,
+    conditions_str: String,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use crate::person::DialogueOption;
+    
+    // 解析條件字串 (例如: "顏值>80 and 性別=女 and mp>500")
+    let conditions = parse_conditions(&conditions_str);
+    
+    if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_name) {
+        let option = DialogueOption::with_conditions(dialogue.clone(), conditions);
+        npc.add_dialogue_option(topic.clone(), option);
+        output_manager.print(format!("已設置 {} 在話題「{}」的條件對話（條件: {}）", 
+            npc.name, topic, conditions_str));
+        
+        // 保存 NPC
+        let person_dir = format!("{}/persons", game_world.world_dir);
+        game_world.npc_manager.save_all(&person_dir)?;
+    } else {
+        output_manager.set_status(format!("找不到 NPC: {npc_name}"));
+    }
+    Ok(())
+}
+
+/// 解析條件字串
+fn parse_conditions(conditions_str: &str) -> Vec<crate::person::DialogueCondition> {
+    use crate::person::DialogueCondition;
+    
+    // 分割 "and" 來獲取多個條件
+    let parts: Vec<&str> = conditions_str.split(" and ").collect();
+    let mut conditions = Vec::new();
+    
+    for part in parts {
+        let part = part.trim();
+        
+        // 嘗試匹配不同的運算子
+        if let Some((attr, value)) = part.split_once(">=") {
+            conditions.push(DialogueCondition {
+                attribute: attr.trim().to_string(),
+                operator: ">=".to_string(),
+                value: value.trim().to_string(),
+            });
+        } else if let Some((attr, value)) = part.split_once("<=") {
+            conditions.push(DialogueCondition {
+                attribute: attr.trim().to_string(),
+                operator: "<=".to_string(),
+                value: value.trim().to_string(),
+            });
+        } else if let Some((attr, value)) = part.split_once("!=") {
+            conditions.push(DialogueCondition {
+                attribute: attr.trim().to_string(),
+                operator: "!=".to_string(),
+                value: value.trim().to_string(),
+            });
+        } else if let Some((attr, value)) = part.split_once('>') {
+            conditions.push(DialogueCondition {
+                attribute: attr.trim().to_string(),
+                operator: ">".to_string(),
+                value: value.trim().to_string(),
+            });
+        } else if let Some((attr, value)) = part.split_once('<') {
+            conditions.push(DialogueCondition {
+                attribute: attr.trim().to_string(),
+                operator: "<".to_string(),
+                value: value.trim().to_string(),
+            });
+        } else if let Some((attr, value)) = part.split_once('=') {
+            conditions.push(DialogueCondition {
+                attribute: attr.trim().to_string(),
+                operator: "=".to_string(),
+                value: value.trim().to_string(),
+            });
+        }
+    }
+    
+    conditions
 }
 
 /// 處理設置 NPC 說話積極度
@@ -1965,6 +2049,7 @@ fn handle_change_relationship(
 /// 處理與 NPC 對話
 fn handle_talk(
     npc_name: String,
+    topic: String,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
     me: &mut Person,
@@ -1979,12 +2064,12 @@ fn handle_talk(
     let npc_to_talk = npcs_here.iter().find(|n| n.name.to_lowercase() == npc_name.to_lowercase());
     
     if let Some(npc) = npc_to_talk {
-        // 觸發對話（"對話"場景）
-        if let Some(dialogue) = npc.try_talk("對話") {
-            output_manager.print(format!("💬 你對 {} 說...", npc.name));
-            output_manager.print(format!("{} 說：「{}」", npc.name, dialogue)); // Corrected: output_manager.print is used to prevent issues with print_typewriter
+        // 觸發對話（使用指定話題）
+        if let Some(dialogue) = npc.try_talk(&topic) {
+            output_manager.print(format!("💬 你對 {} 說起「{}」...", npc.name, topic));
+            output_manager.print(format!("{} 說：「{}」", npc.name, dialogue));
         } else {
-            output_manager.print(format!("{} 似乎不想說話。", npc.name));
+            output_manager.print(format!("{} 對「{}」這個話題似乎不想說話。", npc.name, topic));
         }
     } else {
         output_manager.set_status(format!("此處找不到 {npc_name}"));

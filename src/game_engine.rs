@@ -237,10 +237,10 @@ impl GameEngine {
                 format!("改變 {npc} 的好感度 {delta:+}")
             }
             
-            CommandResult::Talk(npc_name) => {
+            CommandResult::Talk(npc_name, topic) => {
                 // 與 NPC 對話
                 if let Some(npc) = self.world.npc_manager.get_npc(&npc_name) {
-                    format!("與 {} 對話...", npc.name)
+                    format!("與 {} 聊「{}」...", npc.name, topic)
                 } else {
                     format!("找不到 NPC: {npc_name}")
                 }
@@ -253,6 +253,10 @@ impl GameEngine {
                 } else {
                     format!("找不到 NPC: {npc_name}")
                 }
+            }
+            
+            CommandResult::SetDialogueWithConditions(npc, topic, _dialogue, conditions) => {
+                format!("設置 {npc} 的「{topic}」對話（條件: {conditions}）")
             }
             
             CommandResult::ToggleTypewriter => {

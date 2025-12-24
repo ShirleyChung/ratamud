@@ -3,3 +3,4 @@
 # iOS Framework 建構產物
 dist/ios/
 target/universal-sim/
+.DS_Store

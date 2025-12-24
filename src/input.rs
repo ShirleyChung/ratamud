@@ -491,16 +491,60 @@ impl InputHandler {
                     CommandResult::Sell(npc, item, quantity)
                 }
             },
-            "setdialogue" | "setdia" => {
-                // setdialogue <npc> <場景> <台詞> 命令，設置 NPC 台詞
-                // 範例: setdialogue 商人 見面 哈囉！你好，來看看我的商品
+            "setdialogue" | "setdia" | "sdl" => {
+                // setdialogue 命令的多種用法：
+                // 1. sdl <npc> <話題> add <對話> when <條件> - 新增帶條件的對話
+                // 2. sdl <npc> set <話題> when <條件> say <對話> - 設定條件式對話（更直觀）
+                // 3. sdl <npc> <話題> <對話> - 簡單版（無條件）
+                // 範例: 
+                //   sdl sakura 閒聊 add 你長得好漂亮啊 when 顏值>80 and 性別=女
+                //   sdl ammy set 閒聊 when 力量>100 and 顏值>80 say 你真是又帥又厲害
+                //   sdl 商人 見面 哈囉！你好，來看看我的商品
                 if parts.len() < 4 {
-                    CommandResult::Error("Usage: setdialogue <npc> <場景> <台詞>".to_string())
+                    CommandResult::Error("Usage: sdl <npc> <話題> <對話> 或 sdl <npc> add/set <話題> when <條件> say <對話>".to_string())
                 } else {
                     let npc = parts[1].to_string();
-                    let scene = parts[2].to_string();
-                    let dialogue = parts[3..].join(" ");
-                    CommandResult::SetDialogue(npc, scene, dialogue)
+                    
+                    // 檢查是否使用 "set" 語法
+                    if parts[2] == "set" {
+                        // sdl <npc> set <話題> when <條件> say <對話>
+                        if parts.len() < 6 {
+                            CommandResult::Error("Usage: sdl <npc> set <話題> when <條件> say <對話>".to_string())
+                        } else {
+                            let topic = parts[3].to_string();
+                            
+                            if let Some(when_pos) = parts.iter().position(|&p| p == "when") {
+                                if let Some(say_pos) = parts.iter().position(|&p| p == "say") {
+                                    let conditions_str = parts[when_pos+1..say_pos].join(" ");
+                                    let dialogue = parts[say_pos+1..].join(" ");
+                                    CommandResult::SetDialogueWithConditions(npc, topic, dialogue, conditions_str)
+                                } else {
+                                    CommandResult::Error("缺少 'say' 關鍵字".to_string())
+                                }
+                            } else {
+                                CommandResult::Error("缺少 'when' 關鍵字".to_string())
+                            }
+                        }
+                    } 
+                    // 檢查是否使用 "add" 語法
+                    else if parts[3] == "add" {
+                        // sdl <npc> <話題> add <對話> when <條件>
+                        let topic = parts[2].to_string();
+                        if let Some(when_pos) = parts.iter().position(|&p| p == "when") {
+                            let dialogue = parts[4..when_pos].join(" ");
+                            let conditions_str = parts[when_pos+1..].join(" ");
+                            CommandResult::SetDialogueWithConditions(npc, topic, dialogue, conditions_str)
+                        } else {
+                            // 只有 add，沒有 when
+                            let dialogue = parts[4..].join(" ");
+                            CommandResult::SetDialogue(npc, topic, dialogue)
+                        }
+                    } else {
+                        // 簡單版本（無條件）
+                        let topic = parts[2].to_string();
+                        let dialogue = parts[3..].join(" ");
+                        CommandResult::SetDialogue(npc, topic, dialogue)
+                    }
                 }
             },
             "seteagerness" | "setea" => {
@@ -537,13 +581,18 @@ impl InputHandler {
                 }
             },
             "talk" | "speak" => {
-                // talk <npc> 命令，與 NPC 對話
-                // 範例: talk 商人
+                // talk <npc> [話題] 命令，與 NPC 對話
+                // 範例: talk 商人 閒聊
                 if parts.len() < 2 {
-                    CommandResult::Error("Usage: talk <npc>".to_string())
+                    CommandResult::Error("Usage: talk <npc> [話題]".to_string())
                 } else {
-                    let npc_name = parts[1..].join(" ");
-                    CommandResult::Talk(npc_name)
+                    let npc_name = parts[1].to_string();
+                    let topic = if parts.len() >= 3 {
+                        parts[2..].join(" ")
+                    } else {
+                        "閒聊".to_string()
+                    };
+                    CommandResult::Talk(npc_name, topic)
                 }
             },
             "check" | "inspect" | "examine" => {
@@ -655,11 +704,12 @@ pub enum CommandResult {
     Trade(String),                   // 查看 NPC 商品 (NPC名稱/ID)
     Buy(String, String, u32),        // 購買物品 (NPC, 物品, 數量)
     Sell(String, String, u32),       // 出售物品 (NPC, 物品, 數量)
-    SetDialogue(String, String, String), // 設置 NPC 台詞 (NPC, 場景, 台詞)
+    SetDialogue(String, String, String), // 設置 NPC 台詞 (NPC, 話題, 台詞)
+    SetDialogueWithConditions(String, String, String, String), // 設置帶條件的 NPC 台詞 (NPC, 話題, 台詞, 條件字串)
     SetEagerness(String, u8),        // 設置 NPC 說話積極度 (NPC, 積極度0-100)
     SetRelationship(String, i32),    // 設置 NPC 好感度 (NPC, 好感度-100~100)
     ChangeRelationship(String, i32), // 改變 NPC 好感度 (NPC, 變化量)
-    Talk(String),                    // 與 NPC 對話 (NPC名稱/ID)
+    Talk(String, String),            // 與 NPC 對話 (NPC名稱/ID, 話題)
     ListNpcs,                        // 列出所有 NPC
     CheckNpc(String),                // 查看 NPC 詳細資訊 (NPC名稱/ID)
     ToggleTypewriter,                // 切換打字機效果
@@ -752,10 +802,11 @@ impl CommandResult {
             CommandResult::Sell(String::new(), String::new(), 1),
             CommandResult::ListNpcs,
             CommandResult::SetDialogue(String::new(), String::new(), String::new()),
+            CommandResult::SetDialogueWithConditions(String::new(), String::new(), String::new(), String::new()),
             CommandResult::SetEagerness(String::new(), 0),
             CommandResult::SetRelationship(String::new(), 0),
             CommandResult::ChangeRelationship(String::new(), 0),
-            CommandResult::Talk(String::new()),
+            CommandResult::Talk(String::new(), String::new()),
             CommandResult::CheckNpc(String::new()),
             CommandResult::ToggleTypewriter,
             CommandResult::QuestList,

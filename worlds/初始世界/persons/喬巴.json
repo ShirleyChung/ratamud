@@ -3,18 +3,20 @@
   "description": "一個醫生",
   "abilities": [],
   "items": {
-    "木劍": 2,
-    "頭盔": 1,
-    "火把": 4,
     "弓": 1,
     "匕首": 3,
-    "漿果": 1
+    "繩索": 1,
+    "鐵劍": 2,
+    "木劍": 2,
+    "漿果": 1,
+    "火把": 4,
+    "頭盔": 1
   },
-  "status": "",
-  "x": 4,
-  "y": 3,
+  "status": "正常",
+  "x": 11,
+  "y": 5,
   "map": "初始之地",
-  "hp": 99117,
+  "hp": 99066,
   "mp": 99998,
   "max_hp": 100000,
   "max_mp": 100000,
@@ -30,5 +32,7 @@
   "relationship": 0,
   "dialogue_state": "",
   "met_player": false,
-  "interaction_count": 0
+  "interaction_count": 0,
+  "gender": "未知",
+  "appearance": 50
 }

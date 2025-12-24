@@ -5,6 +5,126 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 use std::collections::HashMap;
+use rand::Rng;
+
+// 對話條件
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct DialogueCondition {
+    pub attribute: String,      // 屬性名稱 (hp, mp, strength, 顏值, 性別 等)
+    pub operator: String,       // 運算子 (>, <, =, >=, <=, !=)
+    pub value: String,          // 比較值 (可能是數字或字串)
+}
+
+impl DialogueCondition {
+    /// 評估條件是否滿足
+    pub fn evaluate(&self, person: &Person) -> bool {
+        // 取得屬性值
+        let attr_value = match self.attribute.as_str() {
+            "hp" => person.hp.to_string(),
+            "mp" => person.mp.to_string(),
+            "max_hp" => person.max_hp.to_string(),
+            "max_mp" => person.max_mp.to_string(),
+            "strength" | "力量" => person.strength.to_string(),
+            "knowledge" | "知識" => person.knowledge.to_string(),
+            "sociality" | "交誼" => person.sociality.to_string(),
+            "relationship" | "好感度" => person.relationship.to_string(),
+            "talk_eagerness" | "積極度" => person.talk_eagerness.to_string(),
+            "age" | "年齡" => person.age.to_string(),
+            "gender" | "性別" => person.gender.clone(),
+            "appearance" | "顏值" => person.appearance.to_string(),
+            "items_count" | "物品數量" => person.items.values().sum::<u32>().to_string(),
+            attr if attr.starts_with("item:") => {
+                // 檢查持有特定物品數量 (例如: item:麵包)
+                let item_name = &attr[5..];
+                person.items.get(item_name).unwrap_or(&0).to_string()
+            },
+            _ => return false,
+        };
+        
+        // 執行比較
+        match self.operator.as_str() {
+            ">" => {
+                if let (Ok(a), Ok(b)) = (attr_value.parse::<i32>(), self.value.parse::<i32>()) {
+                    a > b
+                } else {
+                    false
+                }
+            },
+            "<" => {
+                if let (Ok(a), Ok(b)) = (attr_value.parse::<i32>(), self.value.parse::<i32>()) {
+                    a < b
+                } else {
+                    false
+                }
+            },
+            ">=" => {
+                if let (Ok(a), Ok(b)) = (attr_value.parse::<i32>(), self.value.parse::<i32>()) {
+                    a >= b
+                } else {
+                    false
+                }
+            },
+            "<=" => {
+                if let (Ok(a), Ok(b)) = (attr_value.parse::<i32>(), self.value.parse::<i32>()) {
+                    a <= b
+                } else {
+                    false
+                }
+            },
+            "=" | "==" => attr_value == self.value,
+            "!=" => attr_value != self.value,
+            _ => false,
+        }
+    }
+}
+
+// 對話選項（包含句子和條件）
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct DialogueOption {
+    pub text: String,                       // 對話文字
+    pub conditions: Vec<DialogueCondition>, // 觸發條件列表（AND 關係）
+    pub weight: f32,                        // 基礎權重（預設1.0）
+}
+
+impl DialogueOption {
+    pub fn new(text: String) -> Self {
+        DialogueOption {
+            text,
+            conditions: Vec::new(),
+            weight: 1.0,
+        }
+    }
+    
+    pub fn with_conditions(text: String, conditions: Vec<DialogueCondition>) -> Self {
+        DialogueOption {
+            text,
+            conditions,
+            weight: 1.0,
+        }
+    }
+    
+    /// 檢查所有條件是否滿足
+    pub fn check_conditions(&self, person: &Person) -> bool {
+        self.conditions.iter().all(|cond| cond.evaluate(person))
+    }
+    
+    /// 計算實際權重（條件滿足時返回權重，否則返回0）
+    pub fn get_effective_weight(&self, person: &Person) -> f32 {
+        if self.check_conditions(person) {
+            self.weight
+        } else {
+            0.0
+        }
+    }
+}
+
+fn default_gender() -> String {
+    "未知".to_string()
+}
+
+fn default_appearance() -> i32 {
+    50  // 預設顏值 50
+}
 
 // Person 類別，實現 Observable trait
 #[derive(Clone, Serialize, Deserialize)]
@@ -30,7 +150,7 @@ pub struct Person {
     pub is_sleeping: bool,           // 是否正在睡覺
     pub last_mp_restore_minute: u8,  // 上次恢復 MP 的分鐘數
     #[serde(default)]
-    pub dialogues: HashMap<String, String>,  // 台詞 (場景 -> 台詞內容)
+    pub dialogues: HashMap<String, Vec<DialogueOption>>,  // 話題 -> 對話選項列表
     #[serde(default = "default_talk_eagerness")]
     pub talk_eagerness: u8,          // 說話積極度 (0-100)
     #[serde(default)]
@@ -41,6 +161,10 @@ pub struct Person {
     pub met_player: bool,            // 是否見過玩家
     #[serde(default)]
     pub interaction_count: u32,      // 互動次數
+    #[serde(default = "default_gender")]
+    pub gender: String,              // 性別
+    #[serde(default = "default_appearance")]
+    pub appearance: i32,             // 顏值 (0-100)
 }
 
 fn default_talk_eagerness() -> u8 {
@@ -79,12 +203,20 @@ impl Person {
             dialogue_state: "初見".to_string(),
             met_player: false,
             interaction_count: 0,
+            gender: "未知".to_string(),
+            appearance: 50,
         }
     }
 
-    /// 設置台詞
-    pub fn set_dialogue(&mut self, scene: String, text: String) {
-        self.dialogues.insert(scene, text);
+    /// 設置台詞（新版：支援多個選項）
+    pub fn add_dialogue_option(&mut self, topic: String, option: DialogueOption) {
+        self.dialogues.entry(topic).or_default().push(option);
+    }
+
+    /// 設置台詞（簡單版：無條件）
+    pub fn set_dialogue(&mut self, topic: String, text: String) {
+        let option = DialogueOption::new(text);
+        self.dialogues.entry(topic).or_default().push(option);
     }
 
     /// 設置說話積極度 (0-100)
@@ -111,6 +243,8 @@ impl Person {
             self.mp, self.max_mp, self.knowledge));
         info.push_str(&format!("│ 年齡: {}秒   交誼: {}\n", 
             self.age, self.sociality));
+        info.push_str(&format!("│ 性別: {}    顏值: {}\n", 
+            self.gender, self.appearance));
         
         // 關係信息
         if self.met_player || self.relationship != 0 || self.interaction_count > 0 {
@@ -143,21 +277,22 @@ impl Person {
         if !self.dialogues.is_empty() {
             info.push_str("├─────────────────────────\n");
             info.push_str(&format!("│ 對話 (積極度: {}%)\n", self.talk_eagerness));
-            for (scene, dialogue) in &self.dialogues {
-                // 將長對話換行顯示
-                let max_len = 40;
-                if dialogue.chars().count() > max_len {
-                    info.push_str(&format!("│  [{scene}]\n"));
-                    let chars: Vec<char> = dialogue.chars().collect();
-                    let mut start = 0;
-                    while start < chars.len() {
-                        let end = (start + max_len).min(chars.len());
-                        let line: String = chars[start..end].iter().collect();
-                        info.push_str(&format!("│    {line}\n"));
-                        start = end;
-                    }
-                } else {
-                    info.push_str(&format!("│  [{scene}] {dialogue}\n"));
+            for (topic, options) in &self.dialogues {
+                info.push_str(&format!("│  [{topic}] {} 個選項\n", options.len()));
+                for (i, opt) in options.iter().enumerate() {
+                    let cond_str = if opt.conditions.is_empty() {
+                        "無條件".to_string()
+                    } else {
+                        format!("{} 個條件", opt.conditions.len())
+                    };
+                    let max_len = 30;
+                    let text = if opt.text.chars().count() > max_len {
+                        let substr: String = opt.text.chars().take(max_len).collect();
+                        format!("{substr}...")
+                    } else {
+                        opt.text.clone()
+                    };
+                    info.push_str(&format!("│    {}. {} ({})\n", i + 1, text, cond_str));
                 }
             }
         } else if self.talk_eagerness > 0 {
@@ -170,56 +305,66 @@ impl Person {
         info
     }
 
-    /// 獲取台詞（如果有）
+    /// 獲取台詞（已廢棄，用於向後兼容）
     #[allow(dead_code)]
-    pub fn get_dialogue(&self, scene: &str) -> Option<&String> {
-        self.dialogues.get(scene)
+    pub fn get_dialogue(&self, topic: &str) -> Option<String> {
+        self.get_weighted_dialogue(topic)
     }
 
-    /// 嘗試說話（根據積極度）
-    pub fn try_talk(&self, scene: &str) -> Option<String> {
+    /// 根據權重選擇對話（新版）
+    pub fn get_weighted_dialogue(&self, topic: &str) -> Option<String> {
+        let options = self.dialogues.get(topic)?;
+        if options.is_empty() {
+            return None;
+        }
+        
+        // 計算所有選項的有效權重
+        let weights: Vec<f32> = options.iter()
+            .map(|opt| opt.get_effective_weight(self))
+            .collect();
+        
+        let total_weight: f32 = weights.iter().sum();
+        
+        // 如果沒有任何選項滿足條件，返回 None
+        if total_weight <= 0.0 {
+            return None;
+        }
+        
+        // 加權隨機選擇
+        let mut rng = rand::thread_rng();
+        let mut roll = rng.gen::<f32>() * total_weight;
+        
+        for (i, &weight) in weights.iter().enumerate() {
+            roll -= weight;
+            if roll <= 0.0 {
+                return Some(options[i].text.clone());
+            }
+        }
+        
+        // 備用：返回最後一個有效選項
+        options.iter()
+            .enumerate()
+            .rev()
+            .find(|(i, _)| weights[*i] > 0.0)
+            .map(|(_, opt)| opt.text.clone())
+    }
+
+    /// 嘗試說話（根據積極度和權重）
+    pub fn try_talk(&self, topic: &str) -> Option<String> {
         // 根據積極度決定是否說話
-        use rand::Rng;
         let mut rng = rand::thread_rng();
         let roll: u8 = rng.gen_range(0..100);                
         if roll < self.talk_eagerness {
-            if let Some(dialogue) = self.get_context_dialogue(scene) {
-                return Some(dialogue);
-            } else {
-                return Some(format!("{} 想說些什麼，但不知道該說什麼。", self.name));
-            }
+            self.get_weighted_dialogue(topic)
+        } else {
+            None
         }
-        None
     }
 
-    /// 根據好感度和狀態動態選擇對話
+    /// 根據好感度和狀態動態選擇對話（已棄用，保留用於兼容）
+    #[allow(dead_code)]
     pub fn get_context_dialogue(&self, scene: &str) -> Option<String> {
-        // 先嘗試帶狀態的對話鍵
-        let state_key = format!("{}:{}", scene, self.dialogue_state);
-        if let Some(dialogue) = self.dialogues.get(&state_key) {
-            return Some(dialogue.clone());
-        }
-        
-        // 再嘗試帶好感度等級的對話鍵
-        let relationship_level = if self.relationship >= 70 {
-            "摯友"
-        } else if self.relationship >= 30 {
-            "好友"
-        } else if self.relationship >= 0 {
-            "普通"
-        } else if self.relationship >= -30 {
-            "冷淡"
-        } else {
-            "敵對"
-        };
-        
-        let rel_key = format!("{scene}:{relationship_level}");
-        if let Some(dialogue) = self.dialogues.get(&rel_key) {
-            return Some(dialogue.clone());
-        }
-        
-        // 最後使用基礎對話
-        self.dialogues.get(scene).cloned()
+        self.get_weighted_dialogue(scene)
     }
     
     /// 改變好感度
