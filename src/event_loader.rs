@@ -110,7 +110,7 @@ impl EventLoader {
                 "time_range": ["09:00:00", "18:00:00"]
             },
             "where": {
-                "map": "初始之地"
+                "map": "beginMap"
             },
             "actions": [
                 {
@@ -148,7 +148,7 @@ impl EventLoader {
                 "random_chance": 0.3
             },
             "where": {
-                "map": "初始之地"
+                "map": "beginMap"
             },
             "actions": [
                 {

@@ -172,7 +172,7 @@ fn default_talk_eagerness() -> u8 {
 }
 
 fn default_map() -> String {
-    "初始之地".to_string()
+    "beginMap".to_string()
 }
 
 impl Person {
@@ -185,7 +185,7 @@ impl Person {
             status: "正常".to_string(),
             x: 50,                    // 初始位置：地圖中央
             y: 50,
-            map: "初始之地".to_string(),  // 預設在初始之地
+            map: "beginMap".to_string(),  // 預設在 beginMap
             hp: 100000,
             mp: 100000,
             max_hp: 100000,

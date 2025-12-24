@@ -221,7 +221,7 @@ fn draw_ui(
         .split(size);
 
     let current_time_str = game_world.format_time();
-    let header_widget = HeaderDisplay::render_header("初始世界", &current_time_str);
+    let header_widget = HeaderDisplay::render_header("beginWorld", &current_time_str);
     f.render_widget(header_widget, vertical_chunks[0]);
 
     let output_widget = output_manager.render_output(vertical_chunks[1]);
@@ -2066,7 +2066,7 @@ fn handle_talk(
     if let Some(npc) = npc_to_talk {
         // 觸發對話（使用指定話題）
         if let Some(dialogue) = npc.try_talk(&topic) {
-            output_manager.print(format!("💬 你對 {} 說起「{}」...", npc.name, topic));
+            output_manager.print(format!("💬 你跟 {} 聊了一下", npc.name));
             output_manager.print(format!("{} 說：「{}」", npc.name, dialogue));
         } else {
             output_manager.print(format!("{} 對「{}」這個話題似乎不想說話。", npc.name, topic));

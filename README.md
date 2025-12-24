@@ -295,3 +295,21 @@ look
 **最後更新**: 2025-12-06  
 **版本**: 0.1.0
 
+
+---
+
+## 最近更新 (2025-12-24)
+
+### 地圖和世界名稱英文化
+- 世界：`初始世界` → `beginWorld`
+- 地圖：`初始之地` → `beginMap`, `森林` → `forest`, `山脈` → `mountain`
+
+### NPC 對話系統增強
+- 新增 Person 屬性：`gender`（性別）、`appearance`（顏值）
+- 支援多對話選項和條件判斷
+- 新增 sdl 三種語法：
+  1. `sdl <NPC> <話題> <對話>` - 簡單版
+  2. `sdl <NPC> <話題> add <對話> when <條件>` - add 語法
+  3. `sdl <NPC> set <話題> when <條件> say <對話>` - set 語法（推薦）
+
+詳見：`README_DIALOGUE.md` 和 `SDL_SYNTAX.md`

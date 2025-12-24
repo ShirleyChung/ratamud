@@ -213,7 +213,7 @@ pub extern "C" fn ratamud_player_get_info(player: *const Person) -> *mut c_char 
         "mp": player_ref.mp,
         "max_mp": player_ref.max_mp,
         "position": [player_ref.x, player_ref.y],
-        "map": "初始之地",
+        "map": "beginMap",
         "status": player_ref.status,
     });
     

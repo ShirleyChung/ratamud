@@ -1,29 +1,32 @@
 {
-  "name": "Steve",
-  "description": "一個engineer",
+  "name": "櫻花",
+  "description": "一個醫生",
   "abilities": [],
   "items": {
-    "舊布料": 3
+    "蘋果": 1,
+    "舊布料": 3,
+    "鎬": 6,
+    "盾牌": 2
   },
   "status": "正常",
-  "x": 52,
-  "y": 47,
-  "map": "初始之地",
-  "hp": 98860,
-  "mp": 99959,
+  "x": 53,
+  "y": 41,
+  "map": "beginMap",
+  "hp": 99017,
+  "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 10718,
+  "age": 5735,
   "last_hunger_hour": 14,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "dialogues": {
-    "見面": "Hi there! I'm working on some interesting projects. Want to know more?"
+    "見面": "你好呀！需要醫療協助嗎？"
   },
-  "talk_eagerness": 65,
+  "talk_eagerness": 85,
   "relationship": 0,
   "dialogue_state": "",
   "met_player": false,

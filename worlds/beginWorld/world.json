@@ -1,0 +1,12 @@
+{
+  "name": "beginWorld",
+  "description": "這是一個充滿奇異生物、神秘遺跡和隱藏寶藏的魔幻世界。世界中有多個不同的區域，包括 forest、洞窟、城鎮和古老的廢墟。在這個世界中，你將探索未知的領域，與各種NPC互動，收集物品和知識。",
+  "maps": [
+    "beginMap",
+    "forest",
+    "洞穴",
+    "沙漠",
+    "mountain"
+  ],
+  "current_map": "forest"
+}

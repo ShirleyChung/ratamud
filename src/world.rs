@@ -362,14 +362,14 @@ pub struct GameWorld {
 impl GameWorld {
     pub fn new(player: Person) -> Self {
         // 建立世界資料夾
-        let world_dir = "worlds/初始世界".to_string();
+        let world_dir = "worlds/beginWorld".to_string();
         let _ = fs::create_dir_all(&world_dir);
 
         // 創建世界元數據
         let metadata = WorldMetadata::new(
-            "初始世界".to_string(),
+            "beginWorld".to_string(),
             "這是一個充滿奇異生物、神秘遺跡和隱藏寶藏的魔幻世界。\
-            世界中有多個不同的區域，包括森林、洞窟、城鎮和古老的廢墟。\
+            世界中有多個不同的區域，包括 forest、洞窟、城鎮和古老的廢墟。\
             在這個世界中，你將探索未知的領域，與各種NPC互動，收集物品和知識。".to_string(),
         );
 
@@ -379,7 +379,7 @@ impl GameWorld {
 
         GameWorld {
             maps: HashMap::new(),
-            current_map_name: String::from("初始之地"),
+            current_map_name: String::from("beginMap"),
             metadata,
             world_dir,
             time,
@@ -475,11 +475,11 @@ impl GameWorld {
     pub fn initialize_maps(&mut self) -> Result<(usize, Vec<String>), Box<dyn std::error::Error>> {
         // 初始化並載入所有地圖
         let maps_config = vec![
-            ("初始之地", MapType::Normal),
-            ("森林", MapType::Forest),
+            ("beginMap", MapType::Normal),
+            ("forest", MapType::Forest),
             ("洞穴", MapType::Cave),
             ("沙漠", MapType::Desert),
-            ("山脈", MapType::Mountain),
+            ("mountain", MapType::Mountain),
         ];
         
         let mut logs = Vec::new();
