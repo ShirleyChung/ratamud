@@ -86,6 +86,7 @@ impl QuestCondition {
     }
     
     /// 獲取條件描述
+    #[allow(dead_code)]
     pub fn description(&self) -> String {
         match self {
             QuestCondition::TalkToNpc { npc_id, completed } => {
@@ -157,6 +158,7 @@ pub enum QuestReward {
 
 impl QuestReward {
     /// 獲取獎勵描述
+    #[allow(dead_code)]
     pub fn description(&self) -> String {
         match self {
             QuestReward::Item { item, count } => {
@@ -224,7 +226,18 @@ impl Quest {
         self.conditions.iter().all(|c| c.is_completed())
     }
     
+    /// 取得任務狀態字元
+    pub fn get_status_char(&self) -> char {
+        match self.status {
+            QuestStatus::NotStarted => '○',
+            QuestStatus::InProgress => '●',
+            QuestStatus::Completed => '✓',
+            QuestStatus::Failed => '✗',
+        }
+    }
+
     /// 顯示任務詳情
+    #[allow(dead_code)]
     pub fn show_detail(&self) -> String {
         let mut info = String::new();
         
@@ -426,6 +439,7 @@ impl QuestManager {
     }
     
     /// 保存所有任務
+    #[allow(dead_code)]
     pub fn save_to_directory(&self, quest_dir: &str) -> Result<(), Box<dyn std::error::Error>> {
         use std::fs;
         

@@ -240,6 +240,7 @@ impl Person {
     }
     
     /// 標記為已見過玩家
+    #[allow(dead_code)]
     pub fn mark_met_player(&mut self) {
         if !self.met_player {
             self.met_player = true;
@@ -249,6 +250,7 @@ impl Person {
     }
     
     /// 增加互動次數
+    #[allow(dead_code)]
     pub fn increment_interaction(&mut self) {
         self.interaction_count += 1;
     }
@@ -491,7 +493,7 @@ mod tests {
         // 測試初始狀態
         assert_eq!(person.relationship, 0);
         assert_eq!(person.dialogue_state, "初見");
-        assert_eq!(person.met_player, false);
+        assert!(!person.met_player);
         assert_eq!(person.interaction_count, 0);
         
         // 測試好感度改變

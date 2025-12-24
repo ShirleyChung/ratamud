@@ -1,4 +1,7 @@
-use crossterm::event::{Event, KeyCode, KeyEventKind};
+use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
+use crate::app::AppContext; // Add AppContext import
+use crate::ui::Menu;
+use std::collections::HashMap;
 
 // 處理用戶輸入的結構體
 pub struct InputHandler {
@@ -21,59 +24,161 @@ impl InputHandler {
         }
     }
 
-    // 處理鍵盤事件
-    pub fn handle_event(&mut self, event: Event) -> Option<CommandResult> {
-        match event {
-            Event::Paste(s) => {
-                self.input.push_str(&s);
-            }
-
-            Event::Key(key) => {
-                // ✅ Windows 相容：只處理 Press 事件，忽略 Repeat 和 Release
-                // 這樣既支援中文輸入，又避免 Windows 的重複字符問題
-                match key.kind {
-                    KeyEventKind::Press => {
-                        // 只處理按下事件
-                    }
-                    KeyEventKind::Repeat => {
-                        // Windows 上會觸發 Repeat，我們忽略它
-                        return None;
-                    }
-                    _ => {
-                        // Release 等其他事件也忽略
-                        return None;
-                    }
-                }
-
+    // Process key events, modifying AppContext and returning CommandResult if one is generated
+    pub fn handle_input_events(&mut self, key: KeyEvent, context: &mut AppContext) -> Option<CommandResult> {
+        // If menu is open, handle menu input first
+        if let Some(active_menu) = context.menu {
+            if key.kind == KeyEventKind::Press {
                 match key.code {
-                    KeyCode::Char(c) => {
-                        self.input.push(c);
-                    }
-
-                    KeyCode::Backspace => {
-                        self.input.pop();
-                    }
-
+                    KeyCode::Up => active_menu.previous(),
+                    KeyCode::Down => active_menu.next(),
                     KeyCode::Enter => {
-                        if !self.input.is_empty() {
-                            let result = self.parse_input(self.input.clone());
-                            self.input.clear();
-                            return Some(result);
+                        if let Some(selected_item) = active_menu.get_selected_item() {
+                            context.output_manager.print(format!("選單確認: {selected_item}"));
+                            if selected_item == "離開遊戲" {
+                                *context.should_exit = true; // Set should_exit via context
+                            }
                         }
-                    }
-
-                    KeyCode::Up => return Some(CommandResult::Move(0, -1)),
-                    KeyCode::Down => return Some(CommandResult::Move(0, 1)),
-                    KeyCode::Left => return Some(CommandResult::Move(-1, 0)),
-                    KeyCode::Right => return Some(CommandResult::Move(1, 0)),
-
+                        active_menu.deactivate();
+                        *context.menu = None; // Close menu via context
+                    },
+                    KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('Q') => {
+                        context.output_manager.print("選單取消".to_string());
+                        active_menu.deactivate();
+                        *context.menu = None; // Close menu via context
+                    },
                     _ => {}
                 }
             }
+            return None; // Input consumed by menu
+        }
+
+        // Only process Press events for other actions
+        if key.kind == KeyEventKind::Press {
+            match key.code {
+                KeyCode::Esc => {
+                    if context.menu.is_none() {
+                        let mut new_menu = Menu::new(
+                            "遊戲選單".to_string(),
+                            vec![
+                                "繼續遊戲".to_string(),
+                                "儲存遊戲".to_string(),
+                                "載入遊戲".to_string(),
+                                "設定".to_string(),
+                                "離開遊戲".to_string(),
+                            ],
+                        );
+                        new_menu.activate();
+                        *context.menu = Some(new_menu);
+                        context.output_manager.print("選單開啟".to_string());
+                    } else {
+                        *context.menu = None;
+                        context.output_manager.print("選單關閉".to_string());
+                    }
+                    None
+                },
+                KeyCode::F(1) => {
+                    context.output_manager.toggle_status_panel();
+                    None
+                },
+                KeyCode::Char('q') | KeyCode::Char('Q') => {
+                    if context.output_manager.is_map_open() {
+                        context.output_manager.close_map();
+                        context.output_manager.set_status("大地圖已關閉".to_string());
+                        None // Input consumed by map, no command generated
+                    } else {
+                        self.handle_key_event(key) // Return command result for app.rs to handle
+                    }
+                },
+                KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right => {
+                    if key.modifiers.contains(crossterm::event::KeyModifiers::SHIFT) {
+                        match key.code {
+                            KeyCode::Up => {
+                                context.output_manager.scroll_up();
+                                context.output_manager.set_status("向上捲動訊息".to_string());
+                            },
+                            KeyCode::Down => {
+                                context.output_manager.scroll_down(20);
+                                context.output_manager.set_status("向下捲動訊息".to_string());
+                            },
+                            _ => {}
+                        }
+                        None // Input consumed by scrolling, no command generated
+                    } else if context.output_manager.is_map_open() {
+                        if let Some(current_map_data) = context.game_world.get_current_map() {
+                            let (dx, dy) = match key.code {
+                                KeyCode::Up => (0, -5),
+                                KeyCode::Down => (0, 5),
+                                KeyCode::Left => (-5, 0),
+                                KeyCode::Right => (5, 0),
+                                _ => (0, 0),
+                            };
+                            context.output_manager.move_map_view(dx, dy, current_map_data.width, current_map_data.height);
+                        }
+                        None // Input consumed by map movement, no command generated
+                    } else {
+                        self.handle_key_event(key) // Return command result for app.rs to handle
+                    }
+                },
+                KeyCode::PageUp => {
+                    context.output_manager.scroll_up();
+                    context.output_manager.set_status("向上捲動訊息".to_string());
+                    None // Input consumed by scrolling, no command generated
+                },
+                KeyCode::PageDown => {
+                    context.output_manager.scroll_down(20);
+                    context.output_manager.set_status("向下捲動訊息".to_string());
+                    None // Input consumed by scrolling, no command generated
+                },
+                _ => {
+                    self.handle_key_event(key) // Return command result for app.rs to handle
+                }
+            }
+        } else {
+            None // Non-Press event, no command generated
+        }
+    }
+
+
+    // 處理鍵盤事件 (這是一個內部解析器，僅將鍵盤事件轉換為 CommandResult)
+    pub fn handle_key_event(&mut self, key: KeyEvent) -> Option<CommandResult> {
+        // ✅ Windows 相容：只處理 Press 事件，忽略 Repeat 和 Release
+        // 這樣既支援中文輸入，又避免 Windows 的重複字符問題
+        match key.kind {
+            KeyEventKind::Press => {
+                // 只處理按下事件
+            }
+            KeyEventKind::Repeat | KeyEventKind::Release => {
+                // 忽略重複和釋放事件
+                return None;
+            }
+        }
+
+        match key.code {
+            KeyCode::Char(c) => {
+                self.input.push(c);
+            }
+
+            KeyCode::Backspace => {
+                self.input.pop();
+            }
+
+            KeyCode::Enter => {
+                if !self.input.is_empty() {
+                    let result = self.parse_input(self.input.clone());
+                    self.input.clear();
+                    return Some(result);
+                }
+            }
+
+            KeyCode::Up => return Some(CommandResult::Move(0, -1)),
+            KeyCode::Down => return Some(CommandResult::Move(0, 1)),
+            KeyCode::Left => return Some(CommandResult::Move(-1, 0)),
+            KeyCode::Right => return Some(CommandResult::Move(1, 0)),
 
             _ => {}
         }
-
+        
         None
     }
 
@@ -83,6 +188,7 @@ impl InputHandler {
     }
 
     // 清除目前輸入的文本
+    #[allow(dead_code)]
     pub fn clear_input(&mut self) {
         self.input.clear();
     }
@@ -188,7 +294,7 @@ impl InputHandler {
                 // get <物品名稱> - 撿起指定物品（數量1）
                 // get <物品名稱> <數量> - 撿起指定數量
                 if parts.len() < 2 {
-                    CommandResult::Get(None, 1)
+                    CommandResult::Error("Usage: get <item name> [quantity]".to_string())
                 } else if parts.len() == 2 {
                     let item_name = parts[1].to_string();
                     CommandResult::Get(Some(item_name), 1)
@@ -234,7 +340,7 @@ impl InputHandler {
             "dream" => {
                 // dream 命令，在睡眠時做夢
                 if parts.len() < 2 {
-                    CommandResult::Dream(None)
+                    CommandResult::Error("Usage: dream [content]".to_string())
                 } else {
                     CommandResult::Dream(Some(parts[1..].join(" ")))
                 }
@@ -457,7 +563,7 @@ impl InputHandler {
                     match parts[1] {
                         "list" | "all" => CommandResult::QuestList,
                         "active" | "current" => CommandResult::QuestActive,
-                        "available" => CommandResult::QuestAvailable,
+                        "available" | "avail" => CommandResult::QuestAvailable, // Changed from avail to available
                         "completed" | "done" => CommandResult::QuestCompleted,
                         "info" | "show" => {
                             if parts.len() < 3 {
@@ -506,7 +612,7 @@ impl InputHandler {
         match File::create(filename) {
             Ok(mut file) => {
                 match file.write_all(content.as_bytes()) {
-                    Ok(_) => CommandResult::Error(format!("Saved {} lines to {}", self.buffer.len(), filename)),
+                    Ok(_) => CommandResult::Output(format!("Saved {} lines to {}", self.buffer.len(), filename)),
                     Err(e) => CommandResult::Error(format!("Write error: {e}")),
                 }
             },
@@ -519,7 +625,7 @@ impl InputHandler {
 pub enum CommandResult {
     Output(String),                  // 在輸出區顯示的字串
     Error(String),                   // 命令錯誤顯示在狀態列
-    Exit,                            // 退出程式
+    Exit,
     Clear,                           // 清除文本區塊
     AddToSide(String),               // 添加到側邊面板
     ShowStatus,                      // 打開狀態面板
@@ -534,9 +640,9 @@ pub enum CommandResult {
     Get(Option<String>, u32),        // 撿起物品 (可選：物品名稱, 數量)
     Drop(String, u32),               // 放下物品 (物品名稱, 數量)
     Eat(String),                     // 吃食物回復 HP (食物名稱)
-    Sleep,                           // 進入睡眠狀態
+    Sleep,
     Dream(Option<String>),           // 做夢 (可選：夢境內容)
-    WakeUp,                          // 從睡眠中醒來
+    WakeUp,
     Summon(String),                  // 召喚 NPC (NPC 名稱/ID)
     Conquer(String),                 // 征服指定方向，使其可行走 (up/down/left/right/u/d/l/r)
     FlyTo(String),                   // 飛到指定位置/地圖/地點 (坐標/地圖名/地點名)
@@ -596,7 +702,7 @@ impl CommandResult {
             CommandResult::HideMinimap => Some(("hide minimap", "隱藏小地圖", "🗺️  介面控制")),
             CommandResult::ShowLog => Some(("show log", "顯示系統日誌", "🗺️  介面控制")),
             CommandResult::HideLog => Some(("hide log", "隱藏系統日誌", "🗺️  介面控制")),
-            CommandResult::ShowMap => Some(("show map / sm", "顯示大地圖 (↑↓←→移動, q退出)", "🗺️  介面控制")),
+            CommandResult::ShowMap => Some(("show map / sm", "顯示大地圖 (↑↓←→移動, q退出", "🗺️  介面控制")),
             CommandResult::Destroy(..) => Some(("destroy / ds <目標>", "刪除NPC或物品", "🛠️  其他")),
             CommandResult::Create(..) => Some(("create / cr <類型> <物件類型> [名稱]", "創建物件 (item/npc)", "🛠️  其他")),
             CommandResult::Set(..) => Some(("set <人物> <屬性> <數值>", "設置角色屬性 (hp/mp/strength/knowledge/sociality)", "🛠️  其他")),
@@ -611,7 +717,6 @@ impl CommandResult {
 
     /// 獲取所有可用指令的說明（按分類分組）
     pub fn get_help_info() -> Vec<(&'static str, Vec<(&'static str, &'static str)>)> {
-        use std::collections::HashMap;
         
         // 所有指令的代表實例
         let commands = vec![
@@ -646,6 +751,21 @@ impl CommandResult {
             CommandResult::Buy(String::new(), String::new(), 1),
             CommandResult::Sell(String::new(), String::new(), 1),
             CommandResult::ListNpcs,
+            CommandResult::SetDialogue(String::new(), String::new(), String::new()),
+            CommandResult::SetEagerness(String::new(), 0),
+            CommandResult::SetRelationship(String::new(), 0),
+            CommandResult::ChangeRelationship(String::new(), 0),
+            CommandResult::Talk(String::new()),
+            CommandResult::CheckNpc(String::new()),
+            CommandResult::ToggleTypewriter,
+            CommandResult::QuestList,
+            CommandResult::QuestActive,
+            CommandResult::QuestAvailable,
+            CommandResult::QuestCompleted,
+            CommandResult::QuestInfo(String::new()),
+            CommandResult::QuestStart(String::new()),
+            CommandResult::QuestComplete(String::new()),
+            CommandResult::QuestAbandon(String::new()),
         ];
         
         let mut categories: HashMap<&'static str, Vec<(&'static str, &'static str)>> = HashMap::new();
@@ -668,9 +788,15 @@ impl CommandResult {
             "🛠️  其他",
         ];
         
-        order.into_iter()
-            .filter_map(|cat| categories.remove(cat).map(|cmds| (cat, cmds)))
-            .collect()
+        let mut result_vec = Vec::new();
+        for cat in order {
+            if let Some(mut cmds) = categories.remove(cat) {
+                // 字母排序
+                cmds.sort_by(|a, b| a.0.cmp(b.0));
+                result_vec.push((cat, cmds));
+            }
+        }
+        
+        result_vec
     }
 }
-

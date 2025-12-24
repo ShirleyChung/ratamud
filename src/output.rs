@@ -89,11 +89,13 @@ impl OutputManager {
     }
     
     // 啟用打字機效果
+    #[allow(dead_code)]
     pub fn enable_typewriter(&mut self) {
         self.typewriter_enabled = true;
     }
     
     // 關閉打字機效果
+    #[allow(dead_code)]
     pub fn disable_typewriter(&mut self) {
         self.typewriter_enabled = false;
         self.typewriter = None;
@@ -119,6 +121,7 @@ impl OutputManager {
     }
     
     // 檢查是否正在打字
+    #[allow(dead_code)]
     pub fn is_typing(&self) -> bool {
         self.typewriter.is_some()
     }
