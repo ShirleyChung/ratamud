@@ -642,8 +642,8 @@ fn display_look(
                 for npc in npcs_here {
                     output_manager.print(format!("  • {} - {}", npc.name, npc.description));
                     
-                    // 嘗試觸發 NPC 對話（"見面"場景）
-                    if let Some(greeting) = npc.try_talk("見面") {
+                    // 嘗試觸發 NPC 對話（"見面"場景，根據玩家屬性）
+                    if let Some(greeting) = npc.try_talk("見面", me) {
                         output_manager.print(format!("💬 {} 說：「{}」", npc.name, greeting));
                     }
                 }
@@ -2064,9 +2064,9 @@ fn handle_talk(
     let npc_to_talk = npcs_here.iter().find(|n| n.name.to_lowercase() == npc_name.to_lowercase());
     
     if let Some(npc) = npc_to_talk {
-        // 觸發對話（使用指定話題）
-        if let Some(dialogue) = npc.try_talk(&topic) {
-            output_manager.print(format!("💬 你跟 {} 聊了一下", npc.name));
+        // 觸發對話（使用指定話題，根據玩家屬性評估條件）
+        if let Some(dialogue) = npc.try_talk(&topic, me) {
+            output_manager.print(format!("💬 你對 {} 說起「{}」...", npc.name, topic));
             output_manager.print(format!("{} 說：「{}」", npc.name, dialogue));
         } else {
             output_manager.print(format!("{} 對「{}」這個話題似乎不想說話。", npc.name, topic));

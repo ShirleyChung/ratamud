@@ -308,19 +308,20 @@ impl Person {
     /// 獲取台詞（已廢棄，用於向後兼容）
     #[allow(dead_code)]
     pub fn get_dialogue(&self, topic: &str) -> Option<String> {
-        self.get_weighted_dialogue(topic)
+        self.get_weighted_dialogue(topic, self)
     }
 
     /// 根據權重選擇對話（新版）
-    pub fn get_weighted_dialogue(&self, topic: &str) -> Option<String> {
+    /// target_person: 用來評估條件的 Person（通常是玩家）
+    pub fn get_weighted_dialogue(&self, topic: &str, target_person: &Person) -> Option<String> {
         let options = self.dialogues.get(topic)?;
         if options.is_empty() {
             return None;
         }
         
-        // 計算所有選項的有效權重
+        // 計算所有選項的有效權重（根據 target_person 的屬性）
         let weights: Vec<f32> = options.iter()
-            .map(|opt| opt.get_effective_weight(self))
+            .map(|opt| opt.get_effective_weight(target_person))
             .collect();
         
         let total_weight: f32 = weights.iter().sum();
@@ -350,12 +351,13 @@ impl Person {
     }
 
     /// 嘗試說話（根據積極度和權重）
-    pub fn try_talk(&self, topic: &str) -> Option<String> {
+    /// target_person: 用來評估條件的 Person（通常是玩家）
+    pub fn try_talk(&self, topic: &str, target_person: &Person) -> Option<String> {
         // 根據積極度決定是否說話
         let mut rng = rand::thread_rng();
         let roll: u8 = rng.gen_range(0..100);                
         if roll < self.talk_eagerness {
-            self.get_weighted_dialogue(topic)
+            self.get_weighted_dialogue(topic, target_person)
         } else {
             None
         }
@@ -364,7 +366,7 @@ impl Person {
     /// 根據好感度和狀態動態選擇對話（已棄用，保留用於兼容）
     #[allow(dead_code)]
     pub fn get_context_dialogue(&self, scene: &str) -> Option<String> {
-        self.get_weighted_dialogue(scene)
+        self.get_weighted_dialogue(scene, self)
     }
     
     /// 改變好感度
