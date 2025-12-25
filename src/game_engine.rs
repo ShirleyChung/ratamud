@@ -221,6 +221,10 @@ impl GameEngine {
                 format!("向 {npc} 出售 {item} x{qty}")
             }
             
+            CommandResult::Give(npc, item, qty) => {
+                format!("給予 {npc} {item} x{qty}")
+            }
+            
             CommandResult::SetDialogue(npc, scene, dialogue) => {
                 format!("設置 {npc} 在 {scene} 場景的對話: {dialogue}")
             }

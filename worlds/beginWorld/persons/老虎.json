@@ -2,12 +2,16 @@
   "name": "老虎",
   "description": "一個老虎",
   "abilities": [],
-  "items": {},
+  "items": {
+    "治療藥水": 1,
+    "鎬": 1,
+    "漿果": 2
+  },
   "status": "正常",
-  "x": 47,
-  "y": 54,
+  "x": 43,
+  "y": 55,
   "map": "forest",
-  "hp": 99991,
+  "hp": 99940,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
@@ -19,16 +23,37 @@
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "dialogues": {
+    "見面": [
+      {
+        "text": "吼~~~",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "雖然妳很美，我也是不會想把妳吃掉的！",
+        "conditions": [
+          {
+            "attribute": "appearance",
+            "operator": ">",
+            "value": "80"
+          },
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      }
+    ],
     "閒聊": [
       {
         "text": "其實我是很溫和的",
         "conditions": [],
         "weight": 1.0
-      }
-    ],
-    "見面": [
+      },
       {
-        "text": "吼~~~",
+        "text": "靠近我，我不會發怒！",
         "conditions": [],
         "weight": 1.0
       }

@@ -2,12 +2,14 @@
   "name": "sakura",
   "description": "一個醫生",
   "abilities": [],
-  "items": {},
+  "items": {
+    "弓": 4
+  },
   "status": "正常",
-  "x": 53,
-  "y": 51,
+  "x": 52,
+  "y": 52,
   "map": "beginMap",
-  "hp": 99979,
+  "hp": 99943,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
@@ -20,6 +22,44 @@
   "last_mp_restore_minute": 0,
   "dialogues": {
     "見面": [
+      {
+        "text": "哈囉，小姐，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "哇！我可以請教妳今天用的化妝品嗎?",
+        "conditions": [
+          {
+            "attribute": "appearance",
+            "operator": ">",
+            "value": "80"
+          },
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉，帥哥，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "男"
+          }
+        ],
+        "weight": 1.0
+      },
       {
         "text": "你好！我是櫻花醫生，有什麼我可以幫助你的嗎？",
         "conditions": [],

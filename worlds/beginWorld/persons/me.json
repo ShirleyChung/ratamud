@@ -7,31 +7,31 @@
     "探險"
   ],
   "items": {
-    "治療藥水": 1,
     "魔法書": 1,
-    "木劍": 1
+    "木劍": 1,
+    "治療藥水": 1
   },
   "status": "",
-  "x": 51,
-  "y": 50,
+  "x": 52,
+  "y": 52,
   "map": "beginMap",
-  "hp": 98653,
-  "mp": 99278,
+  "hp": 99654,
+  "mp": 99679,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 155349,
+  "age": 16060,
   "last_hunger_hour": 15,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "dialogues": {},
   "talk_eagerness": 100,
   "relationship": 0,
-  "dialogue_state": "",
+  "dialogue_state": "初見",
   "met_player": false,
   "interaction_count": 0,
-  "gender": "未知",
-  "appearance": 50
+  "gender": "女",
+  "appearance": 100
 }

@@ -3,20 +3,20 @@
   "description": "一個醫生",
   "abilities": [],
   "items": {
-    "漿果": 1,
-    "頭盔": 1,
-    "木劍": 2,
     "匕首": 3,
-    "火把": 4,
+    "鐵劍": 2,
     "弓": 1,
-    "繩索": 4,
-    "鐵劍": 2
+    "頭盔": 1,
+    "繩索": 5,
+    "火把": 4,
+    "木劍": 2,
+    "漿果": 1
   },
   "status": "正常",
   "x": 11,
-  "y": 1,
+  "y": 5,
   "map": "beginMap",
-  "hp": 99052,
+  "hp": 99016,
   "mp": 99998,
   "max_hp": 100000,
   "max_mp": 100000,
@@ -41,6 +41,44 @@
       }
     ],
     "見面": [
+      {
+        "text": "哇！真是漂亮的小姐姐！",
+        "conditions": [
+          {
+            "attribute": "appearance",
+            "operator": ">",
+            "value": "80"
+          },
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉，小姐，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉，帥哥，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "男"
+          }
+        ],
+        "weight": 1.0
+      },
       {
         "text": "你好！我是喬巴，這裡有什麼我可以幫忙的嗎？",
         "conditions": [],

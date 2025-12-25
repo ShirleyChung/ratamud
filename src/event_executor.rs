@@ -51,6 +51,12 @@ impl EventExecutor {
             EventAction::Teleport { map, position } => {
                 Self::teleport_player(map, position, game_world, output_manager)
             }
+            EventAction::SetMapProperty { map, property, value } => {
+                Self::set_map_property(map, property, value, game_world, output_manager)
+            }
+            EventAction::RandomAction { actions } => {
+                Self::execute_random_action(actions, game_world, output_manager)
+            }
         }
     }
     
@@ -172,6 +178,61 @@ impl EventExecutor {
             Ok(())
         } else {
             Err(format!("地圖 {map} 不存在"))
+        }
+    }
+
+    fn set_map_property(
+        map_name: &str,
+        property: &str,
+        value: &str,
+        game_world: &mut GameWorld,
+        output_manager: &mut OutputManager,
+    ) -> Result<(), String> {
+        if let Some(map) = game_world.maps.get_mut(map_name) {
+            map.set_property(property.to_string(), value.to_string());
+            output_manager.print(format!(
+                "🗺️  {map_name}現在{property}是{value}",
+            ));
+            Ok(())
+        } else {
+            Err(format!("地圖 {map_name} 不存在"))
+        }
+    }
+
+    fn execute_random_action(
+        weighted_actions: &[crate::event::WeightedAction],
+        game_world: &mut GameWorld,
+        output_manager: &mut OutputManager,
+    ) -> Result<(), String> {
+        if weighted_actions.is_empty() {
+            return Err("沒有可執行的隨機動作".to_string());
+        }
+
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        
+        // 計算總權重
+        let total_weight: f32 = weighted_actions.iter().map(|a| a.weight).sum();
+        
+        if total_weight <= 0.0 {
+            return Err("總權重必須大於0".to_string());
+        }
+
+        // 隨機選擇一個動作
+        let mut random_value = rng.gen::<f32>() * total_weight;
+        
+        for weighted_action in weighted_actions {
+            random_value -= weighted_action.weight;
+            if random_value <= 0.0 {
+                return Self::execute_action(&weighted_action.action, game_world, output_manager);
+            }
+        }
+
+        // 如果沒有選中任何動作（理論上不應該發生），執行最後一個
+        if let Some(last) = weighted_actions.last() {
+            Self::execute_action(&last.action, game_world, output_manager)
+        } else {
+            Err("無法選擇隨機動作".to_string())
         }
     }
 }

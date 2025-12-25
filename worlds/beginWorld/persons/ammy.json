@@ -3,13 +3,14 @@
   "description": "一個工人",
   "abilities": [],
   "items": {
+    "蘋果": 1,
     "弓": 1
   },
   "status": "正常",
-  "x": 59,
-  "y": 51,
+  "x": 53,
+  "y": 49,
   "map": "beginMap",
-  "hp": 99943,
+  "hp": 99881,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
@@ -21,6 +22,51 @@
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "dialogues": {
+    "見面": [
+      {
+        "text": "哈囉，小姐，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "哇！真是漂亮的小姐姐！",
+        "conditions": [
+          {
+            "attribute": "appearance",
+            "operator": ">",
+            "value": "80"
+          },
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉，帥哥，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "男"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
     "閒聊": [
       {
         "text": "今天天氣不錯",
@@ -36,13 +82,6 @@
             "value": "100"
           }
         ],
-        "weight": 1.0
-      }
-    ],
-    "見面": [
-      {
-        "text": "哈囉",
-        "conditions": [],
         "weight": 1.0
       }
     ]

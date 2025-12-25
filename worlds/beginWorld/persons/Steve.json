@@ -3,25 +3,49 @@
   "description": "一個engineer",
   "abilities": [],
   "items": {
+    "鑰匙": 2,
+    "蘋果": 2,
     "舊布料": 3
   },
   "status": "正常",
   "x": 52,
-  "y": 48,
+  "y": 50,
   "map": "beginMap",
-  "hp": 98857,
-  "mp": 99959,
+  "hp": 98649,
+  "mp": 99891,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 10718,
-  "last_hunger_hour": 14,
+  "age": 11700,
+  "last_hunger_hour": 15,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "dialogues": {
     "見面": [
+      {
+        "text": "哈囉，小姐，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉，帥哥，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "男"
+          }
+        ],
+        "weight": 1.0
+      },
       {
         "text": "你好！我是Steve，一個engineer，有什麼我可以幫忙的嗎？",
         "conditions": [],
@@ -40,7 +64,7 @@
     ]
   },
   "talk_eagerness": 65,
-  "relationship": 0,
+  "relationship": 10,
   "dialogue_state": "",
   "met_player": false,
   "interaction_count": 0,

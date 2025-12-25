@@ -4,44 +4,27 @@
   "abilities": [],
   "items": {
     "魔法書": 10,
+    "木劍": 10,
     "治療藥水": 100,
     "魔力藥水": 100,
-    "匕首": 10,
-    "木劍": 10
+    "匕首": 10
   },
   "status": "",
-  "x": 66,
+  "x": 77,
   "y": 63,
   "map": "beginMap",
-  "hp": 99300,
-  "mp": 100000,
+  "hp": 99175,
+  "mp": 99970,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 9431,
-  "last_hunger_hour": 14,
+  "age": 9791,
+  "last_hunger_hour": 15,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "dialogues": {
-    "見面": [
-      {
-        "text": "歡迎光臨我的商店！需要什麼幫助嗎？",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "你好！我是這裡的商人，隨時為你服務。",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "哈囉！有什麼我可以幫忙的嗎？",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
     "閒聊": [
       {
         "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
@@ -65,6 +48,61 @@
       },
       {
         "text": "我聽說附近有個神秘的寶藏，不知道是真是假？",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "見面": [
+      {
+        "text": "哈囉，小姐，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉，帥哥，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "男"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "美女～妳好啊！",
+        "conditions": [
+          {
+            "attribute": "appearance",
+            "operator": ">",
+            "value": "80"
+          },
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "歡迎光臨我的商店！需要什麼幫助嗎？",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "你好！我是這裡的商人，隨時為你服務。",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉！有什麼我可以幫忙的嗎？",
         "conditions": [],
         "weight": 1.0
       }

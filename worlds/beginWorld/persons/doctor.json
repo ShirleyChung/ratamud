@@ -3,22 +3,23 @@
   "description": "熟練的醫生，治療傷口",
   "abilities": [],
   "items": {
-    "樹皮": 1,
-    "繩索": 1,
+    "匕首": 1,
+    "盾牌": 1,
     "火把": 1,
     "毒藥": 3,
-    "皮衣": 2,
-    "盾牌": 1,
-    "匕首": 1,
     "漿果": 1,
+    "繩索": 2,
+    "皮衣": 2,
+    "頭盔": 5,
     "弓": 1,
+    "樹皮": 1,
     "鑰匙": 1
   },
   "status": "正常",
-  "x": 16,
-  "y": 20,
+  "x": 14,
+  "y": 19,
   "map": "beginMap",
-  "hp": 98881,
+  "hp": 98828,
   "mp": 99998,
   "max_hp": 100000,
   "max_mp": 100000,
@@ -30,24 +31,29 @@
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "dialogues": {
-    "閒聊": [
-      {
-        "text": "我是開小兒科的醫生，有什麼奇怪問題別找我。",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "如果你有任何健康問題，去找別的醫生吧",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "作為醫生，唉，真是一言難盡！",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
     "見面": [
+      {
+        "text": "哈囉，小姐，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉，帥哥，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "男"
+          }
+        ],
+        "weight": 1.0
+      },
       {
         "text": "你好，有什麼不舒服的嗎？我可以幫你檢查一下。",
         "conditions": [],
@@ -65,6 +71,23 @@
       },
       {
         "text": "需要醫療幫助嗎？我可以為你提供專業的治療。",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "閒聊": [
+      {
+        "text": "我是開小兒科的醫生，有什麼奇怪問題別找我。",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "如果你有任何健康問題，去找別的醫生吧",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "作為醫生，唉，真是一言難盡！",
         "conditions": [],
         "weight": 1.0
       }

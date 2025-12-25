@@ -1,6 +1,6 @@
 {
   "id": "minute_calling",
-  "name": "每分鐘呼喚",
+  "name": "世界聲音",
   "description": "時間流逝的證明",
   "trigger": {
     "type": "time",

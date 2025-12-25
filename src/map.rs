@@ -283,6 +283,8 @@ pub struct Map {
     pub points: Vec<Vec<Point>>,
     #[serde(default)]
     pub description: String,         // 地圖描述
+    #[serde(default)]
+    pub properties: HashMap<String, String>,  // 地圖自定義屬性（例如：天氣）
 }
 
 impl Map {
@@ -319,6 +321,7 @@ impl Map {
             map_type,
             points,
             description,
+            properties: HashMap::new(),
         }
     }
 
@@ -451,6 +454,17 @@ impl Map {
         let map: Map = serde_json::from_str(&content)
             .map_err(std::io::Error::other)?;
         Ok(map)
+    }
+
+    // 設定地圖屬性
+    pub fn set_property(&mut self, key: String, value: String) {
+        self.properties.insert(key, value);
+    }
+
+    // 獲取地圖屬性
+    #[allow(dead_code)]
+    pub fn get_property(&self, key: &str) -> Option<&String> {
+        self.properties.get(key)
     }
 }
 

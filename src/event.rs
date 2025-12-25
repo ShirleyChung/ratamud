@@ -144,6 +144,23 @@ pub enum EventAction {
         map: String,
         position: Position,
     },
+    #[serde(rename = "set_map_property")]
+    SetMapProperty {
+        map: String,
+        property: String,
+        value: String,
+    },
+    #[serde(rename = "random_action")]
+    RandomAction {
+        actions: Vec<WeightedAction>,
+    },
+}
+
+/// 帶機率權重的動作
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WeightedAction {
+    pub weight: f32,  // 權重（機率）
+    pub action: Box<EventAction>,
 }
 
 /// 事件狀態設定

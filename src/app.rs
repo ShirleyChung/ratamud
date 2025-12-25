@@ -365,6 +365,7 @@ fn handle_command_result(
         CommandResult::Trade(npc_name) => handle_trade(npc_name, output_manager, game_world, me)?,
         CommandResult::Buy(npc_name, item, quantity) => handle_buy(npc_name, item, quantity, output_manager, game_world, me)?,
         CommandResult::Sell(npc_name, item, quantity) => handle_sell(npc_name, item, quantity, output_manager, game_world, me)?,
+        CommandResult::Give(npc_name, item, quantity) => handle_give(npc_name, item, quantity, output_manager, game_world, me)?,
         CommandResult::SetDialogue(npc_name, topic, dialogue) => handle_set_dialogue(npc_name, topic, dialogue, output_manager, game_world)?,
         CommandResult::SetDialogueWithConditions(npc_name, topic, dialogue, conditions) => handle_set_dialogue_with_conditions(npc_name, topic, dialogue, conditions, output_manager, game_world)?,
         CommandResult::SetEagerness(npc_name, eagerness) => handle_set_eagerness(npc_name, eagerness, output_manager, game_world)?,
@@ -1633,6 +1634,9 @@ fn handle_switch_control(
         // 使用名字作為別名
         let aliases = vec![npc_to_restore.name.clone()];
         game_world.npc_manager.add_npc(id, npc_to_restore, aliases);
+    } else {
+        // 如果當前沒有控制 NPC（即控制的是原始玩家），更新 original_player 的狀態
+        game_world.original_player = Some(me.clone());
     }
     
     // 步驟 3: 檢查是否切換回原始玩家
@@ -1823,6 +1827,84 @@ fn handle_sell(
             crate::trade::TradeResult::Failed(msg) => {
                 output_manager.set_status(msg);
             },
+        }
+    } else {
+        output_manager.set_status(format!("此處找不到 {npc_name}"));
+    }
+    
+    Ok(())
+}
+
+/// 處理給予物品給 NPC
+fn handle_give(
+    npc_name: String,
+    item_name: String,
+    quantity: u32,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &mut Person,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // 檢查 NPC 是否在同一位置
+    let npcs_here: Vec<&crate::person::Person> = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, me.x, me.y);
+    
+    let npc_found = npcs_here.iter().any(|n| {
+        n.name.to_lowercase() == npc_name.to_lowercase() ||
+        (npc_name.to_lowercase() == "merchant" && n.description.contains("商"))
+    });
+    
+    if !npc_found {
+        output_manager.set_status(format!("此處找不到 {npc_name}"));
+        return Ok(())
+    }
+    
+    // 解析物品名稱
+    let resolved_item = item_registry::resolve_item_name(&item_name);
+    
+    // 檢查玩家是否擁有該物品
+    if !me.items.contains_key(&resolved_item) {
+        output_manager.set_status(format!("你沒有 {resolved_item}"));
+        return Ok(())
+    }
+    
+    let player_quantity = me.get_item_count(&resolved_item);
+    if player_quantity < quantity {
+        output_manager.set_status(format!("你只有 {player_quantity} 個 {resolved_item}，不足 {quantity} 個"));
+        return Ok(())
+    }
+    
+    // 從玩家背包移除物品
+    if me.drop_items(&resolved_item, quantity).is_none() {
+        output_manager.set_status(format!("無法移除物品 {resolved_item}"));
+        return Ok(())
+    }
+    
+    // 將物品加到 NPC 背包
+    let npc_id = {
+        let npcs_at_pos = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, me.x, me.y);
+        npcs_at_pos.iter()
+            .find(|n| 
+                n.name.to_lowercase() == npc_name.to_lowercase() ||
+                (npc_name.to_lowercase() == "merchant" && n.description.contains("商"))
+            )
+            .map(|n| n.name.clone())
+    };
+    
+    if let Some(npc_id) = npc_id {
+        if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_id) {
+            npc.add_items(resolved_item.clone(), quantity);
+            
+            output_manager.print(format!("🎁 你給了 {npc_name} {quantity} 個 {resolved_item}"));
+            
+            // 增加好感度（可選）
+            npc.relationship = (npc.relationship + 5).min(100);
+            output_manager.print(format!("💖 {npc_name} 對你的好感度增加了！(現在: {})", npc.relationship));
+            
+            // 保存玩家和 NPC
+            let person_dir = format!("{}/persons", game_world.world_dir);
+            let _ = me.save(&person_dir, "me");
+            let _ = game_world.npc_manager.save_all(&person_dir);
+        } else {
+            output_manager.set_status(format!("無法找到 NPC {npc_name}"));
         }
     } else {
         output_manager.set_status(format!("此處找不到 {npc_name}"));
@@ -2066,7 +2148,7 @@ fn handle_talk(
     if let Some(npc) = npc_to_talk {
         // 觸發對話（使用指定話題，根據玩家屬性評估條件）
         if let Some(dialogue) = npc.try_talk(&topic, me) {
-            output_manager.print(format!("💬 你對 {} 說起「{}」...", npc.name, topic));
+            output_manager.print(format!("💬 跟{}開始{topic}...", npc.name));
             output_manager.print(format!("{} 說：「{}」", npc.name, dialogue));
         } else {
             output_manager.print(format!("{} 對「{}」這個話題似乎不想說話。", npc.name, topic));

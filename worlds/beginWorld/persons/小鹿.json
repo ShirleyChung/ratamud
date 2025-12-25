@@ -6,7 +6,7 @@
   "status": "",
   "x": 45,
   "y": 54,
-  "map": "森林",
+  "map": "forest",
   "hp": 99400,
   "mp": 100000,
   "max_hp": 100000,
@@ -21,15 +21,42 @@
   "dialogues": {
     "閒聊": [
       {
-        "text": "其實我是很溫和的",
+        "text": "這森林裡的風景真美麗！",
         "conditions": [],
-        "weight": 1.0
+        "weight": 5.0
+      },
+      {
+        "text": "我喜歡和旅人們交流，聽他們的故事。",
+        "conditions": [],
+        "weight": 7.0
       }
     ],
     "見面": [
       {
         "text": "你好～我是小鹿，正在這裡擺攤呢",
         "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉，小姐，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉，帥哥，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "男"
+          }
+        ],
         "weight": 1.0
       }
     ]

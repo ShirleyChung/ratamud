@@ -3,16 +3,16 @@
   "description": "一個醫生",
   "abilities": [],
   "items": {
+    "盾牌": 4,
     "鎬": 7,
-    "盾牌": 2,
     "舊布料": 3,
     "蘋果": 1
   },
   "status": "正常",
-  "x": 53,
-  "y": 42,
+  "x": 54,
+  "y": 43,
   "map": "beginMap",
-  "hp": 99016,
+  "hp": 98966,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
@@ -24,6 +24,56 @@
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "dialogues": {
+    "見面": [
+      {
+        "text": "你好！我是櫻花，這裡有什麼我可以幫忙的嗎？",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "歡迎來到我的診所！需要治療或建議嗎？",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉，小姐，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "哇！你好美！",
+        "conditions": [
+          {
+            "attribute": "appearance",
+            "operator": ">",
+            "value": "90"
+          },
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉，帥哥，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "男"
+          }
+        ],
+        "weight": 1.0
+      }
+    ],
     "閒聊": [
       {
         "text": "健康是最重要的，記得多休息和補充營養！",
@@ -53,40 +103,6 @@
       {
         "text": "醫學是一門不斷學習的藝術，我每天都在進步！",
         "conditions": [],
-        "weight": 1.0
-      }
-    ],
-    "見面": [
-      {
-        "text": "你好！我是櫻花，這裡有什麼我可以幫忙的嗎？",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "歡迎來到我的診所！需要治療或建議嗎？",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "哈囉，小姐，今天好嗎",
-        "conditions": [
-          {
-            "attribute": "gender",
-            "operator": "==",
-            "value": "女"
-          }
-        ],
-        "weight": 1.0
-      },
-      {
-        "text": "哈囉，帥哥，今天好嗎",
-        "conditions": [
-          {
-            "attribute": "gender",
-            "operator": "==",
-            "value": "男"
-          }
-        ],
         "weight": 1.0
       }
     ]

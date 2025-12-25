@@ -2,7 +2,9 @@
   "name": "李老闆",
   "description": "一個商人",
   "abilities": [],
-  "items": {},
+  "items": {
+    "蘋果": 2
+  },
   "status": "",
   "x": 51,
   "y": 50,
@@ -33,21 +35,45 @@
         "weight": 0.8
       }
     ],
-    "再見": [
-      {
-        "text": "感謝你的光臨，期待下次再見！",
-        "conditions": [],
-        "weight": 0.5
-      }
-    ],
-    "袐密": [
-      {
-        "text": "其實我有一個隱藏的商品清單，只有特別的客人才能看到哦！",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
     "見面": [
+      {
+        "text": "哈囉，小姐，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉，帥哥，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "男"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "哇！真是個美人！要不要來我店裡幫我代言商品？",
+        "conditions": [
+          {
+            "attribute": "appearance",
+            "operator": ">",
+            "value": "80"
+          },
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      },
       {
         "text": "歡迎光臨李老闆的店鋪！需要什麼幫助嗎？",
         "conditions": [],
@@ -64,6 +90,20 @@
         "weight": 1.0
       }
     ],
+    "出售": [
+      {
+        "text": "好的，讓我看看你有什麼想賣的。",
+        "conditions": [],
+        "weight": 0.5
+      }
+    ],
+    "再見": [
+      {
+        "text": "感謝你的光臨，期待下次再見！",
+        "conditions": [],
+        "weight": 0.5
+      }
+    ],
     "閒聊": [
       {
         "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
@@ -76,16 +116,16 @@
         "weight": 1.0
       }
     ],
-    "出售": [
+    "袐密": [
       {
-        "text": "好的，讓我看看你有什麼想賣的。",
+        "text": "其實我有一個隱藏的商品清單，只有特別的客人才能看到哦！",
         "conditions": [],
-        "weight": 0.5
+        "weight": 1.0
       }
     ]
   },
   "talk_eagerness": 100,
-  "relationship": 0,
+  "relationship": 10,
   "dialogue_state": "",
   "met_player": false,
   "interaction_count": 0,

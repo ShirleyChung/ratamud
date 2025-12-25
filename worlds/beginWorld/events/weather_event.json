@@ -1,0 +1,113 @@
+[
+  {
+    "id": "weather_change_beginMap",
+    "name": "天氣變化",
+    "description": "beginMap的天氣每5-10分鐘變化一次",
+    "trigger": {
+      "type": "time",
+      "schedule": "*/5 * * * *",
+      "random_chance": 1.0
+    },
+    "where": {
+      "map": "beginMap"
+    },
+    "actions": [
+      {
+        "type": "random_action",
+        "actions": [
+          {
+            "weight": 0.3,
+            "action": {
+              "type": "set_map_property",
+              "map": "beginMap",
+              "property": "天氣",
+              "value": "晴天"
+            }
+          },
+          {
+            "weight": 0.25,
+            "action": {
+              "type": "set_map_property",
+              "map": "beginMap",
+              "property": "天氣",
+              "value": "陰天"
+            }
+          },
+          {
+            "weight": 0.2,
+            "action": {
+              "type": "set_map_property",
+              "map": "beginMap",
+              "property": "天氣",
+              "value": "雨天"
+            }
+          },
+          {
+            "weight": 0.15,
+            "action": {
+              "type": "set_map_property",
+              "map": "beginMap",
+              "property": "天氣",
+              "value": "多雲"
+            }
+          },
+          {
+            "weight": 0.1,
+            "action": {
+              "type": "set_map_property",
+              "map": "beginMap",
+              "property": "天氣",
+              "value": "霧天"
+            }
+          }
+        ]
+      },
+      {
+        "type": "random_action",
+        "actions": [
+          {
+            "weight": 0.3,
+            "action": {
+              "type": "message",
+              "text": "☀️ 天空放晴了，陽光灑滿大地。"
+            }
+          },
+          {
+            "weight": 0.25,
+            "action": {
+              "type": "message",
+              "text": "☁️ 天空變得陰沉，烏雲密布。"
+            }
+          },
+          {
+            "weight": 0.2,
+            "action": {
+              "type": "message",
+              "text": "🌧️ 開始下起雨來，雨滴打在地上發出滴答聲。"
+            }
+          },
+          {
+            "weight": 0.15,
+            "action": {
+              "type": "message",
+              "text": "⛅ 天空飄著幾朵白雲，時而遮住陽光。"
+            }
+          },
+          {
+            "weight": 0.1,
+            "action": {
+              "type": "message",
+              "text": "🌫️ 濃霧瀰漫，能見度變得很低。"
+            }
+          }
+        ]
+      }
+    ],
+    "state": {
+      "repeatable": true,
+      "cooldown": 300,
+      "max_triggers": -1,
+      "prerequisites": []
+    }
+  }
+]

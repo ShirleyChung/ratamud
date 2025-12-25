@@ -7,6 +7,7 @@ use std::collections::HashMap;
 pub struct InputHandler {
     pub input: String,      // 當前輸入緩衝區
     pub buffer: Vec<String>, // 儲存所有已提交的文本
+    pub last_command: Option<String>, // 儲存上一次的命令
 }
 
 impl Default for InputHandler {
@@ -21,6 +22,7 @@ impl InputHandler {
         InputHandler {
             input: String::new(),
             buffer: Vec::new(),
+            last_command: None,
         }
     }
 
@@ -166,6 +168,13 @@ impl InputHandler {
             KeyCode::Enter => {
                 if !self.input.is_empty() {
                     let result = self.parse_input(self.input.clone());
+                    // 只儲存成功的命令（非錯誤、非重複命令）
+                    if self.input != "re" && self.input != "repeat" {
+                        // 檢查結果是否為錯誤
+                        if !matches!(result, CommandResult::Error(_)) {
+                            self.last_command = Some(self.input.clone());
+                        }
+                    }
                     self.input.clear();
                     return Some(result);
                 }
@@ -211,6 +220,14 @@ impl InputHandler {
         let _is_status_command = matches!(parts[0], "status" | "i" | "show" | "s" if parts.len() == 1 && (parts[0] == "status" || parts[0] == "i") || (parts.len() > 1 && parts[1] == "status"));
         
         let result = match parts[0] {
+            "re" | "repeat" => {
+                // 重複上一次的命令
+                if let Some(ref last_cmd) = self.last_command {
+                    return self.handle_command(last_cmd.clone());
+                } else {
+                    CommandResult::Error("沒有可重複的命令".to_string())
+                }
+            },
             "exit" | "quit" => CommandResult::Exit,
             "help" => CommandResult::Help,
             "save" => {
@@ -491,6 +508,21 @@ impl InputHandler {
                     CommandResult::Sell(npc, item, quantity)
                 }
             },
+            "give" => {
+                // give <npc> <item> [quantity] 命令，給予 NPC 物品
+                if parts.len() < 3 {
+                    CommandResult::Error("Usage: give <npc> <item> [quantity]".to_string())
+                } else {
+                    let npc = parts[1].to_string();
+                    let item = parts[2].to_string();
+                    let quantity = if parts.len() > 3 {
+                        parts[3].parse::<u32>().unwrap_or(1)
+                    } else {
+                        1
+                    };
+                    CommandResult::Give(npc, item, quantity)
+                }
+            },
             "setdialogue" | "setdia" | "sdl" => {
                 // setdialogue 命令的多種用法：
                 // 1. sdl <npc> <話題> add <對話> when <條件> - 新增帶條件的對話
@@ -704,6 +736,7 @@ pub enum CommandResult {
     Trade(String),                   // 查看 NPC 商品 (NPC名稱/ID)
     Buy(String, String, u32),        // 購買物品 (NPC, 物品, 數量)
     Sell(String, String, u32),       // 出售物品 (NPC, 物品, 數量)
+    Give(String, String, u32),       // 給予物品 (NPC, 物品, 數量)
     SetDialogue(String, String, String), // 設置 NPC 台詞 (NPC, 話題, 台詞)
     SetDialogueWithConditions(String, String, String, String), // 設置帶條件的 NPC 台詞 (NPC, 話題, 台詞, 條件字串)
     SetEagerness(String, u8),        // 設置 NPC 說話積極度 (NPC, 積極度0-100)
@@ -760,6 +793,7 @@ impl CommandResult {
             CommandResult::Trade(..) => Some(("trade <npc>", "查看NPC商品", "💰 交易")),
             CommandResult::Buy(..) => Some(("buy <npc> <item> [數量]", "購買物品", "💰 交易")),
             CommandResult::Sell(..) => Some(("sell <npc> <item> [數量]", "出售物品", "💰 交易")),
+            CommandResult::Give(..) => Some(("give <npc> <item> [數量]", "給予NPC物品", "👥 NPC互動")),
             CommandResult::ListNpcs => Some(("npcs", "列出所有NPC", "👥 NPC互動")),
             _ => None,
         }
@@ -800,6 +834,7 @@ impl CommandResult {
             CommandResult::Trade(String::new()),
             CommandResult::Buy(String::new(), String::new(), 1),
             CommandResult::Sell(String::new(), String::new(), 1),
+            CommandResult::Give(String::new(), String::new(), 1),
             CommandResult::ListNpcs,
             CommandResult::SetDialogue(String::new(), String::new(), String::new()),
             CommandResult::SetDialogueWithConditions(String::new(), String::new(), String::new(), String::new()),
@@ -844,6 +879,13 @@ impl CommandResult {
             if let Some(mut cmds) = categories.remove(cat) {
                 // 字母排序
                 cmds.sort_by(|a, b| a.0.cmp(b.0));
+                
+                // 在遊戲控制分類中手動添加 re 命令
+                if cat == "🎮 遊戲控制" {
+                    cmds.push(("re / repeat", "重複上一次的命令"));
+                    cmds.sort_by(|a, b| a.0.cmp(b.0));
+                }
+                
                 result_vec.push((cat, cmds));
             }
         }

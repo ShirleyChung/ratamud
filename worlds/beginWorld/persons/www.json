@@ -3,15 +3,16 @@
   "description": "一個工人",
   "abilities": [],
   "items": {
+    "鐵劍": 5,
+    "蘋果": 1,
     "繩索": 1,
-    "石子": 3,
-    "鐵劍": 5
+    "石子": 3
   },
   "status": "正常",
-  "x": 82,
-  "y": 66,
+  "x": 47,
+  "y": 50,
   "map": "beginMap",
-  "hp": 99034,
+  "hp": 98980,
   "mp": 99998,
   "max_hp": 100000,
   "max_mp": 100000,
@@ -22,9 +23,62 @@
   "last_hunger_hour": 14,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
-  "dialogues": {},
+  "dialogues": {
+    "閒聊": [
+      {
+        "text": "工作雖然辛苦，但我很享受web browsing的快感！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "見面": [
+      {
+        "text": "哈囉，小姐，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉，帥哥，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "男"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "你好！工作辛苦了！這附近有什麼需要修的嗎？",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "哇！我可以幫你拍張照嗎?",
+        "conditions": [
+          {
+            "attribute": "appearance",
+            "operator": ">",
+            "value": "80"
+          },
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      }
+    ]
+  },
   "talk_eagerness": 100,
-  "relationship": 0,
+  "relationship": 5,
   "dialogue_state": "",
   "met_player": false,
   "interaction_count": 0,
