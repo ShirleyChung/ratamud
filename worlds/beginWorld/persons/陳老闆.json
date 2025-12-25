@@ -18,6 +18,7 @@
   "last_hunger_hour": 14,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
+  "is_interacting": false,
   "dialogues": {
     "閒聊": [
       {
@@ -31,16 +32,16 @@
         "weight": 1.0
       }
     ],
-    "出售": [
+    "購買": [
       {
-        "text": "好的，讓我看看你有什麼想賣的。",
+        "text": "當然可以！請告訴我你想買什麼。",
         "conditions": [],
         "weight": 1.0
       }
     ],
-    "購買": [
+    "出售": [
       {
-        "text": "當然可以！請告訴我你想買什麼。",
+        "text": "好的，讓我看看你有什麼想賣的。",
         "conditions": [],
         "weight": 1.0
       }

@@ -28,6 +28,7 @@ use crate::ui::{InputDisplay, HeaderDisplay, Menu};
 /// This helps to avoid passing too many arguments to functions.
 pub struct AppContext<'a> {
     pub menu: &'a mut Option<Menu>,
+    pub interaction_menu: &'a mut Option<Menu>,  // 新增：互動專用選單（交易、對話等）
     pub should_exit: &'a mut bool,
     pub output_manager: &'a mut OutputManager,
     pub game_world: &'a mut GameWorld,
@@ -84,8 +85,9 @@ pub fn run_main_loop(
     mut output_manager: OutputManager,
     mut game_world: GameWorld,
     mut me: Person,
-    mut menu: Option<Menu>, // Add the menu here
+    mut menu: Option<Menu>, // ESC 選單
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let mut interaction_menu: Option<Menu> = None;  // 互動選單（交易、對話等）
     
     // --- Input Thread Setup ---
     let (tx, rx) = mpsc::channel::<crossterm::event::KeyEvent>();
@@ -125,6 +127,7 @@ pub fn run_main_loop(
         for key in rx.try_iter() {
             let mut context = AppContext {
                 menu: &mut menu,
+                interaction_menu: &mut interaction_menu,
                 should_exit: &mut should_exit,
                 output_manager: &mut output_manager,
                 game_world: &mut game_world,
@@ -138,10 +141,10 @@ pub fn run_main_loop(
                 // Now, handle the CommandResult here in app.rs
                 if let CommandResult::Exit = command_result {
                     sync_from_ai_thread(&npc_manager, &maps, &mut game_world); // Sync before final exit
-                    handle_command_result(command_result, &mut output_manager, &mut game_world, &mut me)?;
+                    handle_command_result(command_result, &mut output_manager, &mut game_world, &mut me, &mut interaction_menu)?;
                     should_exit = true; // Set should_exit to trigger loop exit
                 } else {
-                    handle_command_result(command_result, &mut output_manager, &mut game_world, &mut me)?;
+                    handle_command_result(command_result, &mut output_manager, &mut game_world, &mut me, &mut interaction_menu)?;
                     // Only sync to AI thread if a command that changes game state was processed
                     sync_to_ai_thread(&npc_manager, &maps, &current_map, &game_world);
                 }
@@ -178,7 +181,7 @@ pub fn run_main_loop(
         sync_from_ai_thread(&npc_manager, &maps, &mut game_world);
         
         terminal.draw(|f| {
-            draw_ui(f, &mut output_manager, &game_world, &input_handler, &me, &menu);
+            draw_ui(f, &mut output_manager, &game_world, &input_handler, &me, &menu, &interaction_menu);
         })?;
 
         if should_exit {
@@ -208,6 +211,7 @@ fn draw_ui(
     input_handler: &InputHandler,
     me: &Person,
     menu: &Option<Menu>,
+    interaction_menu: &Option<Menu>,  // 新增：互動選單
 ) {
     let size = f.size();
     let vertical_chunks = Layout::default()
@@ -301,6 +305,20 @@ fn draw_ui(
             f.render_widget(active_menu.render_widget(), safe_menu_area);
         }
     }
+    
+    // 渲染互動選單（覆蓋在一般選單之上）
+    if let Some(active_interaction_menu) = interaction_menu {
+        if active_interaction_menu.active {
+            let menu_width = (size.width as f32 * 0.5) as u16;
+            let menu_height = (active_interaction_menu.items.len() as u16 + 2).min((size.height as f32 * 0.8) as u16);
+            let menu_x = (size.width.saturating_sub(menu_width)) / 2;
+            let menu_y = (size.height.saturating_sub(menu_height)) / 2;
+            let menu_area = Rect { x: menu_x, y: menu_y, width: menu_width, height: menu_height };
+            let safe_menu_area = clamp_rect(menu_area, size.width, size.height);
+            f.render_widget(Clear, safe_menu_area);
+            f.render_widget(active_interaction_menu.render_widget(), safe_menu_area);
+        }
+    }
 }
 
 
@@ -310,6 +328,7 @@ fn handle_command_result(
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
     me: &mut Person,
+    interaction_menu: &mut Option<Menu>,  // 新增：互動選單
 ) -> Result<(), Box<dyn std::error::Error>> {
     output_manager.close_status_panel();
     
@@ -362,7 +381,7 @@ fn handle_command_result(
         CommandResult::Create(obj_type, item_type, name) => handle_create(obj_type, item_type, name, output_manager, game_world, me)?,
         CommandResult::Set(target, attribute, value) => handle_set(target, attribute, value, output_manager, game_world, me)?,
         CommandResult::SwitchControl(npc_name) => handle_switch_control(npc_name, output_manager, game_world, me)?,
-        CommandResult::Trade(npc_name) => handle_trade(npc_name, output_manager, game_world, me)?,
+        CommandResult::Trade(npc_name) => handle_trade(npc_name, output_manager, game_world, me, interaction_menu)?,
         CommandResult::Buy(npc_name, item, quantity) => handle_buy(npc_name, item, quantity, output_manager, game_world, me)?,
         CommandResult::Sell(npc_name, item, quantity) => handle_sell(npc_name, item, quantity, output_manager, game_world, me)?,
         CommandResult::Give(npc_name, item, quantity) => handle_give(npc_name, item, quantity, output_manager, game_world, me)?,
@@ -1056,8 +1075,7 @@ fn handle_wakeup(
     me.set_status("正常".to_string());
     output_manager.print("☀️ 你醒來了！感覺精神充沛！".to_string());
     output_manager.print(format!("目前 MP: {}", me.mp));
-    }
-
+}
 
 /// 處理召喚 NPC
 fn handle_summon(
@@ -1673,39 +1691,92 @@ fn handle_trade(
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
     me: &Person,
+    interaction_menu: &mut Option<Menu>,  // 新增：互動選單
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // 檢查 NPC 是否在同一位置
-    let npcs_here = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, me.x, me.y);
-    
-    let npc = npcs_here.iter().find(|n| {
-        n.name.to_lowercase() == npc_name.to_lowercase() ||
-        npc_name.to_lowercase() == "merchant" && n.description.contains("商")
-    });
-    
-    if let Some(npc) = npc {
-        let goods = crate::trade::TradeSystem::get_npc_goods(npc);
+    // 先檢查 NPC 是否在同一位置，並收集必要資訊
+    let (npc_found, npc_id, npc_display_name, goods_data) = {
+        let npcs_here = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, me.x, me.y);
         
-        if goods.is_empty() {
-            output_manager.print(format!("{} 目前沒有商品", npc.name));
-        } else {
-            output_manager.print("".to_string());
-            output_manager.print(format!("═══ {} 的商品 ═══", npc.name));
-            output_manager.print("".to_string());
+        let npc_opt = npcs_here.iter().find(|n| {
+            n.name.to_lowercase() == npc_name.to_lowercase() ||
+            npc_name.to_lowercase() == "merchant" && n.description.contains("商")
+        });
+        
+        if let Some(npc) = npc_opt {
+            let id = npc.name.clone();
+            let display = npc.name.clone();
             
-            for (item_name, quantity, price) in goods {
-                let display_name = item_registry::get_item_display_name(&item_name);
-                output_manager.print(format!("  {display_name} x{quantity} - {price} 金幣"));
+            // 如果是 Buying 狀態，收集商品資料
+            let goods = if matches!(game_world.interaction_state, crate::world::InteractionState::Buying { .. }) {
+                Some(crate::trade::TradeSystem::get_npc_goods(npc))
+            } else {
+                None
+            };
+            
+            (true, id, display, goods)
+        } else {
+            (false, String::new(), String::new(), None)
+        }
+    }; // 釋放 npc_manager 的借用
+    
+    if !npc_found {
+        output_manager.set_status(format!("此處找不到 {npc_name}"));
+        return Ok(());
+    }
+    
+    // 根據互動狀態決定顯示什麼選單
+    match &game_world.interaction_state {
+        crate::world::InteractionState::Buying { .. } => {
+            // 顯示購買物品選單
+            if let Some(goods) = goods_data {
+                if goods.is_empty() {
+                    output_manager.print(format!("{npc_display_name} 目前沒有商品"));
+                    game_world.interaction_state = crate::world::InteractionState::None;
+                    // 取消 NPC 的互動狀態
+                    if let Some(npc_mut) = game_world.npc_manager.get_npc_mut(&npc_id) {
+                        npc_mut.is_interacting = false;
+                    }
+                } else {
+                    let mut items = Vec::new();
+                    for (item_name, quantity, price) in goods {
+                        let display_name = item_registry::get_item_display_name(&item_name);
+                        items.push(format!("{display_name} x{quantity} - {price} 金幣"));
+                    }
+                    items.push("返回".to_string());
+                    
+                    let mut menu = Menu::new(
+                        format!("購買物品 - {npc_display_name}"),
+                        items,
+                    );
+                    menu.activate();
+                    *interaction_menu = Some(menu);
+                }
+            }
+        },
+        _ => {
+            // 顯示交易主選單（買/賣選擇）
+            game_world.interaction_state = crate::world::InteractionState::Trading { 
+                npc_name: npc_id.clone() 
+            };
+            
+            // 設定 NPC 為互動中狀態
+            if let Some(npc_mut) = game_world.npc_manager.get_npc_mut(&npc_id) {
+                npc_mut.is_interacting = true;
             }
             
-            output_manager.print("".to_string());
-            output_manager.print("使用 buy <npc> <item> [數量] 購買物品".to_string());
+            let mut menu = Menu::new(
+                format!("與 {npc_display_name} 交易"),
+                vec![
+                    "購買物品".to_string(),
+                    "出售物品".to_string(),
+                    "離開".to_string(),
+                ],
+            );
+            menu.activate();
+            *interaction_menu = Some(menu);
             
-            // 顯示玩家金幣
-            let player_gold = me.items.get("金幣").copied().unwrap_or(0);
-            output_manager.print(format!("你的金幣: {player_gold}"));
+            output_manager.print(format!("開始與 {npc_display_name} 交易"));
         }
-    } else {
-        output_manager.set_status(format!("此處找不到 {npc_name}"));
     }
     
     Ok(())

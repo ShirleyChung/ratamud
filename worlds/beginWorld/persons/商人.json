@@ -3,11 +3,11 @@
   "description": "精明的商人，販售各種物品",
   "abilities": [],
   "items": {
-    "木劍": 10,
-    "治療藥水": 100,
     "魔力藥水": 100,
+    "魔法書": 10,
     "匕首": 10,
-    "魔法書": 10
+    "木劍": 10,
+    "治療藥水": 100
   },
   "status": "",
   "x": 77,
@@ -24,6 +24,7 @@
   "last_hunger_hour": 15,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
+  "is_interacting": false,
   "dialogues": {
     "閒聊": [
       {

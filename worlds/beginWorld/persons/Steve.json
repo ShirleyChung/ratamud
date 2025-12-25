@@ -3,18 +3,18 @@
   "description": "一個engineer",
   "abilities": [],
   "items": {
-    "鑰匙": 2,
     "蘋果": 2,
-    "木劍": 3,
-    "石子": 3,
+    "羽毛": 4,
+    "鑰匙": 2,
     "舊布料": 5,
-    "羽毛": 2
+    "木劍": 3,
+    "石子": 3
   },
   "status": "正常",
-  "x": 53,
-  "y": 63,
+  "x": 56,
+  "y": 61,
   "map": "beginMap",
-  "hp": 98385,
+  "hp": 98366,
   "mp": 99891,
   "max_hp": 100000,
   "max_mp": 100000,
@@ -25,6 +25,7 @@
   "last_hunger_hour": 15,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
+  "is_interacting": false,
   "dialogues": {
     "見面": [
       {

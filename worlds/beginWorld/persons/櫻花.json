@@ -3,18 +3,18 @@
   "description": "一個醫生",
   "abilities": [],
   "items": {
+    "繩索": 2,
     "鎬": 7,
     "火把": 3,
     "舊布料": 3,
-    "盾牌": 6,
     "蘋果": 1,
-    "繩索": 2
+    "盾牌": 6
   },
   "status": "正常",
-  "x": 61,
-  "y": 67,
+  "x": 58,
+  "y": 65,
   "map": "beginMap",
-  "hp": 98667,
+  "hp": 98652,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
@@ -25,7 +25,40 @@
   "last_hunger_hour": 14,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
+  "is_interacting": false,
   "dialogues": {
+    "閒聊": [
+      {
+        "text": "健康是最重要的，記得多休息和補充營養！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "如果你有任何健康問題，隨時來找我！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "作為醫生，我總是樂於分享健康小貼士！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "保持積極的心態對健康也很重要哦！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "我喜歡幫助別人，這讓我感到很有成就感！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "醫學是一門不斷學習的藝術，我每天都在進步！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
     "見面": [
       {
         "text": "你好！我是櫻花，這裡有什麼我可以幫忙的嗎？",
@@ -73,38 +106,6 @@
             "value": "男"
           }
         ],
-        "weight": 1.0
-      }
-    ],
-    "閒聊": [
-      {
-        "text": "健康是最重要的，記得多休息和補充營養！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "如果你有任何健康問題，隨時來找我！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "作為醫生，我總是樂於分享健康小貼士！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "保持積極的心態對健康也很重要哦！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "我喜歡幫助別人，這讓我感到很有成就感！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "醫學是一門不斷學習的藝術，我每天都在進步！",
-        "conditions": [],
         "weight": 1.0
       }
     ]

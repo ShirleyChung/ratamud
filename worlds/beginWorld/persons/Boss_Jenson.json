@@ -18,15 +18,11 @@
   "last_hunger_hour": 14,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
+  "is_interacting": false,
   "dialogues": {
-    "閒聊": [
+    "出售": [
       {
-        "text": "最近的市場行情不錯，貨物銷售得很快！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "但是經營商店也有不少挑戰呢！",
+        "text": "好的，讓我看看你有什麼想賣的。",
         "conditions": [],
         "weight": 1.0
       }
@@ -77,9 +73,14 @@
         "weight": 1.0
       }
     ],
-    "出售": [
+    "閒聊": [
       {
-        "text": "好的，讓我看看你有什麼想賣的。",
+        "text": "最近的市場行情不錯，貨物銷售得很快！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "但是經營商店也有不少挑戰呢！",
         "conditions": [],
         "weight": 1.0
       }

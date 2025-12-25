@@ -3,15 +3,15 @@
   "description": "一個工人",
   "abilities": [],
   "items": {
+    "弓": 1,
     "羽毛": 2,
-    "蘋果": 2,
-    "弓": 1
+    "蘋果": 2
   },
   "status": "正常",
-  "x": 58,
-  "y": 55,
+  "x": 64,
+  "y": 54,
   "map": "beginMap",
-  "hp": 99578,
+  "hp": 99559,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
@@ -22,25 +22,8 @@
   "last_hunger_hour": 0,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
+  "is_interacting": false,
   "dialogues": {
-    "閒聊": [
-      {
-        "text": "今天天氣不錯",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "你好厲害啊",
-        "conditions": [
-          {
-            "attribute": "力量",
-            "operator": ">",
-            "value": "100"
-          }
-        ],
-        "weight": 1.0
-      }
-    ],
     "見面": [
       {
         "text": "哈囉，小姐，今天好嗎",
@@ -83,6 +66,24 @@
       {
         "text": "哈囉",
         "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "閒聊": [
+      {
+        "text": "今天天氣不錯",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "你好厲害啊",
+        "conditions": [
+          {
+            "attribute": "力量",
+            "operator": ">",
+            "value": "100"
+          }
+        ],
         "weight": 1.0
       }
     ]

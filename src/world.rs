@@ -8,6 +8,16 @@ use crate::person::Person;
 use crate::time_updatable::{TimeInfo, TimeUpdatable};
 use crate::quest::QuestManager;
 
+/// NPC 互動狀態
+/// 用於追蹤玩家正在與哪個 NPC 進行什麼類型的互動
+#[derive(Debug, Clone, PartialEq)]
+pub enum InteractionState {
+    None,                                    // 無互動
+    Trading { npc_name: String },           // 交易中（買/賣選單）
+    Buying { npc_name: String },            // 購買物品選單
+    Selling { npc_name: String },           // 出售物品選單
+}
+
 // 世界時間結構體
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorldTime {
@@ -121,6 +131,7 @@ pub struct GameWorld {
     pub current_controlled_id: Option<String>,  // 當前操控的角色 ID (None = 原始玩家)
     pub original_player: Option<Person>,         // 原始玩家資料備份
     pub player: Person,
+    pub interaction_state: InteractionState,     // NPC 互動狀態
 }
 
 impl GameWorld {
@@ -157,6 +168,7 @@ impl GameWorld {
             current_controlled_id: None,
             original_player: Some(player.clone()),
             player,
+            interaction_state: InteractionState::None,  // 初始無互動狀態
         }
     }
 

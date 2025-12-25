@@ -150,6 +150,8 @@ pub struct Person {
     pub is_sleeping: bool,           // 是否正在睡覺
     pub last_mp_restore_minute: u8,  // 上次恢復 MP 的分鐘數
     #[serde(default)]
+    pub is_interacting: bool,        // 是否正在互動中（交易、對話等）
+    #[serde(default)]
     pub dialogues: HashMap<String, Vec<DialogueOption>>,  // 話題 -> 對話選項列表
     #[serde(default = "default_talk_eagerness")]
     pub talk_eagerness: u8,          // 說話積極度 (0-100)
@@ -197,6 +199,7 @@ impl Person {
             last_hunger_hour: 0,
             is_sleeping: false,
             last_mp_restore_minute: 0,
+            is_interacting: false,    // 初始化為 false
             dialogues: HashMap::new(),
             talk_eagerness: 100,
             relationship: 0,

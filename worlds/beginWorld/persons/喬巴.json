@@ -5,18 +5,18 @@
   "items": {
     "木劍": 4,
     "鐵劍": 3,
-    "繩索": 8,
-    "漿果": 2,
-    "火把": 4,
-    "弓": 1,
     "匕首": 3,
+    "火把": 4,
+    "漿果": 2,
+    "弓": 1,
+    "繩索": 8,
     "頭盔": 1
   },
   "status": "正常",
   "x": 17,
-  "y": 11,
+  "y": 13,
   "map": "beginMap",
-  "hp": 98758,
+  "hp": 98738,
   "mp": 99998,
   "max_hp": 100000,
   "max_mp": 100000,
@@ -27,19 +27,8 @@
   "last_hunger_hour": 14,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
+  "is_interacting": false,
   "dialogues": {
-    "閒聊": [
-      {
-        "text": "健康是最重要的，記得多休息和補充營養！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "如果你有任何健康問題，隨時來找我！",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
     "見面": [
       {
         "text": "哇！真是漂亮的小姐姐！",
@@ -91,6 +80,18 @@
       },
       {
         "text": "哈囉！我是喬巴，隨時準備幫助你！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "閒聊": [
+      {
+        "text": "健康是最重要的，記得多休息和補充營養！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "如果你有任何健康問題，隨時來找我！",
         "conditions": [],
         "weight": 1.0
       }

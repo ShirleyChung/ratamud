@@ -80,6 +80,11 @@ impl NpcAiController {
     
     /// 判斷 NPC 應該執行的行為（公開方法供執行緒使用）
     pub fn determine_behavior(npc: &Person) -> NpcBehavior {
+        // 如果 NPC 正在互動中（交易、對話等），返回 Idle
+        if npc.is_interacting {
+            return NpcBehavior::Idle;
+        }
+        
         let desc = npc.description.to_lowercase();
         
         // 優先檢查生命值，需要使用食物（HP < max_hp / 2）

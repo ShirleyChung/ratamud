@@ -28,6 +28,92 @@ impl InputHandler {
 
     // Process key events, modifying AppContext and returning CommandResult if one is generated
     pub fn handle_input_events(&mut self, key: KeyEvent, context: &mut AppContext) -> Option<CommandResult> {
+        // 優先處理互動選單（交易、對話等）
+        if let Some(interaction_menu) = context.interaction_menu {
+            if key.kind == KeyEventKind::Press {
+                match key.code {
+                    KeyCode::Up => interaction_menu.previous(),
+                    KeyCode::Down => interaction_menu.next(),
+                    KeyCode::Enter => {
+                        if let Some(selected_item) = interaction_menu.get_selected_item().cloned() {
+                            let state = context.game_world.interaction_state.clone();
+                            
+                            interaction_menu.deactivate();
+                            *context.interaction_menu = None;
+                            
+                            // 根據互動狀態處理選單結果
+                            match state {
+                                crate::world::InteractionState::Trading { npc_name } => {
+                                    if selected_item == "購買物品" {
+                                        context.game_world.interaction_state = 
+                                            crate::world::InteractionState::Buying { npc_name: npc_name.clone() };
+                                        return Some(CommandResult::Trade(npc_name));
+                                    } else if selected_item == "出售物品" {
+                                        context.game_world.interaction_state = 
+                                            crate::world::InteractionState::Selling { npc_name: npc_name.clone() };
+                                        return Some(CommandResult::Output("出售物品功能開發中...".to_string()));
+                                    } else if selected_item == "離開" {
+                                        // 清除互動狀態
+                                        context.game_world.interaction_state = crate::world::InteractionState::None;
+                                        // 取消 NPC 的互動狀態
+                                        if let Some(npc) = context.game_world.npc_manager.get_npc_mut(&npc_name) {
+                                            npc.is_interacting = false;
+                                        }
+                                        context.output_manager.print("結束交易".to_string());
+                                    }
+                                },
+                                crate::world::InteractionState::Buying { npc_name } => {
+                                    // 清除互動狀態
+                                    context.game_world.interaction_state = crate::world::InteractionState::None;
+                                    // 取消 NPC 的互動狀態
+                                    if let Some(npc) = context.game_world.npc_manager.get_npc_mut(&npc_name) {
+                                        npc.is_interacting = false;
+                                    }
+                                    
+                                    // 解析選單項目（格式：物品名 x數量 - 價格 金幣）
+                                    if let Some((item_name, _)) = selected_item.split_once(" x") {
+                                        return Some(CommandResult::Buy(npc_name, item_name.to_string(), 1));
+                                    }
+                                },
+                                crate::world::InteractionState::Selling { npc_name } => {
+                                    // 清除互動狀態
+                                    context.game_world.interaction_state = crate::world::InteractionState::None;
+                                    // 取消 NPC 的互動狀態
+                                    if let Some(npc) = context.game_world.npc_manager.get_npc_mut(&npc_name) {
+                                        npc.is_interacting = false;
+                                    }
+                                },
+                                crate::world::InteractionState::None => {},
+                            }
+                        }
+                    },
+                    KeyCode::Esc => {
+                        // ESC 取消交易，清除所有互動狀態
+                        let state = context.game_world.interaction_state.clone();
+                        
+                        // 根據狀態找到 NPC 並清除互動狀態
+                        match state {
+                            crate::world::InteractionState::Trading { npc_name } |
+                            crate::world::InteractionState::Buying { npc_name } |
+                            crate::world::InteractionState::Selling { npc_name } => {
+                                if let Some(npc) = context.game_world.npc_manager.get_npc_mut(&npc_name) {
+                                    npc.is_interacting = false;
+                                }
+                            },
+                            crate::world::InteractionState::None => {},
+                        }
+                        
+                        context.output_manager.print("取消交易".to_string());
+                        context.game_world.interaction_state = crate::world::InteractionState::None;
+                        interaction_menu.deactivate();
+                        *context.interaction_menu = None;
+                    },
+                    _ => {}
+                }
+            }
+            return None; // Input consumed by interaction menu
+        }
+        
         // If menu is open, handle menu input first
         if let Some(active_menu) = context.menu {
             if key.kind == KeyEventKind::Press {
@@ -44,7 +130,7 @@ impl InputHandler {
                         active_menu.deactivate();
                         *context.menu = None; // Close menu via context
                     },
-                    KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('Q') => {
+                    KeyCode::Esc | KeyCode::Char('q' | 'Q') => {
                         context.output_manager.print("選單取消".to_string());
                         active_menu.deactivate();
                         *context.menu = None; // Close menu via context
