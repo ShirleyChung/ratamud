@@ -88,19 +88,6 @@ impl OutputManager {
         }
     }
     
-    // 啟用打字機效果
-    #[allow(dead_code)]
-    pub fn enable_typewriter(&mut self) {
-        self.typewriter_enabled = true;
-    }
-    
-    // 關閉打字機效果
-    #[allow(dead_code)]
-    pub fn disable_typewriter(&mut self) {
-        self.typewriter_enabled = false;
-        self.typewriter = None;
-    }
-    
     // 更新打字機效果
     pub fn update_typewriter(&mut self) {
         if let Some(ref mut tw) = self.typewriter {
@@ -119,12 +106,6 @@ impl OutputManager {
             }
         }
     }
-    
-    // 檢查是否正在打字
-    #[allow(dead_code)]
-    pub fn is_typing(&self) -> bool {
-        self.typewriter.is_some()
-    }
 
     // 設定狀態列訊息（5秒後自動清除）
     pub fn set_status(&mut self, status: String) {
@@ -142,20 +123,6 @@ impl OutputManager {
         }
     }
 
-    // 獲取當前狀態（如果已過期則返回空字串）
-    #[allow(dead_code)]
-    pub fn get_status(&self) -> String {
-        if let Some(time) = self.status_time {
-            if time.elapsed() > Duration::from_secs(5) {
-                String::new()
-            } else {
-                self.status.clone()
-            }
-        } else {
-            self.status.clone()
-        }
-    }
-
     // 設置當前時間顯示
     pub fn set_current_time(&mut self, time: String) {
         self.current_time = time;
@@ -168,7 +135,6 @@ impl OutputManager {
     }
 
     // 向上滾動
-    #[allow(dead_code)]
     pub fn scroll_up(&mut self) {
         // 先確保 scroll 不會超過合理範圍
         if self.scroll > self.messages.len() {
@@ -179,7 +145,6 @@ impl OutputManager {
     }
 
     // 向下滾動（受可見高度限制）
-    #[allow(dead_code)]
     pub fn scroll_down(&mut self, visible_height: usize) {
         // 先確保 scroll 不會超過合理範圍
         if self.scroll > self.messages.len() {
@@ -257,13 +222,6 @@ impl OutputManager {
     pub fn add_side_message(&mut self, message: String) {
         self.side_messages.push(message);
         self.side_scroll = self.side_messages.len().saturating_sub(1);
-    }
-
-    // 清除側邊訊息
-    #[allow(dead_code)]
-    pub fn clear_side_messages(&mut self) {
-        self.side_messages.clear();
-        self.side_scroll = 0;
     }
 
     // 切換側邊面板顯示狀態
