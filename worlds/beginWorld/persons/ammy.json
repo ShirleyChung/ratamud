@@ -6,10 +6,10 @@
     "弓": 1
   },
   "status": "正常",
-  "x": 58,
-  "y": 52,
+  "x": 59,
+  "y": 51,
   "map": "beginMap",
-  "hp": 99945,
+  "hp": 99943,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
@@ -21,13 +21,6 @@
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "dialogues": {
-    "見面": [
-      {
-        "text": "哈囉",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
     "閒聊": [
       {
         "text": "今天天氣不錯",
@@ -43,6 +36,13 @@
             "value": "100"
           }
         ],
+        "weight": 1.0
+      }
+    ],
+    "見面": [
+      {
+        "text": "哈囉",
+        "conditions": [],
         "weight": 1.0
       }
     ]

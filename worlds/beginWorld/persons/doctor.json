@@ -3,16 +3,16 @@
   "description": "熟練的醫生，治療傷口",
   "abilities": [],
   "items": {
-    "鑰匙": 1,
-    "皮衣": 2,
-    "漿果": 1,
-    "火把": 1,
     "樹皮": 1,
-    "匕首": 1,
-    "毒藥": 3,
-    "盾牌": 1,
     "繩索": 1,
-    "弓": 1
+    "火把": 1,
+    "毒藥": 3,
+    "皮衣": 2,
+    "盾牌": 1,
+    "匕首": 1,
+    "漿果": 1,
+    "弓": 1,
+    "鑰匙": 1
   },
   "status": "正常",
   "x": 16,
@@ -30,11 +30,51 @@
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "dialogues": {
-    "見面": "你好，有什麼不舒服的嗎？我可以幫你檢查一下。"
+    "閒聊": [
+      {
+        "text": "我是開小兒科的醫生，有什麼奇怪問題別找我。",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "如果你有任何健康問題，去找別的醫生吧",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "作為醫生，唉，真是一言難盡！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "見面": [
+      {
+        "text": "你好，有什麼不舒服的嗎？我可以幫你檢查一下。",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "歡迎來到診所，需要治療還是建議？",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉！我是這裡的醫生，隨時準備幫助你！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "需要醫療幫助嗎？我可以為你提供專業的治療。",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ]
   },
   "talk_eagerness": 80,
   "relationship": 0,
   "dialogue_state": "",
   "met_player": false,
-  "interaction_count": 0
+  "interaction_count": 0,
+  "gender": "未知",
+  "appearance": 50
 }

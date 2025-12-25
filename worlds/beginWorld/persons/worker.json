@@ -3,20 +3,20 @@
   "description": "努力的工人，從事建築工作",
   "abilities": [],
   "items": {
-    "漿果": 3,
-    "繩索": 2,
-    "舊布料": 5,
-    "頭盔": 2,
-    "麵包": 2,
     "匕首": 1,
-    "弓": 3,
-    "火把": 1
+    "麵包": 2,
+    "舊布料": 5,
+    "漿果": 3,
+    "火把": 1,
+    "頭盔": 2,
+    "繩索": 2,
+    "弓": 3
   },
   "status": "正常",
-  "x": 81,
-  "y": 65,
+  "x": 80,
+  "y": 69,
   "map": "beginMap",
-  "hp": 98907,
+  "hp": 98900,
   "mp": 99998,
   "max_hp": 100000,
   "max_mp": 100000,
@@ -28,11 +28,20 @@
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "dialogues": {
-    "見面": "嘿！工作辛苦了！這附近有什麼需要修的嗎？"
+    "閒聊": [],
+    "見面": [
+      {
+        "text": "你好！工作辛苦了！這附近有什麼需要修的嗎？",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ]
   },
   "talk_eagerness": 60,
   "relationship": 0,
   "dialogue_state": "",
   "met_player": false,
-  "interaction_count": 0
+  "interaction_count": 0,
+  "gender": "未知",
+  "appearance": 50
 }

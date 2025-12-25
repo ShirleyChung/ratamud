@@ -3,22 +3,22 @@
   "description": "一個工人",
   "abilities": [],
   "items": {
-    "舊布料": 4,
-    "乾肉": 2,
-    "羽毛": 1,
     "漿果": 3,
-    "毒藥": 4,
+    "蘋果": 3,
     "鎬": 1,
-    "魔力藥水": 1,
-    "蘋果": 2,
+    "毒藥": 4,
     "治療藥水": 4,
-    "盾牌": 7
+    "乾肉": 2,
+    "盾牌": 9,
+    "舊布料": 4,
+    "羽毛": 1,
+    "魔力藥水": 1
   },
   "status": "正常",
-  "x": 47,
-  "y": 55,
-  "map": "森林",
-  "hp": 99071,
+  "x": 45,
+  "y": 54,
+  "map": "forest",
+  "hp": 99066,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
@@ -30,11 +30,51 @@
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "dialogues": {
-    "見面": "喲！有什麼活要幹嗎？我可是很能幹的！"
+    "閒聊": [
+      {
+        "text": "工作雖然辛苦，但能賺錢養家也是值得的。",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "我聽說森林深處有寶藏，不知道是真是假？",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "有時候工作累了，就會想起家人，讓我更有動力了。",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "這附近的工作機會還不少，你要不要也來試試？",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "見面": [
+      {
+        "text": "喲！有什麼活要幹嗎？我可是很能幹的！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "嘿！我是阿猛，這附近的工作我都能做！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "你好！需要幫忙的話，找我就對了！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ]
   },
-  "talk_eagerness": 75,
-  "relationship": 0,
+  "talk_eagerness": 99,
+  "relationship": 50,
   "dialogue_state": "",
   "met_player": false,
-  "interaction_count": 0
+  "interaction_count": 0,
+  "gender": "未知",
+  "appearance": 50
 }

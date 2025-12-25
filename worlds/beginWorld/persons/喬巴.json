@@ -4,19 +4,19 @@
   "abilities": [],
   "items": {
     "漿果": 1,
-    "火把": 4,
-    "弓": 1,
+    "頭盔": 1,
     "木劍": 2,
     "匕首": 3,
-    "頭盔": 1,
-    "鐵劍": 2,
-    "繩索": 4
+    "火把": 4,
+    "弓": 1,
+    "繩索": 4,
+    "鐵劍": 2
   },
   "status": "正常",
   "x": 11,
-  "y": 4,
+  "y": 1,
   "map": "beginMap",
-  "hp": 99057,
+  "hp": 99052,
   "mp": 99998,
   "max_hp": 100000,
   "max_mp": 100000,
@@ -27,7 +27,37 @@
   "last_hunger_hour": 14,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
-  "dialogues": {},
+  "dialogues": {
+    "閒聊": [
+      {
+        "text": "健康是最重要的，記得多休息和補充營養！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "如果你有任何健康問題，隨時來找我！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "見面": [
+      {
+        "text": "你好！我是喬巴，這裡有什麼我可以幫忙的嗎？",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "歡迎來到我的診所！需要治療或建議嗎？",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉！我是喬巴，隨時準備幫助你！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ]
+  },
   "talk_eagerness": 100,
   "relationship": 0,
   "dialogue_state": "",

@@ -19,11 +19,76 @@
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "dialogues": {
-    "見面": "哎呀！有客人來了！今天有特價優惠喔！"
+    "購買": [
+      {
+        "text": "當然可以！請告訴我你想買什麼。",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "感謝": [
+      {
+        "text": "不客氣！隨時歡迎你來店裡看看。",
+        "conditions": [],
+        "weight": 0.8
+      }
+    ],
+    "再見": [
+      {
+        "text": "感謝你的光臨，期待下次再見！",
+        "conditions": [],
+        "weight": 0.5
+      }
+    ],
+    "袐密": [
+      {
+        "text": "其實我有一個隱藏的商品清單，只有特別的客人才能看到哦！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "見面": [
+      {
+        "text": "歡迎光臨李老闆的店鋪！需要什麼幫助嗎？",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "你好！我是李老闆，這裡有各種商品供你選擇。",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉！有什麼我可以幫忙的嗎？",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "閒聊": [
+      {
+        "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "如果你有什麼特別需求，隨時告訴我！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "出售": [
+      {
+        "text": "好的，讓我看看你有什麼想賣的。",
+        "conditions": [],
+        "weight": 0.5
+      }
+    ]
   },
   "talk_eagerness": 100,
   "relationship": 0,
   "dialogue_state": "",
   "met_player": false,
-  "interaction_count": 0
+  "interaction_count": 0,
+  "gender": "未知",
+  "appearance": 50
 }

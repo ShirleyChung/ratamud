@@ -4,10 +4,10 @@
   "abilities": [],
   "items": {},
   "status": "正常",
-  "x": 50,
+  "x": 53,
   "y": 51,
   "map": "beginMap",
-  "hp": 99984,
+  "hp": 99979,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
@@ -19,11 +19,26 @@
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "dialogues": {
-    "見面": "您好!很高興見到您"
+    "見面": [
+      {
+        "text": "你好！我是櫻花醫生，有什麼我可以幫助你的嗎？",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "閒聊": [
+      {
+        "text": "健康是最重要的，記得多休息和保持良好的飲食習慣！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ]
   },
   "talk_eagerness": 100,
   "relationship": 0,
   "dialogue_state": "初見",
   "met_player": false,
-  "interaction_count": 0
+  "interaction_count": 0,
+  "gender": "未知",
+  "appearance": 50
 }

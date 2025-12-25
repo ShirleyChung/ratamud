@@ -6,6 +6,7 @@
   "status": "正常",
   "x": 51,
   "y": 51,
+  "map": "beginMap",
   "hp": 100000,
   "mp": 100000,
   "strength": 100,
@@ -16,4 +17,49 @@
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "max_mp": 100000
+  "dialogues": {
+    "見面": [
+      {
+        "text": "歡迎光臨黃老闆的店鋪！需要什麼幫助嗎？",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "你好！我是黃老闆，這裡有各種商品供你選擇。",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉！有什麼我可以幫忙的嗎？",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "閒聊": [
+      {
+        "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "如果你有什麼特別需求，隨時告訴我！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "購買": [
+      {
+        "text": "當然可以！請告訴我你想買什麼。",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "出售": [
+      {
+        "text": "好的，讓我看看你有什麼想賣的。",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ]
+  }
 }

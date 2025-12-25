@@ -1,7 +1,7 @@
 {
-  "id": "test_event",
-  "name": "測試事件",
-  "description": "每分鐘觸發的測試事件",
+  "id": "minute_calling",
+  "name": "每分鐘呼喚",
+  "description": "時間流逝的證明",
   "trigger": {
     "type": "time",
     "schedule": "* * * * *"
@@ -9,7 +9,7 @@
   "actions": [
     {
       "type": "message",
-      "text": "⏰ 測試事件觸發！"
+      "text": "⏰ 微風輕拂，這世界的節奏依舊平穩"
     }
   ],
   "state": {

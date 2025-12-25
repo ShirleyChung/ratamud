@@ -7,9 +7,9 @@
   },
   "status": "正常",
   "x": 52,
-  "y": 47,
+  "y": 48,
   "map": "beginMap",
-  "hp": 98860,
+  "hp": 98857,
   "mp": 99959,
   "max_hp": 100000,
   "max_mp": 100000,
@@ -21,11 +21,29 @@
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "dialogues": {
-    "見面": "Hi there! I'm working on some interesting projects. Want to know more?"
+    "見面": [
+      {
+        "text": "你好！我是Steve，一個engineer，有什麼我可以幫忙的嗎？",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "歡迎來到我的工作坊！需要一些工具或建議嗎？",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉！我是Steve，隨時準備幫助你解決技術問題！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ]
   },
   "talk_eagerness": 65,
   "relationship": 0,
   "dialogue_state": "",
   "met_player": false,
-  "interaction_count": 0
+  "interaction_count": 0,
+  "gender": "未知",
+  "appearance": 50
 }

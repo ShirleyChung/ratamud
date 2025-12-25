@@ -19,11 +19,26 @@
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "dialogues": {
-    "見面": "你好～我是小鹿，正在這裡擺攤呢！"
+    "閒聊": [
+      {
+        "text": "其實我是很溫和的",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "見面": [
+      {
+        "text": "你好～我是小鹿，正在這裡擺攤呢",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ]
   },
   "talk_eagerness": 90,
   "relationship": 0,
   "dialogue_state": "",
   "met_player": false,
-  "interaction_count": 0
+  "interaction_count": 0,
+  "gender": "未知",
+  "appearance": 50
 }

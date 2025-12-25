@@ -19,11 +19,41 @@
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "dialogues": {
-    "見面": "Welcome! I have the finest goods in town!"
+    "見面": [
+      {
+        "text": "歡迎光臨我的商店！需要什麼幫助嗎？",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "你好！我是這裡的商人，隨時為你服務。",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉！有什麼我可以幫忙的嗎？",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "閒聊": [
+      {
+        "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "如果你有什麼特別需求，隨時告訴我！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ]
   },
   "talk_eagerness": 100,
   "relationship": 0,
   "dialogue_state": "",
   "met_player": false,
-  "interaction_count": 0
+  "interaction_count": 0,
+  "gender": "未知",
+  "appearance": 50
 }

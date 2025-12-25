@@ -7,7 +7,7 @@
   "x": 47,
   "y": 54,
   "map": "forest",
-  "hp": 99995,
+  "hp": 99991,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
@@ -19,16 +19,16 @@
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "dialogues": {
-    "見面": [
+    "閒聊": [
       {
-        "text": "吼~~~",
+        "text": "其實我是很溫和的",
         "conditions": [],
         "weight": 1.0
       }
     ],
-    "閒聊": [
+    "見面": [
       {
-        "text": "其實我是很溫和的",
+        "text": "吼~~~",
         "conditions": [],
         "weight": 1.0
       }

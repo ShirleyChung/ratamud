@@ -11213,7 +11213,10 @@
         "walkable": false,
         "description": "密集的灌木叢",
         "name": "",
-        "objects": {},
+        "objects": {
+          "草藥": 2,
+          "草莓": 4
+        },
         "object_ages": {},
         "terrain_type": "Normal"
       },
@@ -11234,7 +11237,9 @@
         "description": "灰色的嶙峋岩石",
         "name": "",
         "objects": {
-          "樹皮": 1
+          "小石頭": 3,
+          "大石頭": 1,
+          "碎石": 5
         },
         "object_ages": {},
         "terrain_type": "Normal"
