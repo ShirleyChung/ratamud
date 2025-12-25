@@ -97,22 +97,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // 設置初始時間顯示
     output_manager.set_current_time(game_world.format_time());
-    
-    // 載入事件腳本
-    let events_dir = format!("{}/events", game_world.world_dir);
-    match event_loader::EventLoader::load_from_directory(&mut game_world.event_manager, &events_dir) {
-        Ok((count, event_list)) => {
-            if count > 0 {
-                output_manager.log(format!("✅ 載入了 {count} 個事件"));
-                for event_name in event_list {
-                    output_manager.log(format!("  📌 {event_name}"));
-                }
-            }
-        }
-        Err(e) => {
-            output_manager.log(format!("⚠️  載入事件失敗: {e}"));
-        }
-    }    
+
+    // 載入地圖   
     match game_world.initialize_maps() {
         Ok((map_count, logs)) => {
             for log in logs {
@@ -142,32 +128,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     
     // 載入所有 NPC
-    output_manager.log("開始載入 NPC...".to_string());
-    match game_world.npc_manager.load_all_from_directory(&person_dir, vec!["me"]) {
-        Ok(count) => {
-            output_manager.log(format!("從文件載入了 {count} 個 NPC"));
-            
-            // 記錄每個 NPC 的詳細資訊
-            for npc in game_world.npc_manager.get_all_npcs() {
-                output_manager.log(format!("已載入 NPC: {} 在位置 ({}, {})", npc.name, npc.x, npc.y));
-            }
-        }
-        Err(e) => {
-            output_manager.log(format!("⚠️  載入 NPC 失敗: {e}"));
-        }
-    }
+    load_npcs(&mut game_world, &mut output_manager);
     
     // 載入任務
-    output_manager.log("開始載入任務...".to_string());
-    let quest_dir = format!("{}/quests", game_world.world_dir);
-    match game_world.quest_manager.load_from_directory(&quest_dir) {
-        Ok(count) => {
-            output_manager.log(format!("從文件載入了 {count} 個任務"));
-        }
-        Err(e) => {
-            output_manager.log(format!("⚠️  載入任務失敗: {e}"));
-        }
-    }
+    load_quest(&mut game_world, &mut output_manager);
+
+    // 載入事件腳本
+    load_event(&mut game_world, &mut output_manager);
 
     // 顯示歡迎訊息
     show_welcome_message(&mut output_manager, &game_world);
@@ -202,5 +169,55 @@ fn show_current_map_info(output_manager: &mut output::OutputManager, game_world:
     if let Some(current_map) = game_world.get_current_map() {
         output_manager.print(format!("📍 當前區域: {}", current_map.name));
         output_manager.print(current_map.description.clone());
+    }
+}
+
+/// 載入事件腳本
+fn load_event(game_world: &mut world::GameWorld, output_manager: &mut output::OutputManager) {
+   let events_dir = format!("{}/events", game_world.world_dir);
+    match event_loader::EventLoader::load_from_directory(&mut game_world.event_manager, &events_dir) {
+        Ok((count, event_list)) => {
+            if count > 0 {
+                output_manager.log(game_world.event_manager.show_total_loaded_events());
+                for event_name in event_list {
+                    output_manager.log(format!("  📌 {event_name}"));
+                }
+            }
+        }
+        Err(e) => {
+            output_manager.log(format!("⚠️  載入事件失敗: {e}"));
+        }
+    } 
+}
+
+/// 載入任務
+fn load_quest(game_world: &mut world::GameWorld, output_manager: &mut output::OutputManager) {
+    output_manager.log("開始載入任務...".to_string());
+    let quest_dir = format!("{}/quests", game_world.world_dir);
+    match game_world.quest_manager.load_from_directory(&quest_dir) {
+        Ok(count) => {
+            output_manager.log(format!("從文件載入了 {count} 個任務"));
+        }
+        Err(e) => {
+            output_manager.log(format!("⚠️  載入任務失敗: {e}"));
+        }
+    }
+}
+
+fn load_npcs(game_world: &mut world::GameWorld, output_manager: &mut output::OutputManager) {
+    let person_dir = format!("{}/persons", game_world.world_dir);
+    output_manager.log("開始載入 NPC...".to_string());
+    match game_world.npc_manager.load_all_from_directory(&person_dir, vec!["me"]) {
+        Ok(count) => {
+            output_manager.log(format!("從文件載入了 {count} 個 NPC"));
+            
+            // 記錄每個 NPC 的詳細資訊
+            for npc in game_world.npc_manager.get_all_npcs() {
+                output_manager.log(format!("已載入 NPC: {} 在位置 ({}, {})", npc.name, npc.x, npc.y));
+            }
+        }
+        Err(e) => {
+            output_manager.log(format!("⚠️  載入 NPC 失敗: {e}"));
+        }
     }
 }

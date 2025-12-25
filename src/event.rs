@@ -294,6 +294,11 @@ impl EventManager {
             false
         }
     }
+
+    /// 顯示已載入事件總數的訊息
+    pub fn show_total_loaded_events(&self) -> String {
+        format!("總共載入了 {} 個事件。", self.events.len())
+    }
 }
 
 impl Default for EventManager {
