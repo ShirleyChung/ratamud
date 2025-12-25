@@ -1,6 +1,54 @@
 use crate::input::CommandResult;
 
 /// 純文本命令處理器（不依賴 Crossterm）
+/// 
+/// 【重要】此模組目前未被主程式（app.rs）使用，僅供 FFI 介面（ffi.rs）和測試使用
+/// 
+/// 命令處理架構說明：
+/// ┌─────────────────────────────────────────────────────────────────────┐
+/// │ 1. command_processor.rs (此檔案)                                     │
+/// │    - CommandProcessor::parse_command()                              │
+/// │    - 簡化版命令解析，支援基本命令                                      │
+/// │    - 用於：FFI 介面（供外部調用）、無頭模式                            │
+/// │    - 狀態：功能完整但命令較少，未與主程式整合                          │
+/// └─────────────────────────────────────────────────────────────────────┘
+/// 
+/// ┌─────────────────────────────────────────────────────────────────────┐
+/// │ 2. input.rs                                                         │
+/// │    - InputHandler::handle_command()                                 │
+/// │    - 完整版命令解析，支援所有最新命令（包括 give, re, 等）            │
+/// │    - 用於：主程式（app.rs）的實際命令處理                             │
+/// │    - 狀態：主要命令處理器，持續更新                                   │
+/// └─────────────────────────────────────────────────────────────────────┘
+/// 
+/// ┌─────────────────────────────────────────────────────────────────────┐
+/// │ 3. game_engine.rs                                                   │
+/// │    - GameEngine::process_command()                                  │
+/// │    - 呼叫 CommandProcessor::parse_command()                         │
+/// │    - 用於：FFI 介面的遊戲引擎                                         │
+/// │    - 狀態：僅供 FFI 使用，不被 app.rs 使用                            │
+/// └─────────────────────────────────────────────────────────────────────┘
+/// 
+/// 目前執行流程（主程式 app.rs）：
+/// 使用者輸入 
+///   → InputHandler::handle_input_events() 
+///   → InputHandler::handle_command()        [在 input.rs]
+///   → CommandResult
+///   → handle_command_result()               [在 app.rs]
+///   → 執行對應的 handle_xxx() 函數
+/// 
+/// FFI 執行流程（ffi.rs）：
+/// 外部調用
+///   → GameEngine::process_command()         [在 game_engine.rs]
+///   → CommandProcessor::parse_command()     [在此檔案]
+///   → CommandResult
+///   → GameEngine::execute_command()
+/// 
+/// 【待重構】未來可能的改進方向：
+/// 1. 統一命令解析邏輯到單一模組
+/// 2. input.rs 的 handle_command 使用此模組的 parse_command
+/// 3. 或將此模組標記為 deprecated，僅保留給 FFI 使用
+/// 4. 考慮使用 trait 定義命令處理器介面
 #[allow(dead_code)]
 pub struct CommandProcessor;
 
@@ -11,6 +59,26 @@ impl CommandProcessor {
     }
     
     /// 解析文本命令字串，返回 CommandResult
+    /// 
+    /// 【注意】此函數是簡化版的命令解析器，主要供 FFI 介面使用
+    /// 主程式（app.rs）使用的是 input.rs 中的 InputHandler::handle_command()
+    /// 
+    /// 兩者的差異：
+    /// - 此函數：支援基本命令（約 30 個），較簡單
+    /// - input.rs：支援完整命令（約 40+ 個），包含最新功能（如 give, re 等）
+    /// 
+    /// 【待同步】以下命令在 input.rs 中有但此處沒有：
+    /// - give <npc> <item> [qty]     - 給予物品給 NPC
+    /// - re / repeat                  - 重複上一次命令
+    /// - talk <npc> [topic]           - 與 NPC 對話
+    /// - check <npc>                  - 查看 NPC 資訊
+    /// - sdl (setdialogue 的進階版)   - 設置帶條件的對話
+    /// - setrelationship              - 設置好感度
+    /// - changerelationship           - 改變好感度
+    /// - quest 相關命令               - 任務系統
+    /// - 以及其他最新新增的命令
+    /// 
+    /// 若需要完整功能，請參考 input.rs 中的實作
     pub fn parse_command(&self, input: &str) -> CommandResult {
         let parts: Vec<&str> = input.split_whitespace().collect();
         

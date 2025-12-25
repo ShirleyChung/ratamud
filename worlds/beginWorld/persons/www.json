@@ -3,16 +3,18 @@
   "description": "一個工人",
   "abilities": [],
   "items": {
-    "鐵劍": 5,
+    "木劍": 1,
     "蘋果": 1,
     "繩索": 1,
-    "石子": 3
+    "鑰匙": 1,
+    "石子": 3,
+    "鐵劍": 5
   },
   "status": "正常",
-  "x": 47,
-  "y": 50,
+  "x": 29,
+  "y": 54,
   "map": "beginMap",
-  "hp": 98980,
+  "hp": 98674,
   "mp": 99998,
   "max_hp": 100000,
   "max_mp": 100000,
@@ -78,7 +80,7 @@
     ]
   },
   "talk_eagerness": 100,
-  "relationship": 5,
+  "relationship": 10,
   "dialogue_state": "",
   "met_player": false,
   "interaction_count": 0,

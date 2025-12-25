@@ -5,6 +5,33 @@ use crate::input::CommandResult;
 use std::collections::VecDeque;
 
 /// 無頭遊戲引擎（不依賴終端 UI）
+/// 
+/// 【重要】此模組目前僅供 FFI 介面（ffi.rs）使用，主程式（app.rs）不使用此引擎
+/// 
+/// 架構說明：
+/// ┌─────────────────────────────────────────────────────────────────┐
+/// │ GameEngine (此檔案)                                              │
+/// │ - 提供無頭模式的遊戲引擎                                          │
+/// │ - 使用 CommandProcessor 進行命令解析                              │
+/// │ - 維護自己的輸出緩衝區                                            │
+/// │ - 用途：FFI 介面、測試、可能的未來 Web API                        │
+/// └─────────────────────────────────────────────────────────────────┘
+/// 
+/// vs
+/// 
+/// ┌─────────────────────────────────────────────────────────────────┐
+/// │ app.rs (主程式)                                                  │
+/// │ - 使用 ratatui 終端 UI                                           │
+/// │ - 使用 InputHandler 進行命令處理                                 │
+/// │ - 使用 OutputManager 進行輸出管理                                │
+/// │ - 用途：主要的遊戲執行環境                                        │
+/// └─────────────────────────────────────────────────────────────────┘
+/// 
+/// 【待重構】未來可能的改進方向：
+/// 1. 抽取共用的遊戲邏輯到獨立模組
+/// 2. app.rs 和 GameEngine 共用相同的命令處理器
+/// 3. 統一輸出管理介面
+/// 4. 考慮將 GameEngine 改為 trait，app.rs 和 ffi.rs 各自實作
 #[allow(dead_code)]
 pub struct GameEngine {
     pub world: GameWorld,
@@ -31,6 +58,19 @@ impl GameEngine {
     }
     
     /// 處理文本命令
+    /// 
+    /// 【執行流程】
+    /// 1. 使用 CommandProcessor::parse_command() 解析命令
+    /// 2. 檢查是否為退出命令
+    /// 3. 呼叫 execute_command() 執行命令邏輯
+    /// 4. 將結果加入輸出緩衝區
+    /// 
+    /// 【注意】此函數使用的命令解析器（CommandProcessor）
+    /// 與主程式（app.rs）使用的解析器（InputHandler）不同
+    /// 
+    /// CommandProcessor 支援的命令較少且可能過時
+    /// 若需要最新命令，請參考 input.rs 中的 handle_command()
+    /// 
     /// 返回：(是否繼續遊戲, 命令結果描述)
     pub fn process_command(&mut self, command: &str) -> (bool, String) {
         // 解析命令

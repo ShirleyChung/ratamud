@@ -19,9 +19,28 @@
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "dialogues": {
+    "閒聊": [
+      {
+        "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "如果你有什麼特別需求，隨時告訴我！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
     "出售": [
       {
         "text": "好的，讓我看看你有什麼想賣的。",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "購買": [
+      {
+        "text": "當然可以！請告訴我你想買什麼。",
         "conditions": [],
         "weight": 1.0
       }
@@ -77,25 +96,6 @@
       },
       {
         "text": "哈囉！有什麼我可以幫忙的嗎？",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
-    "購買": [
-      {
-        "text": "當然可以！請告訴我你想買什麼。",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
-    "閒聊": [
-      {
-        "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "如果你有什麼特別需求，隨時告訴我！",
         "conditions": [],
         "weight": 1.0
       }

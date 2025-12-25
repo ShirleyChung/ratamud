@@ -19,18 +19,6 @@
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "dialogues": {
-    "閒聊": [
-      {
-        "text": "這森林裡的風景真美麗！",
-        "conditions": [],
-        "weight": 5.0
-      },
-      {
-        "text": "我喜歡和旅人們交流，聽他們的故事。",
-        "conditions": [],
-        "weight": 7.0
-      }
-    ],
     "見面": [
       {
         "text": "你好～我是小鹿，正在這裡擺攤呢",
@@ -58,6 +46,18 @@
           }
         ],
         "weight": 1.0
+      }
+    ],
+    "閒聊": [
+      {
+        "text": "這森林裡的風景真美麗！",
+        "conditions": [],
+        "weight": 5.0
+      },
+      {
+        "text": "我喜歡和旅人們交流，聽他們的故事。",
+        "conditions": [],
+        "weight": 7.0
       }
     ]
   },
