@@ -478,6 +478,16 @@ impl InputHandler {
                     CommandResult::Eat(food_name)
                 }
             },
+            "use" => {
+                // use 命令，使用物品
+                // use <物品名稱>
+                if parts.len() < 2 {
+                    CommandResult::Error("用法: use <物品名稱>".to_string())
+                } else {
+                    let item_name = parts[1].to_string();
+                    CommandResult::UseItem(item_name)
+                }
+            },
             "npcs" | "listnpcs" => {
                 // npcs 命令，列出所有 NPC
                 CommandResult::ListNpcs
@@ -868,6 +878,7 @@ pub enum CommandResult {
     Get(Option<String>, u32),        // 撿起物品 (可選：物品名稱, 數量)
     Drop(String, u32),               // 放下物品 (物品名稱, 數量)
     Eat(String),                     // 吃食物回復 HP (食物名稱)
+    UseItem(String),                 // 使用物品 (物品名稱)
     Sleep,
     Dream(Option<String>),           // 做夢 (可選：夢境內容)
     WakeUp,
@@ -922,6 +933,7 @@ impl CommandResult {
             CommandResult::Get(..) => Some(("get [<物品>] [<數量>]", "撿起物品", "🎒 物品管理")),
             CommandResult::Drop(..) => Some(("drop <物品> <數量>", "放下物品", "🎒 物品管理")),
             CommandResult::Eat(..) => Some(("eat <食物>", "吃食物回復HP", "🎒 物品管理")),
+            CommandResult::UseItem(..) => Some(("use <物品>", "使用物品（藥水/食物等）", "🎒 物品管理")),
             CommandResult::Sleep => Some(("sleep", "進入睡眠狀態", "💤 睡眠")),
             CommandResult::Dream(..) => Some(("dream [<內容>]", "做夢（睡眠時）", "💤 睡眠")),
             CommandResult::WakeUp => Some(("wakeup / wake", "從睡眠中醒來", "💤 睡眠")),

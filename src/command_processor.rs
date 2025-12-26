@@ -174,6 +174,15 @@ impl CommandProcessor {
                 }
             }
             
+            // 使用物品
+            "use" => {
+                if parts.len() > 1 {
+                    CommandResult::UseItem(parts[1].to_string())
+                } else {
+                    CommandResult::Error("用法: use <物品>".to_string())
+                }
+            }
+            
             // 睡覺
             "sleep" => CommandResult::Sleep,
             "dream" => {

@@ -5,6 +5,7 @@
   "items": {
     "金幣": 10000
   },
+  "item_instances": {},
   "status": "",
   "x": 66,
   "y": 63,
@@ -22,6 +23,18 @@
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
+    "閒聊": [
+      {
+        "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "如果你有什麼特別需求，隨時告訴我！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
     "見面": [
       {
         "text": "哈囉，小姐，今天好嗎",
@@ -73,18 +86,6 @@
       },
       {
         "text": "哈囉！有什麼我可以幫忙的嗎？",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
-    "閒聊": [
-      {
-        "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "如果你有什麼特別需求，隨時告訴我！",
         "conditions": [],
         "weight": 1.0
       }

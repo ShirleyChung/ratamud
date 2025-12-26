@@ -132,7 +132,9 @@ pub struct Person {
     pub name: String,
     pub description: String,
     pub abilities: Vec<String>,
-    pub items: HashMap<String, u32>,  // 物品名稱 -> 數量
+    pub items: HashMap<String, u32>,  // 物品名稱 -> 數量（向後兼容）
+    #[serde(default)]
+    pub item_instances: HashMap<String, Vec<crate::item::ItemInstance>>,  // 物品名稱 -> 實例列表
     pub status: String,
     pub x: usize,                    // X 座標
     pub y: usize,                    // Y 座標
@@ -184,6 +186,7 @@ impl Person {
             description,
             abilities: Vec::new(),
             items: HashMap::new(),
+            item_instances: HashMap::new(),
             status: "正常".to_string(),
             x: 50,                    // 初始位置：地圖中央
             y: 50,
@@ -454,12 +457,24 @@ impl Person {
 
     // 添加物品（支援數量）
     pub fn add_item(&mut self, item: String) {
-        self.add_items(item, 1);
+        self.add_item_with_quantity(item, 1);
     }
     
     // 添加指定數量的物品
     pub fn add_items(&mut self, item: String, quantity: u32) {
-        *self.items.entry(item).or_insert(0) += quantity;
+        self.add_item_with_quantity(item, quantity);
+    }
+    
+    /// 添加物品（新版，使用物品實例）
+    fn add_item_with_quantity(&mut self, item_name: String, quantity: u32) {
+        // 同步更新舊格式（向後兼容）
+        *self.items.entry(item_name.clone()).or_insert(0) += quantity;
+        
+        // 創建物品實例
+        let instances = self.item_instances.entry(item_name.clone()).or_default();
+        for _ in 0..quantity {
+            instances.push(crate::item::ItemInstance::new(item_name.clone()));
+        }
     }
 
     // 放下物品（預設數量1）
@@ -597,6 +612,116 @@ impl Observable for Person {
         }
 
         list
+    }
+}
+
+impl Person {
+    /// 移除物品（新版，使用物品實例）
+    pub fn remove_item(&mut self, item_name: &str, quantity: u32) -> bool {
+        // 檢查是否有足夠數量
+        let current = self.items.get(item_name).copied().unwrap_or(0);
+        if current < quantity {
+            return false;
+        }
+        
+        // 更新舊格式
+        let new_count = current - quantity;
+        if new_count == 0 {
+            self.items.remove(item_name);
+        } else {
+            self.items.insert(item_name.to_string(), new_count);
+        }
+        
+        // 移除實例（從後面開始移除）
+        if let Some(instances) = self.item_instances.get_mut(item_name) {
+            for _ in 0..quantity {
+                instances.pop();
+            }
+            if instances.is_empty() {
+                self.item_instances.remove(item_name);
+            }
+        }
+        
+        true
+    }
+    
+    /// 使用物品
+    pub fn use_item(&mut self, item_name: &str) -> Result<String, String> {
+        // 解析物品名稱
+        let resolved_name = item_registry::resolve_item_name(item_name);
+        
+        // 檢查是否擁有該物品
+        if !self.items.contains_key(&resolved_name) || self.items[&resolved_name] == 0 {
+            return Err(format!("你沒有 {resolved_name}"));
+        }
+        
+        // 檢查是否可使用
+        if !item_registry::is_usable(&resolved_name) {
+            return Err(format!("{resolved_name} 無法使用"));
+        }
+        
+        // 獲取物品效果
+        let effects = item_registry::get_item_effects(&resolved_name)
+            .ok_or_else(|| format!("{resolved_name} 沒有效果"))?;
+        
+        // 應用效果
+        let mut result_messages = Vec::new();
+        for effect in effects {
+            match effect {
+                item_registry::ItemEffect::RestoreHp(amount) => {
+                    let old_hp = self.hp;
+                    self.hp = (self.hp + amount).min(self.max_hp);
+                    let actual_restored = self.hp - old_hp;
+                    result_messages.push(format!("恢復了 {actual_restored} HP"));
+                },
+                item_registry::ItemEffect::RestoreMp(amount) => {
+                    let old_mp = self.mp;
+                    self.mp = (self.mp + amount).min(self.max_mp);
+                    let actual_restored = self.mp - old_mp;
+                    result_messages.push(format!("恢復了 {actual_restored} MP"));
+                },
+                item_registry::ItemEffect::IncreaseMaxHp(amount) => {
+                    self.max_hp += amount;
+                    result_messages.push(format!("最大 HP 增加了 {amount}"));
+                },
+                item_registry::ItemEffect::IncreaseMaxMp(amount) => {
+                    self.max_mp += amount;
+                    result_messages.push(format!("最大 MP 增加了 {amount}"));
+                },
+                item_registry::ItemEffect::IncreaseStrength(amount) => {
+                    self.strength += amount;
+                    result_messages.push(format!("力量增加了 {amount}"));
+                },
+                item_registry::ItemEffect::IncreaseKnowledge(amount) => {
+                    self.knowledge += amount;
+                    result_messages.push(format!("知識增加了 {amount}"));
+                },
+                item_registry::ItemEffect::IncreaseSociality(amount) => {
+                    self.sociality += amount;
+                    result_messages.push(format!("交誼增加了 {amount}"));
+                },
+                item_registry::ItemEffect::ChangeSex(sex) => {
+                    self.gender = sex.to_string();
+                    result_messages.push(format!("性別變更為 {}", self.gender));
+                },
+                item_registry::ItemEffect::IncreaseAppearance(amount) => {
+                    self.appearance += amount;
+                    result_messages.push(format!("顏值變更為 {}", self.appearance));
+                },
+                item_registry::ItemEffect::DecreaseAppearance(amount) => {
+                    self.appearance -= amount;
+                    if self.appearance < 0 {
+                        self.appearance = 0;
+                    }
+                    result_messages.push(format!("顏值變更為 {}", self.appearance));
+                },
+            }
+        }
+        
+        // 消耗物品
+        self.remove_item(&resolved_name, 1);
+        
+        Ok(format!("使用了 {resolved_name}：{}", result_messages.join("、")))
     }
 }
 

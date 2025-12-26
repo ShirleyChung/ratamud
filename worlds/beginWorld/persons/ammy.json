@@ -3,15 +3,16 @@
   "description": "一個工人",
   "abilities": [],
   "items": {
-    "蘋果": 2,
+    "羽毛": 2,
     "金幣": 10015,
-    "羽毛": 2
+    "蘋果": 2
   },
+  "item_instances": {},
   "status": "正常",
   "x": 64,
-  "y": 58,
+  "y": 60,
   "map": "beginMap",
-  "hp": 99457,
+  "hp": 99423,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,

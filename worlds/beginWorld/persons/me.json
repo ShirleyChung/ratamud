@@ -7,24 +7,45 @@
     "探險"
   ],
   "items": {
+    "蘋果": 2,
+    "金幣": 999990,
+    "魔力藥水": 1,
+    "麵包": 1,
     "魔法書": 1,
-    "金幣": 999977,
-    "蘋果": 3,
-    "雷神劍": 1
+    "雷神劍": 1,
+    "石子": 2
+  },
+  "item_instances": {
+    "麵包": [
+      {
+        "id": 7,
+        "name": "麵包",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "魔力藥水": [
+      {
+        "id": 4,
+        "name": "魔力藥水",
+        "age": 0,
+        "stories": []
+      }
+    ]
   },
   "status": "",
-  "x": 50,
-  "y": 56,
+  "x": 64,
+  "y": 70,
   "map": "beginMap",
-  "hp": 99708,
-  "mp": 99863,
+  "hp": 99944,
+  "mp": 99655,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 78245,
-  "last_hunger_hour": 19,
+  "age": 109634,
+  "last_hunger_hour": 20,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,

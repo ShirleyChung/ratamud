@@ -1,6 +1,62 @@
 use std::collections::HashMap;
 use once_cell::sync::Lazy;
 
+// 物品效果類型
+#[derive(Clone, Debug)]
+#[allow(dead_code)]
+pub enum ItemEffect {
+    RestoreHp(i32),      // 恢復 HP
+    RestoreMp(i32),      // 恢復 MP
+    IncreaseMaxHp(i32),  // 增加最大 HP
+    IncreaseMaxMp(i32),  // 增加最大 MP
+    IncreaseStrength(i32), // 增加力量
+    IncreaseKnowledge(i32), // 增加知識
+    IncreaseSociality(i32), // 增加交誼
+    ChangeSex(String), // 改變性別
+    IncreaseAppearance(i32), // 改善外貌
+    DecreaseAppearance(i32), // 降低外貌
+}
+
+/// 物品效果註冊表
+static ITEM_EFFECTS: Lazy<HashMap<&'static str, Vec<ItemEffect>>> = Lazy::new(|| {
+    let mut m = HashMap::new();
+    
+    // 食物效果
+    m.insert("蘋果", vec![ItemEffect::RestoreHp(300)]);
+    m.insert("麵包", vec![ItemEffect::RestoreHp(500)]);
+    m.insert("乾肉", vec![ItemEffect::RestoreHp(800)]);
+    m.insert("漿果", vec![ItemEffect::RestoreHp(200)]);
+    
+    // 藥水效果
+    m.insert("治療藥水", vec![ItemEffect::RestoreHp(1000)]);
+    m.insert("魔力藥水", vec![ItemEffect::RestoreMp(1000)]);
+    m.insert("potion", vec![ItemEffect::RestoreHp(1000)]);
+    m.insert("mana", vec![ItemEffect::RestoreMp(1000)]);
+
+    // 咒泉鄉效果
+    m.insert("娘溺泉", vec![ItemEffect::ChangeSex("女".to_string())]);
+    m.insert("男溺泉", vec![ItemEffect::ChangeSex("男".to_string())]);
+    m.insert("雞溺泉", vec![ItemEffect::ChangeSex("雞".to_string())]);
+    m.insert("牛溺泉", vec![ItemEffect::ChangeSex("牛".to_string())]);
+    m.insert("豬溺泉", vec![ItemEffect::ChangeSex("豬".to_string())]);
+    
+    // 魔法書效果
+    m.insert("美容果", vec![ItemEffect::IncreaseAppearance(5)]);
+    m.insert("變醜果", vec![ItemEffect::DecreaseAppearance(5)]);
+
+    m
+});
+
+/// 獲取物品的效果
+pub fn get_item_effects(item_name: &str) -> Option<&Vec<ItemEffect>> {
+    ITEM_EFFECTS.get(item_name)
+}
+
+/// 檢查物品是否可使用
+pub fn is_usable(item_name: &str) -> bool {
+    ITEM_EFFECTS.contains_key(item_name)
+}
+
 /// 物品名稱映射表（英文 -> 中文）
 static ITEM_NAME_MAP: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     let mut m = HashMap::new();

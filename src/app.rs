@@ -365,6 +365,7 @@ fn handle_command_result(
         CommandResult::Get(item_name, quantity) => handle_get(item_name, quantity, output_manager, game_world, me),
         CommandResult::Drop(item_name, quantity) => handle_drop(item_name, quantity, output_manager, game_world, me),
         CommandResult::Eat(food_name) => handle_eat(food_name, output_manager, me),
+        CommandResult::UseItem(item_name) => handle_use_item(item_name, output_manager, me),
         CommandResult::Sleep => handle_sleep(output_manager, me),
         CommandResult::Dream(_) => {
             output_manager.print("你需要先睡覺才能做夢！使用 sleep 指令進入睡眠。".to_string());
@@ -1023,6 +1024,24 @@ fn handle_eat(
     }
 }
 
+/// 處理使用物品命令
+fn handle_use_item(
+    item_name: String,
+    output_manager: &mut OutputManager,
+    me: &mut Person,
+) {
+    match me.use_item(&item_name) {
+        Ok(message) => {
+            output_manager.print(message);
+            output_manager.print(format!("目前 HP: {} / {}, MP: {} / {}", 
+                me.hp, me.max_hp, me.mp, me.max_mp));
+        },
+        Err(error) => {
+            output_manager.set_status(error);
+        }
+    }
+}
+
 /// 處理睡眠命令
 fn handle_sleep(
     output_manager: &mut OutputManager,
@@ -1582,7 +1601,7 @@ fn handle_set(
         let price = value.max(0) as u32;
         
         crate::trade::TradeSystem::set_item_price(&item_name, price);
-        output_manager.print(format!("物品「{}」的價格設置為 {} 金幣", item_name, price));
+        output_manager.print(format!("物品「{item_name}」的價格設置為 {price} 金幣"));
         return Ok(());
     }
     
@@ -1733,12 +1752,14 @@ fn handle_trade(
     let (npc_found, npc_id, npc_display_name, goods_data) = {
         let npcs_here = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, current_player.x, current_player.y);
         
-        // 使用別名系統查找 NPC
-        let npc_opt = if let Some(npc) = game_world.npc_manager.get_npc(&npc_name) {
-            // 檢查找到的 NPC 是否在當前位置
-            npcs_here.iter().find(|n| n.name == npc.name)
+        // 在當前位置的 NPC 中查找（支援名稱和別名）
+        // 先嘗試通過 get_npc 查找（支援別名），然後檢查是否在當前位置
+        let npc_opt = if let Some(global_npc) = game_world.npc_manager.get_npc(&npc_name) {
+            // 找到 NPC 後，檢查是否在當前位置
+            npcs_here.iter().find(|n| n.name == global_npc.name)
         } else {
-            None
+            // 如果通過別名找不到，直接在當前位置的 NPC 中搜尋名稱
+            npcs_here.iter().find(|n| n.name.to_lowercase() == npc_name.to_lowercase())
         };
         
         if let Some(npc) = npc_opt {

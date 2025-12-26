@@ -352,6 +352,28 @@ impl GameWorld {
         Ok(())
     }
     
+    // 保存物品流水號計數器
+    #[allow(dead_code)]
+    pub fn save_item_counter(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let counter_path = format!("{}/item_counter.json", self.world_dir);
+        let counter = crate::item::get_item_id_counter();
+        let json = serde_json::to_string(&counter)?;
+        fs::write(counter_path, json)?;
+        Ok(())
+    }
+    
+    // 載入物品流水號計數器
+    #[allow(dead_code)]
+    pub fn load_item_counter(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let counter_path = format!("{}/item_counter.json", self.world_dir);
+        if Path::new(&counter_path).exists() {
+            let json = fs::read_to_string(counter_path)?;
+            let counter: u64 = serde_json::from_str(&json)?;
+            crate::item::set_item_id_counter(counter);
+        }
+        Ok(())
+    }
+    
     /// 從 NPC AI 執行緒獲取日誌
     pub fn get_npc_ai_logs(&self) -> Vec<String> {
         if let Some(ref ai_thread) = self.npc_ai_thread {

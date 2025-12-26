@@ -3,9 +3,10 @@
   "description": "一個商人",
   "abilities": [],
   "items": {
-    "蘋果": 2,
-    "金幣": 10000
+    "金幣": 10000,
+    "蘋果": 2
   },
+  "item_instances": {},
   "status": "",
   "x": 51,
   "y": 50,
@@ -23,27 +24,6 @@
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
-    "感謝": [
-      {
-        "text": "不客氣！隨時歡迎你來店裡看看。",
-        "conditions": [],
-        "weight": 0.8
-      }
-    ],
-    "購買": [
-      {
-        "text": "當然可以！請告訴我你想買什麼。",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
-    "袐密": [
-      {
-        "text": "其實我有一個隱藏的商品清單，只有特別的客人才能看到哦！",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
     "出售": [
       {
         "text": "好的，讓我看看你有什麼想賣的。",
@@ -66,6 +46,20 @@
       },
       {
         "text": "如果你有什麼特別需求，隨時告訴我！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "感謝": [
+      {
+        "text": "不客氣！隨時歡迎你來店裡看看。",
+        "conditions": [],
+        "weight": 0.8
+      }
+    ],
+    "購買": [
+      {
+        "text": "當然可以！請告訴我你想買什麼。",
         "conditions": [],
         "weight": 1.0
       }
@@ -121,6 +115,13 @@
       },
       {
         "text": "哈囉！有什麼我可以幫忙的嗎？",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "袐密": [
+      {
+        "text": "其實我有一個隱藏的商品清單，只有特別的客人才能看到哦！",
         "conditions": [],
         "weight": 1.0
       }

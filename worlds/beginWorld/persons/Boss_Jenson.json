@@ -3,8 +3,10 @@
   "description": "一個商人",
   "abilities": [],
   "items": {
-    "金幣": 10014
+    "蘋果": 1,
+    "金幣": 10007
   },
+  "item_instances": {},
   "status": "",
   "x": 53,
   "y": 56,
@@ -22,6 +24,32 @@
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
+    "出售": [
+      {
+        "text": "好的，讓我看看你有什麼想賣的。",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "閒聊": [
+      {
+        "text": "最近的市場行情不錯，貨物銷售得很快！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "但是經營商店也有不少挑戰呢！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "購買": [
+      {
+        "text": "當然可以！請告訴我你想買什麼。",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
     "見面": [
       {
         "text": "哈囉，小姐，今天好嗎",
@@ -57,32 +85,6 @@
       },
       {
         "text": "嘿！又見面了，有什麼想買的嗎？",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
-    "購買": [
-      {
-        "text": "當然可以！請告訴我你想買什麼。",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
-    "閒聊": [
-      {
-        "text": "最近的市場行情不錯，貨物銷售得很快！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "但是經營商店也有不少挑戰呢！",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
-    "出售": [
-      {
-        "text": "好的，讓我看看你有什麼想賣的。",
         "conditions": [],
         "weight": 1.0
       }

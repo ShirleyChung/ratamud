@@ -175,6 +175,10 @@ impl GameEngine {
                 format!("吃掉 {food}")
             }
             
+            CommandResult::UseItem(item) => {
+                format!("使用 {item}")
+            }
+            
             CommandResult::Sleep => {
                 "開始睡覺...".to_string()
             }
