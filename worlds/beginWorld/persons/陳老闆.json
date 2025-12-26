@@ -2,7 +2,9 @@
   "name": "陳老闆",
   "description": "一個商人",
   "abilities": [],
-  "items": {},
+  "items": {
+    "金幣": 10000
+  },
   "status": "",
   "x": 47,
   "y": 68,
@@ -20,14 +22,9 @@
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
-    "閒聊": [
+    "出售": [
       {
-        "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "如果你有什麼特別需求，隨時告訴我！",
+        "text": "好的，讓我看看你有什麼想賣的。",
         "conditions": [],
         "weight": 1.0
       }
@@ -39,9 +36,14 @@
         "weight": 1.0
       }
     ],
-    "出售": [
+    "閒聊": [
       {
-        "text": "好的，讓我看看你有什麼想賣的。",
+        "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "如果你有什麼特別需求，隨時告訴我！",
         "conditions": [],
         "weight": 1.0
       }

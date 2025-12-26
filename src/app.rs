@@ -1185,10 +1185,9 @@ fn handle_flyto(
                 // 自動執行 look
                 display_look(None, output_manager, game_world, me);
                 return Ok(())
-            } else {
-                output_manager.set_status("座標超出地圖範圍".to_string());
-                return Ok(())
             }
+            output_manager.set_status("座標超出地圖範圍".to_string());
+            return Ok(())
         }
     }
     
@@ -1512,6 +1511,9 @@ fn handle_create(
             npc.y = me.y;
             npc.map = game_world.current_map_name.clone();  // 設置在當前地圖
             
+            // 確保 NPC 有預設的 10000 金幣
+            npc.items.insert("金幣".to_string(), 10_000);
+            
             // 使用 NPC 名稱作為 ID（如果重複會被覆蓋）
             let npc_id = npc_name.clone();
             
@@ -1567,6 +1569,23 @@ fn handle_set(
     game_world: &mut GameWorld,
     me: &mut Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // 檢查是否為設置物品價格：set item <item_name> price <value>
+    // 注意：由於命令解析的限制，這裡我們需要檢查 target 是否為 "item"
+    // 實際的命令格式應該是：set item <item_name> price <value>
+    // 但目前的解析器會將 "item" 作為 target，"<item_name>" 作為 attribute，"price" 作為 value（錯誤）
+    // 所以我們需要特殊處理：如果 target == "item"，則 attribute 是物品名稱，value 是價格
+    
+    if target.to_lowercase() == "item" {
+        // 設置物品價格：set item <item_name> <price>
+        // 注意：這裡 attribute 實際上是物品名稱，value 是價格
+        let item_name = attribute.clone();
+        let price = value.max(0) as u32;
+        
+        crate::trade::TradeSystem::set_item_price(&item_name, price);
+        output_manager.print(format!("物品「{}」的價格設置為 {} 金幣", item_name, price));
+        return Ok(());
+    }
+    
     // 判斷目標是 me 還是 NPC
     let is_me = target.to_lowercase() == "me" || target == "我";
     
@@ -1593,8 +1612,17 @@ fn handle_set(
                 me.sociality = value;
                 output_manager.print(format!("你的交誼設置為 {value}"));
             },
+            "gold" | "金幣" | "goldcoin" => {
+                let gold_value = value.max(0) as u32;
+                me.items.insert("金幣".to_string(), gold_value);
+                output_manager.print(format!("你的金幣設置為 {gold_value}"));
+                
+                // 保存玩家
+                let person_dir = format!("{}/persons", game_world.world_dir);
+                let _ = me.save(&person_dir, "me");
+            },
             _ => {
-                output_manager.set_status(format!("未知屬性: {attribute}，支持: hp, mp, strength, knowledge, sociality"));
+                output_manager.set_status(format!("未知屬性: {attribute}，支持: hp, mp, strength, knowledge, sociality, gold/金幣"));
             }
         }
     } else {
@@ -1621,8 +1649,13 @@ fn handle_set(
                     npc.sociality = value;
                     output_manager.print(format!("{target}的交誼設置為 {value}"));
                 },
+                "gold" | "金幣" | "goldcoin" => {
+                    let gold_value = value.max(0) as u32;
+                    npc.items.insert("金幣".to_string(), gold_value);
+                    output_manager.print(format!("{target}的金幣設置為 {gold_value}"));
+                },
                 _ => {
-                    output_manager.set_status(format!("未知屬性: {attribute}，支持: hp, mp, strength, knowledge, sociality"));
+                    output_manager.set_status(format!("未知屬性: {attribute}，支持: hp, mp, strength, knowledge, sociality, gold/金幣"));
                 }
             }
             
@@ -1690,12 +1723,15 @@ fn handle_trade(
     npc_name: String,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
-    me: &Person,
+    _me: &Person,  // 保留參數以保持 API 一致性，但使用 game_world.player
     interaction_menu: &mut Option<Menu>,  // 新增：互動選單
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // 使用當前控制的角色（game_world.player）而不是 me 參數
+    let current_player = &game_world.player;
+    
     // 先檢查 NPC 是否在同一位置，並收集必要資訊
     let (npc_found, npc_id, npc_display_name, goods_data) = {
-        let npcs_here = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, me.x, me.y);
+        let npcs_here = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, current_player.x, current_player.y);
         
         let npc_opt = npcs_here.iter().find(|n| {
             n.name.to_lowercase() == npc_name.to_lowercase() ||
@@ -1751,6 +1787,33 @@ fn handle_trade(
                     menu.activate();
                     *interaction_menu = Some(menu);
                 }
+            }
+        },
+        crate::world::InteractionState::Selling { .. } => {
+            // 顯示出售物品選單（顯示當前控制的角色持有的物品）
+            let player_items = crate::trade::TradeSystem::get_player_items(&game_world.player);
+            
+            if player_items.is_empty() {
+                output_manager.print("你目前沒有可以出售的物品".to_string());
+                game_world.interaction_state = crate::world::InteractionState::None;
+                // 取消 NPC 的互動狀態
+                if let Some(npc_mut) = game_world.npc_manager.get_npc_mut(&npc_id) {
+                    npc_mut.is_interacting = false;
+                }
+            } else {
+                let mut items = Vec::new();
+                for (item_name, quantity, price) in player_items {
+                    let display_name = item_registry::get_item_display_name(&item_name);
+                    items.push(format!("{display_name} x{quantity} - {price} 金幣/個"));
+                }
+                items.push("返回".to_string());
+                
+                let mut menu = Menu::new(
+                    format!("出售物品 - {npc_display_name}"),
+                    items,
+                );
+                menu.activate();
+                *interaction_menu = Some(menu);
             }
         },
         _ => {
@@ -1829,6 +1892,9 @@ fn handle_buy(
             crate::trade::TradeResult::Success(msg) => {
                 output_manager.print(msg);
                 
+                // 同步 me 和 game_world.player（因為 buy_from_npc 修改了 world.player）
+                *me = game_world.player.clone();
+                
                 // 保存玩家和 NPC
                 let person_dir = format!("{}/persons", game_world.world_dir);
                 let _ = me.save(&person_dir, "me");
@@ -1889,6 +1955,9 @@ fn handle_sell(
          match result {
             crate::trade::TradeResult::Success(msg) => {
                 output_manager.print(msg);
+                
+                // 同步 me 和 game_world.player（因為 sell_to_npc 修改了 world.player）
+                *me = game_world.player.clone();
                 
                 // 保存玩家和 NPC
                 let person_dir = format!("{}/persons", game_world.world_dir);

@@ -2,7 +2,9 @@
   "name": "Boss_Jenson",
   "description": "一個商人",
   "abilities": [],
-  "items": {},
+  "items": {
+    "金幣": 10000
+  },
   "status": "",
   "x": 53,
   "y": 56,
@@ -20,6 +22,13 @@
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
+    "購買": [
+      {
+        "text": "當然可以！請告訴我你想買什麼。",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
     "出售": [
       {
         "text": "好的，讓我看看你有什麼想賣的。",
@@ -62,13 +71,6 @@
       },
       {
         "text": "嘿！又見面了，有什麼想買的嗎？",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
-    "購買": [
-      {
-        "text": "當然可以！請告訴我你想買什麼。",
         "conditions": [],
         "weight": 1.0
       }

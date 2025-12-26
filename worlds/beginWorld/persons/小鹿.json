@@ -2,7 +2,9 @@
   "name": "小鹿",
   "description": "一個商人",
   "abilities": [],
-  "items": {},
+  "items": {
+    "金幣": 10000
+  },
   "status": "",
   "x": 45,
   "y": 54,

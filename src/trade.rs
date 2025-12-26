@@ -1,5 +1,13 @@
 use crate::person::Person;
 use crate::world::GameWorld;
+use std::collections::HashMap;
+use std::sync::Mutex;
+use once_cell::sync::Lazy;
+
+/// 物品價格系統（全局單例）
+static ITEM_PRICES: Lazy<Mutex<HashMap<String, u32>>> = Lazy::new(|| {
+    Mutex::new(HashMap::new())
+});
 
 /// 交易結果
 pub enum TradeResult {
@@ -133,19 +141,30 @@ impl TradeSystem {
         ))
     }
     
+    /// 設置物品價格
+    pub fn set_item_price(item_name: &str, price: u32) {
+        let mut prices = ITEM_PRICES.lock().unwrap();
+        prices.insert(item_name.to_string(), price);
+    }
+    
     /// 獲取物品的基礎價格（用於計算買賣價）
+    /// 優先從價格系統獲取，否則返回預設值 10
     pub fn get_item_base_price(item_name: &str) -> u32 {
-        match item_name {
-            "蘋果" | "apple" => 5,
-            "乾肉" | "jerky" => 10,
-            "麵包" | "bread" => 8,
-            "治療藥水" | "healing_potion" => 50,
-            "木劍" | "wooden_sword" => 30,
-            "石子" | "stone" => 1,
-            "魔法書" | "magic_book" | "book" => 100,
-            "金幣" | "gold" => 1,
-            _ => 10, // 預設價格
+        let prices = ITEM_PRICES.lock().unwrap();
+        
+        // 先檢查價格系統
+        if let Some(&price) = prices.get(item_name) {
+            return price;
         }
+        
+        // 檢查別名（英文名稱）
+        let item_lower = item_name.to_lowercase();
+        if let Some(&price) = prices.get(&item_lower) {
+            return price;
+        }
+        
+        // 預設價格為 10
+        10
     }
     
     /// 計算購買價格（NPC 賣給玩家）
@@ -176,5 +195,22 @@ impl TradeSystem {
         
         goods.sort_by(|a, b| a.0.cmp(&b.0));
         goods
+    }
+    
+    /// 獲取玩家持有的物品列表（用於出售）
+    pub fn get_player_items(player: &Person) -> Vec<(String, u32, u32)> {
+        // 返回 (物品名稱, 數量, 出售價格)
+        let mut items = Vec::new();
+        
+        for (item_name, quantity) in &player.items {
+            // 排除金幣，只顯示可以出售的物品
+            if item_name != "金幣" && *quantity > 0 {
+                let price = Self::calculate_sell_price(item_name, 1);
+                items.push((item_name.clone(), *quantity, price));
+            }
+        }
+        
+        items.sort_by(|a, b| a.0.cmp(&b.0));
+        items
     }
 }

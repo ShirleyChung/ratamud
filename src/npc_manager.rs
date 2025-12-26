@@ -23,7 +23,12 @@ impl NpcManager {
     }
 
     /// 添加 NPC
-    pub fn add_npc(&mut self, id: String, npc: Person, aliases: Vec<String>) {
+    pub fn add_npc(&mut self, id: String, mut npc: Person, aliases: Vec<String>) {
+        // 確保 NPC 有預設的 10000 金幣（如果沒有或為0）
+        if !npc.items.contains_key("金幣") || npc.items.get("金幣").copied().unwrap_or(0) == 0 {
+            npc.items.insert("金幣".to_string(), 10_000);
+        }
+        
         self.npcs.insert(id.clone(), npc);
         
         // 添加別名映射
@@ -189,7 +194,12 @@ impl NpcManager {
                         }
                         
                         // 嘗試載入 NPC
-                        if let Ok(npc) = Person::load(person_dir, file_stem) {
+                        if let Ok(mut npc) = Person::load(person_dir, file_stem) {
+                            // 確保 NPC 有預設的 10000 金幣
+                            if !npc.items.contains_key("金幣") || npc.items.get("金幣").copied().unwrap_or(0) == 0 {
+                                npc.items.insert("金幣".to_string(), 10_000);
+                            }
+                            
                             // 使用文件名作為 ID，名稱作為別名
                             self.add_npc(
                                 file_stem.to_string(), 

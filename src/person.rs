@@ -188,10 +188,10 @@ impl Person {
             x: 50,                    // 初始位置：地圖中央
             y: 50,
             map: "beginMap".to_string(),  // 預設在 beginMap
-            hp: 100000,
-            mp: 100000,
-            max_hp: 100000,
-            max_mp: 100000,
+            hp: 100_000,
+            mp: 100_000,
+            max_hp: 100_000,
+            max_mp: 100_000,
             strength: 100,
             knowledge: 100,
             sociality: 100,

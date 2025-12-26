@@ -51,7 +51,7 @@ impl InputHandler {
                                     } else if selected_item == "出售物品" {
                                         context.game_world.interaction_state = 
                                             crate::world::InteractionState::Selling { npc_name: npc_name.clone() };
-                                        return Some(CommandResult::Output("出售物品功能開發中...".to_string()));
+                                        return Some(CommandResult::Trade(npc_name));
                                     } else if selected_item == "離開" {
                                         // 清除互動狀態
                                         context.game_world.interaction_state = crate::world::InteractionState::None;
@@ -76,7 +76,21 @@ impl InputHandler {
                                     }
                                 },
                                 crate::world::InteractionState::Selling { npc_name } => {
-                                    // 清除互動狀態
+                                    // 解析選單項目（格式：物品名 x數量 - 價格 金幣/個）
+                                    if selected_item == "返回" {
+                                        // 返回交易主選單
+                                        context.game_world.interaction_state = 
+                                            crate::world::InteractionState::Trading { npc_name: npc_name.clone() };
+                                        return Some(CommandResult::Trade(npc_name));
+                                    } else if let Some((item_part, _)) = selected_item.split_once(" x") {
+                                        // 提取物品名稱（可能包含中文顯示名稱，需要解析）
+                                        let item_name = item_part.trim();
+                                        // 使用 item_registry 解析物品名稱
+                                        let resolved_item = crate::item_registry::resolve_item_name(item_name);
+                                        return Some(CommandResult::Sell(npc_name, resolved_item, 1));
+                                    }
+                                    
+                                    // 如果沒有匹配，清除互動狀態
                                     context.game_world.interaction_state = crate::world::InteractionState::None;
                                     // 取消 NPC 的互動狀態
                                     if let Some(npc) = context.game_world.npc_manager.get_npc_mut(&npc_name) {
@@ -169,7 +183,7 @@ impl InputHandler {
                     context.output_manager.toggle_status_panel();
                     None
                 },
-                KeyCode::Char('q') | KeyCode::Char('Q') => {
+                KeyCode::Char('q' | 'Q') => {
                     if context.output_manager.is_map_open() {
                         context.output_manager.close_map();
                         context.output_manager.set_status("大地圖已關閉".to_string());
@@ -343,9 +357,8 @@ impl InputHandler {
                 // 重複上一次的命令
                 if let Some(ref last_cmd) = self.last_command {
                     return self.handle_command(last_cmd.clone());
-                } else {
-                    CommandResult::Error("沒有可重複的命令".to_string())
                 }
+                CommandResult::Error("沒有可重複的命令".to_string())
             },
             "exit" | "quit" => CommandResult::Exit,
             "help" => CommandResult::Help,
@@ -570,15 +583,30 @@ impl InputHandler {
                 }
             },
             "set" => {
-                // set <目標人物> <屬性> <數值> 命令，設置角色屬性
-                // 支持: hp, mp, strength, knowledge, sociality
+                // set 命令的多種用法：
+                // 1. set item <物品名稱> <價格> - 設置物品價格
+                // 2. set <目標人物> <屬性> <數值> - 設置角色屬性
+                //    支持屬性: hp, mp, strength, knowledge, sociality, gold/金幣
                 if parts.len() < 4 {
-                    CommandResult::Error("Usage: set <目標人物> <屬性> <數值>".to_string())
+                    CommandResult::Error("Usage: set <目標人物> <屬性> <數值> 或 set item <物品名稱> <價格>".to_string())
                 } else {
-                    let target = parts[1].to_string();
-                    let attribute = parts[2].to_string();
-                    let value = parts[3].parse::<i32>().unwrap_or(0);
-                    CommandResult::Set(target, attribute, value)
+                    // 檢查是否為設置物品價格
+                    if parts[1].to_lowercase() == "item" {
+                        if parts.len() < 4 {
+                            CommandResult::Error("Usage: set item <物品名稱> <價格>".to_string())
+                        } else {
+                            let item_name = parts[2].to_string();
+                            let price = parts[3].parse::<i32>().unwrap_or(0);
+                            // 使用特殊格式：target="item", attribute=物品名稱, value=價格
+                            CommandResult::Set("item".to_string(), item_name, price)
+                        }
+                    } else {
+                        // 設置角色屬性
+                        let target = parts[1].to_string();
+                        let attribute = parts[2].to_string();
+                        let value = parts[3].parse::<i32>().unwrap_or(0);
+                        CommandResult::Set(target, attribute, value)
+                    }
                 }
             },
             "ctrl" | "control" => {
@@ -907,7 +935,7 @@ impl CommandResult {
             CommandResult::ShowMap => Some(("show map / sm", "顯示大地圖 (↑↓←→移動, q退出", "🗺️  介面控制")),
             CommandResult::Destroy(..) => Some(("destroy / ds <目標>", "刪除NPC或物品", "🛠️  其他")),
             CommandResult::Create(..) => Some(("create / cr <類型> <物件類型> [名稱]", "創建物件 (item/npc)", "🛠️  其他")),
-            CommandResult::Set(..) => Some(("set <人物> <屬性> <數值>", "設置角色屬性 (hp/mp/strength/knowledge/sociality)", "🛠️  其他")),
+            CommandResult::Set(..) => Some(("set <人物> <屬性> <數值> 或 set item <物品> <價格>", "設置角色屬性 (hp/mp/strength/knowledge/sociality/gold) 或物品價格", "🛠️  其他")),
             CommandResult::SwitchControl(..) => Some(("ctrl / control <npc>", "切換操控的角色", "👥 NPC互動")),
             CommandResult::Trade(..) => Some(("trade <npc>", "查看NPC商品", "💰 交易")),
             CommandResult::Buy(..) => Some(("buy <npc> <item> [數量]", "購買物品", "💰 交易")),
