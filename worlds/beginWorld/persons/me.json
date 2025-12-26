@@ -8,22 +8,23 @@
   ],
   "items": {
     "魔法書": 1,
-    "治療藥水": 1,
-    "金幣": 7
+    "金幣": 999977,
+    "蘋果": 3,
+    "雷神劍": 1
   },
   "status": "",
   "x": 50,
-  "y": 50,
+  "y": 56,
   "map": "beginMap",
-  "hp": 99900,
-  "mp": 99998,
+  "hp": 99708,
+  "mp": 99863,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 156,
-  "last_hunger_hour": 18,
+  "age": 78245,
+  "last_hunger_hour": 19,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
@@ -33,6 +34,6 @@
   "dialogue_state": "初見",
   "met_player": false,
   "interaction_count": 0,
-  "gender": "未知",
-  "appearance": 50
+  "gender": "女",
+  "appearance": 100
 }

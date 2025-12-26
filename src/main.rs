@@ -119,7 +119,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     std::fs::create_dir_all(&person_dir)?;
     
     if let Ok(loaded_me) = Person::load(&person_dir, "me") {
-        me = loaded_me;
+        me = loaded_me.clone();
+        game_world.player = loaded_me; // 同步到 game_world.player
         output_manager.log("已載入角色: Me".to_string());
     } else {
         // 如果沒有存檔，保存初始化的 Me

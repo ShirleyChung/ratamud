@@ -1733,10 +1733,13 @@ fn handle_trade(
     let (npc_found, npc_id, npc_display_name, goods_data) = {
         let npcs_here = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, current_player.x, current_player.y);
         
-        let npc_opt = npcs_here.iter().find(|n| {
-            n.name.to_lowercase() == npc_name.to_lowercase() ||
-            npc_name.to_lowercase() == "merchant" && n.description.contains("商")
-        });
+        // 使用別名系統查找 NPC
+        let npc_opt = if let Some(npc) = game_world.npc_manager.get_npc(&npc_name) {
+            // 檢查找到的 NPC 是否在當前位置
+            npcs_here.iter().find(|n| n.name == npc.name)
+        } else {
+            None
+        };
         
         if let Some(npc) = npc_opt {
             let id = npc.name.clone();
@@ -1857,11 +1860,12 @@ fn handle_buy(
     // 檢查 NPC 是否在同一位置
     let npcs_here: Vec<&crate::person::Person> = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, me.x, me.y);
     
-    // 尋找匹配的 NPC
-    let npc_found = npcs_here.iter().any(|n| {
-        n.name.to_lowercase() == npc_name.to_lowercase() ||
-        (npc_name.to_lowercase() == "merchant" && n.description.contains("商"))
-    });
+    // 使用別名系統查找 NPC
+    let npc_found = if let Some(npc) = game_world.npc_manager.get_npc(&npc_name) {
+        npcs_here.iter().any(|n| n.name == npc.name)
+    } else {
+        false
+    };
     
     if !npc_found {
         output_manager.set_status(format!("此處找不到 {npc_name}"));
@@ -1876,13 +1880,17 @@ fn handle_buy(
     
     // 獲取 NPC 名稱的克隆，以便在調用 buy_from_npc 時釋放 game_world 的可變借用
     let npc_name_clone_for_trade = {
-        let npcs_at_pos = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, me.x, me.y);
-        npcs_at_pos.iter()
-            .find(|n| 
-                n.name.to_lowercase() == npc_name.to_lowercase() ||
-                (npc_name.to_lowercase() == "merchant" && n.description.contains("商"))
-            )
-            .map(|n| n.name.clone()) // 獲取 NPC 的名稱（ID）
+        if let Some(npc) = game_world.npc_manager.get_npc(&npc_name) {
+            let npc_id = npc.name.clone();
+            // 確認這個 NPC 在當前位置
+            if npcs_here.iter().any(|n| n.name == npc_id) {
+                Some(npc_id)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     };
 
     if let Some(npc_id) = npc_name_clone_for_trade {
@@ -1923,10 +1931,12 @@ fn handle_sell(
     // 檢查 NPC 是否在同一位置
     let npcs_here: Vec<&crate::person::Person> = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, me.x, me.y);
     
-    let npc_found = npcs_here.iter().any(|n| {
-        n.name.to_lowercase() == npc_name.to_lowercase() ||
-        (npc_name.to_lowercase() == "merchant" && n.description.contains("商"))
-    });
+    // 使用別名系統查找 NPC
+    let npc_found = if let Some(npc) = game_world.npc_manager.get_npc(&npc_name) {
+        npcs_here.iter().any(|n| n.name == npc.name)
+    } else {
+        false
+    };
     
     if !npc_found {
         output_manager.set_status(format!("此處找不到 {npc_name}"));
@@ -1941,13 +1951,17 @@ fn handle_sell(
     
     // 獲取 NPC 名稱的克隆，以便在調用 sell_to_npc 時釋放 game_world 的可變借用
     let npc_name_clone_for_trade = {
-        let npcs_at_pos = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, me.x, me.y);
-        npcs_at_pos.iter()
-            .find(|n| 
-                n.name.to_lowercase() == npc_name.to_lowercase() ||
-                (npc_name.to_lowercase() == "merchant" && n.description.contains("商"))
-            )
-            .map(|n| n.name.clone()) // 獲取 NPC 的名稱（ID）
+        if let Some(npc) = game_world.npc_manager.get_npc(&npc_name) {
+            let npc_id = npc.name.clone();
+            // 確認這個 NPC 在當前位置
+            if npcs_here.iter().any(|n| n.name == npc_id) {
+                Some(npc_id)
+            } else {
+                None
+            }
+        } else {
+            None
+        }
     };
 
     if let Some(npc_id) = npc_name_clone_for_trade {
