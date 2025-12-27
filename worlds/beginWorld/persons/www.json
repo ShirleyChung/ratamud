@@ -3,22 +3,23 @@
   "description": "一個工人",
   "abilities": [],
   "items": {
+    "舊布料": 1,
+    "弓": 1,
+    "蘋果": 1,
+    "木劍": 2,
+    "繩索": 2,
     "石子": 7,
     "金幣": 9980,
-    "舊布料": 1,
-    "木劍": 2,
-    "蘋果": 1,
-    "繩索": 2,
-    "鐵劍": 5,
+    "男溺泉": 1,
     "鑰匙": 1,
-    "弓": 1
+    "鐵劍": 5
   },
   "item_instances": {},
   "status": "正常",
-  "x": 49,
-  "y": 67,
+  "x": 43,
+  "y": 54,
   "map": "beginMap",
-  "hp": 98528,
+  "hp": 98389,
   "mp": 99998,
   "max_hp": 100000,
   "max_mp": 100000,
@@ -31,6 +32,13 @@
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
+    "閒聊": [
+      {
+        "text": "工作雖然辛苦，但我很享受web browsing的快感！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
     "見面": [
       {
         "text": "哈囉，小姐，今天好嗎",
@@ -73,13 +81,6 @@
             "value": "女"
           }
         ],
-        "weight": 1.0
-      }
-    ],
-    "閒聊": [
-      {
-        "text": "工作雖然辛苦，但我很享受web browsing的快感！",
-        "conditions": [],
         "weight": 1.0
       }
     ]

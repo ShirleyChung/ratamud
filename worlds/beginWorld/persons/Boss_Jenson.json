@@ -24,13 +24,6 @@
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
-    "出售": [
-      {
-        "text": "好的，讓我看看你有什麼想賣的。",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
     "閒聊": [
       {
         "text": "最近的市場行情不錯，貨物銷售得很快！",
@@ -85,6 +78,13 @@
       },
       {
         "text": "嘿！又見面了，有什麼想買的嗎？",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "出售": [
+      {
+        "text": "好的，讓我看看你有什麼想賣的。",
         "conditions": [],
         "weight": 1.0
       }

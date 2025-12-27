@@ -21,6 +21,3 @@ pub mod settings;
 pub mod ui;
 pub mod app;
 pub mod ffi;
-pub mod callback;
-pub mod command_processor;  // 新增：純文本命令處理器
-pub mod game_engine;        // 新增：無頭遊戲引擎

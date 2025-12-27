@@ -482,7 +482,11 @@ impl InputHandler {
                 // use 命令，使用物品
                 // use <物品名稱>
                 if parts.len() < 2 {
-                    CommandResult::Error("用法: use <物品名稱>".to_string())
+                    CommandResult::Error("用法: use <物品名稱> [on <目標>]".to_string())
+                } else if parts.len() >= 4 && parts[2] == "on" {
+                    let item_name = parts[1].to_string();
+                    let target_name = parts[3].to_string();
+                    CommandResult::UseItemOn(item_name, target_name)
                 } else {
                     let item_name = parts[1].to_string();
                     CommandResult::UseItem(item_name)
@@ -879,6 +883,7 @@ pub enum CommandResult {
     Drop(String, u32),               // 放下物品 (物品名稱, 數量)
     Eat(String),                     // 吃食物回復 HP (食物名稱)
     UseItem(String),                 // 使用物品 (物品名稱)
+    UseItemOn(String, String),       // 對npc使用物品 (物品名稱)
     Sleep,
     Dream(Option<String>),           // 做夢 (可選：夢境內容)
     WakeUp,
@@ -934,6 +939,7 @@ impl CommandResult {
             CommandResult::Drop(..) => Some(("drop <物品> <數量>", "放下物品", "🎒 物品管理")),
             CommandResult::Eat(..) => Some(("eat <食物>", "吃食物回復HP", "🎒 物品管理")),
             CommandResult::UseItem(..) => Some(("use <物品>", "使用物品（藥水/食物等）", "🎒 物品管理")),
+            CommandResult::UseItemOn(..) => Some(("use <物品> on <npc>", "對NPC使用物品（藥水/食物等）", "🎒 物品管理")),
             CommandResult::Sleep => Some(("sleep", "進入睡眠狀態", "💤 睡眠")),
             CommandResult::Dream(..) => Some(("dream [<內容>]", "做夢（睡眠時）", "💤 睡眠")),
             CommandResult::WakeUp => Some(("wakeup / wake", "從睡眠中醒來", "💤 睡眠")),

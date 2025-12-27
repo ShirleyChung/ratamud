@@ -21,15 +21,14 @@ mod event;
 mod event_scheduler;
 mod event_executor;
 mod event_loader;
-mod callback;  // 新增 callback 模組
-mod command_processor;  // 新增：命令處理器
-mod game_engine;        // 新增：遊戲引擎
 
-use std::io;
+use std::{io, sync::mpsc, thread};
 use crossterm::{
+    self,
     execute,
     terminal::{enable_raw_mode, disable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
+use crossterm::event as evt;
 use ratatui::{
     backend::CrosstermBackend,
     Terminal,
@@ -43,20 +42,9 @@ use ui::Menu;
 
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // 初始化終端原始模式和備用螢幕
-    enable_raw_mode()?;
-    let mut stdout = io::stdout();
-    execute!(stdout, EnterAlternateScreen)?;
-    let backend = CrosstermBackend::new(stdout);
-    let terminal = Terminal::new(backend)?;
-
     // 初始化 InputHandler, OutputManager, GameWorld, Person
-    let input_handler = InputHandler::new();
     let mut output_manager = OutputManager::new();
-    
-    // 初始化 Menu 狀態
-    let menu: Option<Menu> = None;
-    
+        
     // 載入遊戲設定
     use settings::GameSettings;
     let game_settings = GameSettings::load();
@@ -146,14 +134,47 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         app::update_minimap_display(&mut output_manager, &game_world, &me);
     }
 
-    // 運行主迴圈
-    app::run_main_loop(terminal, input_handler, output_manager, game_world, me, menu)?;
+    // 建立crossterm輸入事件執行緒
+    let rx = create_key_event_thread();
 
+    // 初始化 InputHandler
+    let input_handler = InputHandler::new();
+    
+    // 初始化終端原始模式和備用螢幕
+    enable_raw_mode()?;
+    let mut stdout = io::stdout();
+    execute!(stdout, EnterAlternateScreen)?;
+    // 初始化 Terminal UI
+    let backend = CrosstermBackend::new(stdout);
+    let terminal = Terminal::new(backend)?;
+    // 初始化 Menu 狀態
+    let menu: Option<Menu> = None;
+    // 運行主迴圈 ==>
+    app::run_main_loop(terminal, input_handler, output_manager, game_world, me, menu, rx)?;
+    // <== 運行主迴圈結束(exit/quit)
     // 清理終端設定並返回到常規模式
     disable_raw_mode()?;
     execute!(io::stdout(), LeaveAlternateScreen)?;
 
     Ok(())
+}
+
+// 建立crossterm輸入事件執行緒
+fn create_key_event_thread() -> mpsc::Receiver<crossterm::event::KeyEvent> {
+    let (tx, rx) = mpsc::channel::<crossterm::event::KeyEvent>();
+    thread::spawn(move || {
+        loop {
+            // `read()` is a blocking call, waiting for an event
+            if let Ok(crossterm::event::Event::Key(key_event)) = evt::read() {
+                // Send the key event to the main thread.
+                // If the receiver is dropped, the thread will exit gracefully.
+                if tx.send(key_event).is_err() {
+                    break;
+                }
+            }
+        }
+    });
+    rx
 }
 
 /// 顯示世界歡迎訊息

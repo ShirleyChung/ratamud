@@ -75,7 +75,8 @@ impl OutputManager {
         self.scroll = usize::MAX;
         
         // 🔔 觸發輸出回調，通知外部平台
-        crate::callback::trigger_output_callback(&message);
+        // crate::ffi::trigger_output_callback(&message);
+        // If you want to call an output callback, define it in a module named ffi, or remove this line if not needed.
         
         // 如果啟用打字機效果，啟動對最新訊息的打字效果
         if self.typewriter_enabled && !message.is_empty() {

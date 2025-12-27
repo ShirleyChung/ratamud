@@ -5,7 +5,6 @@ use ratatui::widgets::Clear;
 use ratatui::text::{Line, Span};
 use ratatui::style::{Color, Style};
 use std::io;
-use crossterm::event::{self};
 use std::time::{Duration, Instant};
 use std::sync::{Arc, Mutex};
 use std::sync::mpsc; // Add mpsc for channel communication
@@ -86,25 +85,9 @@ pub fn run_main_loop(
     mut game_world: GameWorld,
     mut me: Person,
     mut menu: Option<Menu>, // ESC 選單
+    rx: mpsc::Receiver<crossterm::event::KeyEvent>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut interaction_menu: Option<Menu> = None;  // 互動選單（交易、對話等）
-    
-    // --- Input Thread Setup ---
-    let (tx, rx) = mpsc::channel::<crossterm::event::KeyEvent>();
-    thread::spawn(move || {
-        loop {
-            // `read()` is a blocking call, waiting for an event
-            if let Ok(crossterm::event::Event::Key(key_event)) = event::read() {
-                // Send the key event to the main thread.
-                // If the receiver is dropped, the thread will exit gracefully.
-                if tx.send(key_event).is_err() {
-                    break;
-                }
-            }
-        }
-    });
-    // --- End Input Thread Setup ---
-    
     let mut should_exit = false;
     let mut last_event_check = Instant::now();
     let event_check_interval = Duration::from_millis(100);  // 每0.1秒檢查事件
@@ -366,6 +349,7 @@ fn handle_command_result(
         CommandResult::Drop(item_name, quantity) => handle_drop(item_name, quantity, output_manager, game_world, me),
         CommandResult::Eat(food_name) => handle_eat(food_name, output_manager, me),
         CommandResult::UseItem(item_name) => handle_use_item(item_name, output_manager, me),
+        CommandResult::UseItemOn(item_name, target_name) => handle_use_item_on(item_name, target_name, output_manager, game_world, me),
         CommandResult::Sleep => handle_sleep(output_manager, me),
         CommandResult::Dream(_) => {
             output_manager.print("你需要先睡覺才能做夢！使用 sleep 指令進入睡眠。".to_string());
@@ -1028,16 +1012,37 @@ fn handle_eat(
 fn handle_use_item(
     item_name: String,
     output_manager: &mut OutputManager,
-    me: &mut Person,
+    target: &mut Person,
 ) {
-    match me.use_item(&item_name) {
+    match target.use_item(&item_name) {
         Ok(message) => {
             output_manager.print(message);
-            output_manager.print(format!("目前 HP: {} / {}, MP: {} / {}", 
-                me.hp, me.max_hp, me.mp, me.max_mp));
         },
         Err(error) => {
             output_manager.set_status(error);
+        }
+    }
+}
+
+fn handle_use_item_on(
+    item_name: String,
+    target_name: String,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &mut Person,
+) {
+    // 檢查 NPC 是否在同一位置
+    let npcs_here: Vec<&crate::person::Person> = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, me.x, me.y);
+    
+    let npc_found= npcs_here.iter().any(|n| {
+        n.name.to_lowercase() == target_name.to_lowercase()
+    });
+    if !npc_found {
+        output_manager.print(format!("這裡沒有名為 {target_name} 的目標。"));
+    } else {
+        let mut target = npcs_here.into_iter().find(|n| n.name.to_lowercase() == target_name.to_lowercase()).unwrap().clone();
+        if let Ok(()) = handle_give(target_name.clone(), item_name.clone(), 1, output_manager, game_world, me) {
+            handle_use_item(item_name, output_manager, &mut target);
         }
     }
 }
@@ -1634,16 +1639,18 @@ fn handle_set(
             "gold" | "金幣" | "goldcoin" => {
                 let gold_value = value.max(0) as u32;
                 me.items.insert("金幣".to_string(), gold_value);
-                output_manager.print(format!("你的金幣設置為 {gold_value}"));
-                
+                output_manager.print(format!("你的金幣設置為 {gold_value}"));                
+            },
+             "sex" | "性別" => {
+                me.gender = value.to_string();           
                 // 保存玩家
-                let person_dir = format!("{}/persons", game_world.world_dir);
-                let _ = me.save(&person_dir, "me");
             },
             _ => {
                 output_manager.set_status(format!("未知屬性: {attribute}，支持: hp, mp, strength, knowledge, sociality, gold/金幣"));
             }
         }
+        let person_dir = format!("{}/persons", game_world.world_dir);
+        let _ = me.save(&person_dir, "me");
     } else {
         // 設置 NPC 屬性
         if let Some(npc) = game_world.npc_manager.get_npc_mut(&target) {
@@ -2058,8 +2065,7 @@ fn handle_give(
         let npcs_at_pos = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, me.x, me.y);
         npcs_at_pos.iter()
             .find(|n| 
-                n.name.to_lowercase() == npc_name.to_lowercase() ||
-                (npc_name.to_lowercase() == "merchant" && n.description.contains("商"))
+                n.name.to_lowercase() == npc_name.to_lowercase()
             )
             .map(|n| n.name.clone())
     };
