@@ -84,9 +84,10 @@ pub fn run_main_loop(
     mut output_manager: OutputManager,
     mut game_world: GameWorld,
     mut me: Person,
-    mut menu: Option<Menu>, // ESC 選單
     rx: mpsc::Receiver<crossterm::event::KeyEvent>,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // 初始化 Menu 狀態
+    let mut menu: Option<Menu> = None;
     let mut interaction_menu: Option<Menu> = None;  // 互動選單（交易、對話等）
     let mut should_exit = false;
     let mut last_event_check = Instant::now();

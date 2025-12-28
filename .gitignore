@@ -4,3 +4,4 @@
 dist/ios/
 target/universal-sim/
 .DS_Store
+.sconsign.dblite
