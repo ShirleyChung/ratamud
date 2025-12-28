@@ -38,8 +38,6 @@ use input::InputHandler;
 use output::OutputManager;
 use person::Person;
 use world::GameWorld;
-use ui::Menu;
-
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 初始化 InputHandler, OutputManager, GameWorld, Person
@@ -147,10 +145,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 初始化 Terminal UI
     let backend = CrosstermBackend::new(stdout);
     let terminal = Terminal::new(backend)?;
-    // 初始化 Menu 狀態
-    let menu: Option<Menu> = None;
     // 運行主迴圈 ==>
-    app::run_main_loop(terminal, input_handler, output_manager, game_world, me, menu, rx)?;
+    app::run_main_loop(terminal, input_handler, output_manager, game_world, me, rx)?;
     // <== 運行主迴圈結束(exit/quit)
     // 清理終端設定並返回到常規模式
     disable_raw_mode()?;
