@@ -55,6 +55,7 @@ impl CronParser {
 }
 
 /// 事件調度器
+#[derive(Debug, Clone)]
 pub struct EventScheduler {
     pub last_check_time: (u32, u8, u8),  // (day, hour, minute)
 }

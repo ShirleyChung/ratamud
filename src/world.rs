@@ -115,6 +115,7 @@ impl WorldMetadata {
 }
 
 // 遊戲世界 - 管理多個地圖和時間
+#[derive(Clone)]
 pub struct GameWorld {
     pub maps: HashMap<String, Map>,
     pub current_map_name: String,
@@ -380,19 +381,6 @@ impl GameWorld {
             ai_thread.get_logs()
         } else {
             Vec::new()
-        }
-    }
-}
-
-impl Drop for GameWorld {
-    fn drop(&mut self) {
-        // 停止時間執行緒
-        if let Some(ref mut thread) = self.time_thread {
-            thread.stop();
-        }
-        // 停止 NPC AI 執行緒
-        if let Some(ref mut thread) = self.npc_ai_thread {
-            thread.stop();
         }
     }
 }

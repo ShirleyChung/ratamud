@@ -266,6 +266,7 @@ impl EventRuntimeState {
 }
 
 /// 事件管理器
+#[derive(Debug, Clone)]
 pub struct EventManager {
     events: HashMap<String, GameEvent>,
     runtime_states: HashMap<String, EventRuntimeState>,
