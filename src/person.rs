@@ -209,7 +209,7 @@ impl Person {
             dialogue_state: "初見".to_string(),
             met_player: false,
             interaction_count: 0,
-            gender: "未知".to_string(),
+            gender: "".to_string(),
             appearance: 50,
         }
     }

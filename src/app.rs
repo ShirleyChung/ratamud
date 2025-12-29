@@ -1020,7 +1020,7 @@ fn handle_use_item(
             output_manager.print(message);
         },
         Err(error) => {
-            output_manager.set_status(error);
+            output_manager.print(error);
         }
     }
 }
@@ -1044,6 +1044,8 @@ fn handle_use_item_on(
         let mut target = npcs_here.into_iter().find(|n| n.name.to_lowercase() == target_name.to_lowercase()).unwrap().clone();
         if let Ok(()) = handle_give(target_name.clone(), item_name.clone(), 1, output_manager, game_world, me) {
             handle_use_item(item_name, output_manager, &mut target);
+        } else {
+            output_manager.print(format!("在 {target_name} 使用 {item_name} 失敗。"));
         }
     }
 }

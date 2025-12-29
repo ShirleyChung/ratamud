@@ -70,7 +70,9 @@ impl OutputManager {
 
     // 添加訊息並將滾動位置移到最後（僅儲存純文本）
     pub fn print(&mut self, message: String) {
-        self.messages.push(message.clone());
+        message.split('\n').for_each(|line| {
+            self.messages.push(line.to_string());
+        });
         // 將 scroll 設為一個很大的值，render_output 會自動限制它
         self.scroll = usize::MAX;
         
@@ -354,9 +356,11 @@ impl OutputManager {
     // 添加系統日誌訊息
     pub fn log(&mut self, message: String) {
         use chrono::Local;
-        let timestamp = Local::now().format("%H:%M:%S").to_string();
-        let log_entry = format!("[{timestamp}] {message}");
-        self.log_messages.push(log_entry);
+        message.split('\n').for_each(|line| {
+            let timestamp = Local::now().format("%H:%M:%S").to_string();
+            let log_entry = format!("[{timestamp}] {line}");
+            self.log_messages.push(log_entry);
+        });
         self.log_scroll = self.log_messages.len().saturating_sub(1);
     }
     
