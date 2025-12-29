@@ -18,7 +18,6 @@ pub enum NpcBehavior {
 /// NPC AI 控制器
 pub struct NpcAiController;
 
-#[allow(dead_code)]
 impl NpcAiController {
     /// 執行所有 NPC 的 AI 行為（新版本：接受獨立的組件）
     pub fn update_all_npcs_with_components(

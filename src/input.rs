@@ -443,7 +443,7 @@ impl InputHandler {
                 // get <物品名稱> - 撿起指定物品（數量1）
                 // get <物品名稱> <數量> - 撿起指定數量
                 if parts.len() < 2 {
-                    CommandResult::Error("Usage: get <item name> [quantity]".to_string())
+                    CommandResult::Get(None, 1)
                 } else if parts.len() == 2 {
                     let item_name = parts[1].to_string();
                     CommandResult::Get(Some(item_name), 1)
