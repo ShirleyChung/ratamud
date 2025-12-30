@@ -6,22 +6,20 @@ use ratatui::text::{Line, Span};
 use ratatui::style::{Color, Style};
 use std::io;
 use std::time::{Duration, Instant};
-use std::sync::{Arc, Mutex};
-use std::sync::mpsc; // Add mpsc for channel communication
-use std::thread;    // Add thread for spawning the input thread
+use std::sync::mpsc;
+use std::thread;
 
 use crate::input::InputHandler;
-use crate::npc_ai_thread::NpcAiThread;
-use crate::npc_manager::NpcManager;
 use crate::output::OutputManager;
 use crate::world::GameWorld;
 use crate::settings::GameSettings;
 use crate::person::Person;
 use crate::observable::WorldInfo;
 use crate::input::CommandResult;
-use crate::quest::{QuestReward}; // Import Quest
+use crate::quest::{QuestReward};
 use crate::item_registry;
 use crate::ui::{InputDisplay, HeaderDisplay, Menu};
+
 
 /// A context struct to hold all the application state references.
 /// This helps to avoid passing too many arguments to functions.
@@ -31,15 +29,9 @@ pub struct AppContext<'a> {
     pub should_exit: &'a mut bool,
     pub output_manager: &'a mut OutputManager,
     pub game_world: &'a mut GameWorld,
-    #[allow(dead_code)]
     pub me: &'a mut Person,
-    #[allow(dead_code)]
-    pub npc_manager: &'a Arc<Mutex<NpcManager>>,
-    #[allow(dead_code)]
-    pub maps: &'a Arc<Mutex<std::collections::HashMap<String, crate::map::Map>>>,
-    #[allow(dead_code)]
-    pub current_map: &'a Arc<Mutex<String>>,
 }
+
 
 
 /// 確保 Rect 在邊界內
@@ -52,29 +44,39 @@ fn clamp_rect(rect: Rect, max_width: u16, max_height: u16) -> Rect {
     Rect { x, y, width, height }
 }
 
-/// 創建 NPC AI 執行緒
+/// 創建 NPC AI 執行緒（新架構：使用 channel）
 fn create_npc_thread(
-    npc_manager: Arc<Mutex<NpcManager>>,
-    maps: Arc<Mutex<std::collections::HashMap<String, crate::map::Map>>>,
-    current_map_name: Arc<Mutex<String>>,
-) -> NpcAiThread {
-    crate::npc_ai_thread::NpcAiThread::new(
-        move || {
-            // 嘗試獲取所有鎖
-            if let (Ok(mut manager), Ok(mut maps_lock), Ok(_current_map)) =
-                (npc_manager.try_lock(), maps.try_lock(), current_map_name.try_lock()) {
-
-                // 使用 NpcAiController 的新版本函數
-                crate::npc_ai::NpcAiController::update_all_npcs_with_components(
-                    &mut manager,
-                    &mut maps_lock,
-                )
+    npc_view_rx: mpsc::Receiver<std::collections::HashMap<String, crate::npc_view::NpcView>>,
+    npc_event_tx: mpsc::Sender<crate::game_event::GameEvent>,
+) -> thread::JoinHandle<()> {
+    thread::spawn(move || {
+        loop {
+            // 接收 NPC 視圖快照
+            if let Ok(npc_views) = npc_view_rx.recv() {
+                // 為每個 NPC 決定行為
+                for (npc_id, view) in npc_views {
+                    if let Some(action) = crate::npc_ai::NpcAiController::decide_action(&view) {
+                        // 發送行為事件回主執行緒
+                        let event = crate::game_event::GameEvent::NpcActions {
+                            npc_id,
+                            actions: vec![action],
+                        };
+                        
+                        if npc_event_tx.send(event).is_err() {
+                            // 主執行緒已關閉，退出
+                            return;
+                        }
+                    }
+                }
+                
+                // 休眠 5 秒再處理下一批
+                thread::sleep(Duration::from_secs(5));
             } else {
-                Vec::new()
+                // Channel 已關閉，退出
+                break;
             }
-        },
-        5000  // 每5秒更新一次
-    )
+        }
+    })
 }
 
 /// 應用程式主迴圈 - 將 main.rs 中的事件迴圈邏輯提取到此
@@ -93,20 +95,27 @@ pub fn run_main_loop(
     let mut last_event_check = Instant::now();
     let event_check_interval = Duration::from_millis(100);  // 每0.1秒檢查事件
     
-    // 為 NPC AI 執行緒創建共享的 NpcManager 和地圖資料
-    let npc_manager = Arc::new(Mutex::new(game_world.npc_manager.clone()));
-    let maps = Arc::new(Mutex::new(game_world.maps.clone()));
-    let current_map = Arc::new(Mutex::new(game_world.current_map_name.clone()));
+    // === 新架構：創建 channel ===
+    let (npc_view_tx, npc_view_rx) = mpsc::channel();
+    let (npc_event_tx, npc_event_rx) = mpsc::channel();
     
-    // 啟動 NPC AI 執行緒
-    game_world.npc_ai_thread = Some(create_npc_thread(
-        Arc::clone(&npc_manager),
-        Arc::clone(&maps),
-        Arc::clone(&current_map)
-    ));
+    // 啟動 NPC AI 執行緒（新架構）
+    let _npc_thread_handle = create_npc_thread(npc_view_rx, npc_event_tx);
     
     'main_loop: loop {
-        // --- Input Handling ---
+        // --- 1. 處理 NPC AI 事件 ---
+        while let Ok(event) = npc_event_rx.try_recv() {
+            let messages = game_world.apply_event(event);
+            for msg in messages {
+                if msg.is_log() {
+                    output_manager.log(msg.to_display_text());
+                } else {
+                    output_manager.print(msg.to_display_text());
+                }
+            }
+        }
+        
+        // --- 2. Input Handling ---
         // Process all pending input events from the channel non-blockingly
         for key in rx.try_iter() {
             let mut context = AppContext {
@@ -116,27 +125,20 @@ pub fn run_main_loop(
                 output_manager: &mut output_manager,
                 game_world: &mut game_world,
                 me: &mut me,
-                npc_manager: &npc_manager,
-                maps: &maps,
-                current_map: &current_map,
             };
             // Call the new method from input_handler
             if let Some(command_result) = input_handler.handle_input_events(key, &mut context) {
                 // Now, handle the CommandResult here in app.rs
                 if let CommandResult::Exit = command_result {
-                    sync_from_ai_thread(&npc_manager, &maps, &mut game_world); // Sync before final exit
                     handle_command_result(command_result, &mut output_manager, &mut game_world, &mut me, &mut interaction_menu)?;
                     should_exit = true; // Set should_exit to trigger loop exit
                 } else {
                     handle_command_result(command_result, &mut output_manager, &mut game_world, &mut me, &mut interaction_menu)?;
-                    // Only sync to AI thread if a command that changes game state was processed
-                    sync_to_ai_thread(&npc_manager, &maps, &current_map, &game_world);
                 }
             }
         }
         
-        // --- Game State Update ---
-        sync_from_ai_thread(&npc_manager, &maps, &mut game_world);
+        // --- 3. Game State Update ---
         
         if output_manager.is_minimap_open() {
             update_minimap_display(&mut output_manager, &game_world, &me);
@@ -150,19 +152,17 @@ pub fn run_main_loop(
         let time_info = game_world.get_time_info();
         me.on_time_update(&time_info);
         
-        let ai_logs = game_world.get_npc_ai_logs();
-        for log in ai_logs {
-            output_manager.log(log);
-        }
-        
         let now = Instant::now();
         if now.duration_since(last_event_check) >= event_check_interval {
             check_and_execute_events(&mut game_world, &mut me, &mut output_manager);
             last_event_check = now;
         }
         
-        // --- Drawing ---
-        sync_from_ai_thread(&npc_manager, &maps, &mut game_world);
+        // --- 4. 發送 NPC Views 到 AI 執行緒 ---
+        let npc_views = game_world.build_npc_views();
+        let _ = npc_view_tx.send(npc_views); // 忽略錯誤（AI 執行緒可能已關閉）
+        
+        // --- 5. Drawing ---
         
         terminal.draw(|f| {
             draw_ui(f, &mut output_manager, &game_world, &input_handler, &me, &menu, &interaction_menu);
@@ -397,34 +397,6 @@ fn handle_command_result(
     }
     
     Ok(())
-}
-
-/// 將玩家操作後的變更同步到 AI thread
-fn sync_to_ai_thread(
-    npc_manager: &Arc<Mutex<NpcManager>>,
-    maps: &Arc<Mutex<std::collections::HashMap<String, crate::map::Map>>>,
-    current_map: &Arc<Mutex<String>>,
-    game_world: &GameWorld,
-) {
-    if let (Ok(mut ai_manager_mut), Ok(mut maps_lock_mut), Ok(mut current_map_lock_mut)) =
-        (npc_manager.try_lock(), maps.try_lock(), current_map.try_lock()) {
-        *ai_manager_mut = game_world.npc_manager.clone();
-        *maps_lock_mut = game_world.maps.clone();
-        *current_map_lock_mut = game_world.current_map_name.clone();
-    }
-}
-
-/// 從 AI thread 同步最新變更到 game_world
-fn sync_from_ai_thread(
-    npc_manager: &Arc<Mutex<NpcManager>>,
-    maps: &Arc<Mutex<std::collections::HashMap<String, crate::map::Map>>>,
-    game_world: &mut GameWorld,
-) {
-    if let (Ok(ai_manager), Ok(maps_lock)) =
-        (npc_manager.try_lock(), maps.try_lock()) {
-        game_world.npc_manager = ai_manager.clone();
-        game_world.maps = maps_lock.clone();
-    }
 }
 
 /// 處理退出命令
@@ -1035,18 +1007,28 @@ fn handle_use_item_on(
     // 檢查 NPC 是否在同一位置
     let npcs_here: Vec<&crate::person::Person> = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, me.x, me.y);
     
-    let npc_found= npcs_here.iter().any(|n| {
-        n.name.to_lowercase() == target_name.to_lowercase()
-    });
-    if !npc_found {
-        output_manager.print(format!("這裡沒有名為 {target_name} 的目標。"));
-    } else {
-        let mut target = npcs_here.into_iter().find(|n| n.name.to_lowercase() == target_name.to_lowercase()).unwrap().clone();
+    let npc_id = npcs_here.iter()
+        .find(|n| n.name.to_lowercase() == target_name.to_lowercase())
+        .map(|n| n.name.clone());
+    
+    if let Some(npc_id) = npc_id {
+        // 先給物品給 NPC
         if let Ok(()) = handle_give(target_name.clone(), item_name.clone(), 1, output_manager, game_world, me) {
-            handle_use_item(item_name, output_manager, &mut target);
+            // 對實際的 NPC 使用物品
+            if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_id) {
+                handle_use_item(item_name.clone(), output_manager, npc);
+                
+                // 保存 NPC 狀態
+                let person_dir = format!("{}/persons", game_world.world_dir);
+                let _ = game_world.npc_manager.save_all(&person_dir);
+            } else {
+                output_manager.print(format!("無法找到 NPC {target_name}"));
+            }
         } else {
             output_manager.print(format!("在 {target_name} 使用 {item_name} 失敗。"));
         }
+    } else {
+        output_manager.print(format!("這裡沒有名為 {target_name} 的目標。"));
     }
 }
 

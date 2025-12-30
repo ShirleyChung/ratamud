@@ -12,7 +12,6 @@ mod quest;
 mod map;
 mod time_updatable;
 mod time_thread;
-mod npc_ai_thread;
 mod item;
 mod item_registry;
 mod settings;
@@ -21,6 +20,12 @@ mod event;
 mod event_scheduler;
 mod event_executor;
 mod event_loader;
+
+// 新架構模組
+mod npc_view;
+mod npc_action;
+mod game_event;
+mod message;
 
 use std::{io, sync::mpsc, thread};
 use crossterm::{
