@@ -178,6 +178,11 @@ pub fn run_main_loop(
     // --- Shutdown ---
     game_world.save_metadata()?;
     game_world.save_time()?;
+    
+    // 保存所有 NPC 的狀態
+    let person_dir = format!("{}/persons", game_world.world_dir);
+    game_world.npc_manager.save_all(&person_dir)?;
+    
     let game_settings = GameSettings {
         show_minimap: output_manager.is_minimap_open(),
         show_log: output_manager.is_log_open(),
@@ -1017,10 +1022,6 @@ fn handle_use_item_on(
             // 對實際的 NPC 使用物品
             if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_id) {
                 handle_use_item(item_name.clone(), output_manager, npc);
-                
-                // 保存 NPC 狀態
-                let person_dir = format!("{}/persons", game_world.world_dir);
-                let _ = game_world.npc_manager.save_all(&person_dir);
             } else {
                 output_manager.print(format!("無法找到 NPC {target_name}"));
             }
@@ -1102,10 +1103,6 @@ fn handle_summon(
             npc.move_to(me.x, me.y);
             npc.map = game_world.current_map_name.clone();  // 更新到玩家當前地圖
         }
-        
-        // 保存 NPC 位置
-        let person_dir = format!("{}/persons", game_world.world_dir);
-        let _ = game_world.npc_manager.save_all(&person_dir);
         
         output_manager.print(format!("你召喚了 {name} 到這裡"));
         output_manager.log(format!("{} 從 ({}, {}) 傳送到 {} ({}, {})", 
@@ -1325,10 +1322,6 @@ fn handle_name(
         output_manager.print(format!("你將「{old_name}」改名為「{new_name}」"));
         output_manager.log(format!("NPC 從「{old_name}」更名為「{new_name}」"));
         
-        // 保存 NPC
-        let person_dir = format!("{}/persons", game_world.world_dir);
-        game_world.npc_manager.save_all(&person_dir)?;
-        
         return Ok(())
     }
     
@@ -1529,10 +1522,6 @@ fn handle_create(
             // 添加到 NPC 管理器
             game_world.npc_manager.add_npc(npc_id.clone(), npc, vec![]);
             
-            // 保存 NPC
-            let person_dir = format!("{}/persons", game_world.world_dir);
-            game_world.npc_manager.save_all(&person_dir)?;
-            
             output_manager.print(format!("你創建了 NPC「{npc_name}」(類型: {resolved_type})"));
             output_manager.log(format!("NPC「{}」在 ({}, {}) 被創建", npc_name, me.x, me.y));
         },
@@ -1669,10 +1658,6 @@ fn handle_set(
                     output_manager.set_status(format!("未知屬性: {attribute}，支持: hp, mp, strength, knowledge, sociality, gold/金幣"));
                 }
             }
-            
-            // 保存 NPC
-            let person_dir = format!("{}/persons", game_world.world_dir);
-            game_world.npc_manager.save_all(&person_dir)?;
         } else {
             output_manager.set_status(format!("找不到 NPC: {target}"));
         }
@@ -1916,10 +1901,9 @@ fn handle_buy(
                 // 同步 me 和 game_world.player（因為 buy_from_npc 修改了 world.player）
                 *me = game_world.player.clone();
                 
-                // 保存玩家和 NPC
+                // 保存玩家
                 let person_dir = format!("{}/persons", game_world.world_dir);
                 let _ = me.save(&person_dir, "me");
-                let _ = game_world.npc_manager.save_all(&person_dir);
             },
             crate::trade::TradeResult::Failed(msg) => {
                 output_manager.set_status(msg);
@@ -1986,10 +1970,9 @@ fn handle_sell(
                 // 同步 me 和 game_world.player（因為 sell_to_npc 修改了 world.player）
                 *me = game_world.player.clone();
                 
-                // 保存玩家和 NPC
+                // 保存玩家
                 let person_dir = format!("{}/persons", game_world.world_dir);
                 let _ = me.save(&person_dir, "me");
-                let _ = game_world.npc_manager.save_all(&person_dir);
             },
             crate::trade::TradeResult::Failed(msg) => {
                 output_manager.set_status(msg);
@@ -2065,10 +2048,9 @@ fn handle_give(
             npc.relationship = (npc.relationship + 5).min(100);
             output_manager.print(format!("💖 {npc_name} 對你的好感度增加了！(現在: {})", npc.relationship));
             
-            // 保存玩家和 NPC
+            // 保存玩家
             let person_dir = format!("{}/persons", game_world.world_dir);
             let _ = me.save(&person_dir, "me");
-            let _ = game_world.npc_manager.save_all(&person_dir);
         } else {
             output_manager.set_status(format!("無法找到 NPC {npc_name}"));
         }
@@ -2140,10 +2122,6 @@ fn handle_set_dialogue(
     if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_name) {
         npc.set_dialogue(topic.clone(), dialogue.clone());
         output_manager.print(format!("已設置 {} 在話題「{}」的對話", npc.name, topic));
-        
-        // 保存 NPC
-        let person_dir = format!("{}/persons", game_world.world_dir);
-        game_world.npc_manager.save_all(&person_dir)?;
     } else {
         output_manager.set_status(format!("找不到 NPC: {npc_name}"));
     }
@@ -2169,10 +2147,6 @@ fn handle_set_dialogue_with_conditions(
         npc.add_dialogue_option(topic.clone(), option);
         output_manager.print(format!("已設置 {} 在話題「{}」的條件對話（條件: {}）", 
             npc.name, topic, conditions_str));
-        
-        // 保存 NPC
-        let person_dir = format!("{}/persons", game_world.world_dir);
-        game_world.npc_manager.save_all(&person_dir)?;
     } else {
         output_manager.set_status(format!("找不到 NPC: {npc_name}"));
     }
@@ -2243,10 +2217,6 @@ fn handle_set_eagerness(
     if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_name) {
         npc.set_talk_eagerness(eagerness); // Corrected method name
         output_manager.print(format!("已設置 {} 的說話積極度為 {}", npc.name, eagerness));
-        
-        // 保存 NPC
-        let person_dir = format!("{}/persons", game_world.world_dir);
-        game_world.npc_manager.save_all(&person_dir)?;
     } else {
         output_manager.set_status(format!("找不到 NPC: {npc_name}"));
     }
@@ -2263,10 +2233,6 @@ fn handle_set_relationship(
     if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_name) {
         npc.relationship = relationship; // Corrected: Direct field access
         output_manager.print(format!("已設置 {} 對你的好感度為 {}", npc.name, relationship));
-        
-        // 保存 NPC
-        let person_dir = format!("{}/persons", game_world.world_dir);
-        game_world.npc_manager.save_all(&person_dir)?;
     } else {
         output_manager.set_status(format!("找不到 NPC: {npc_name}"));
     }
@@ -2284,10 +2250,6 @@ fn handle_change_relationship(
         npc.change_relationship(delta); // Corrected: Removed "player" argument
         let current_rel = npc.relationship; // Corrected: Direct field access
         output_manager.print(format!("{} 對你的好感度變為 {}", npc.name, current_rel));
-        
-        // 保存 NPC
-        let person_dir = format!("{}/persons", game_world.world_dir);
-        game_world.npc_manager.save_all(&person_dir)?;
     } else {
         output_manager.set_status(format!("找不到 NPC: {npc_name}"));
     }
