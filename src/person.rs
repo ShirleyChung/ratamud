@@ -181,8 +181,8 @@ fn default_map() -> String {
 
 impl Person {
     pub fn new(name: String, description: String) -> Self {
-        Person {
-            name,
+        let mut person = Person {
+            name: name.clone(),
             description,
             abilities: Vec::new(),
             items: HashMap::new(),
@@ -211,7 +211,12 @@ impl Person {
             interaction_count: 0,
             gender: "".to_string(),
             appearance: 50,
-        }
+        };
+        
+        // 設置預設的"被叫住"對話
+        person.set_dialogue("被叫住".to_string(), format!("{name} 有什麼事嗎？"));
+        
+        person
     }
 
     /// 設置台詞（新版：支援多個選項）

@@ -1,0 +1,41 @@
+{
+  "name": "ace",
+  "description": "一個ace",
+  "abilities": [],
+  "items": {
+    "金幣": 10000
+  },
+  "item_instances": {},
+  "status": "",
+  "x": 38,
+  "y": 63,
+  "map": "beginMap",
+  "hp": 99884,
+  "mp": 99985,
+  "max_hp": 100000,
+  "max_mp": 100000,
+  "strength": 100,
+  "knowledge": 100,
+  "sociality": 100,
+  "age": 1847,
+  "last_hunger_hour": 22,
+  "is_sleeping": false,
+  "last_mp_restore_minute": 0,
+  "is_interacting": false,
+  "dialogues": {
+    "被叫住": [
+      {
+        "text": "ace 有什麼事嗎？",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ]
+  },
+  "talk_eagerness": 100,
+  "relationship": 0,
+  "dialogue_state": "初見",
+  "met_player": false,
+  "interaction_count": 0,
+  "gender": "",
+  "appearance": 50
+}

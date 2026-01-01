@@ -3,27 +3,56 @@
   "description": "一個商人",
   "abilities": [],
   "items": {
-    "蘋果": 1,
-    "金幣": 10007
+    "麵包": 3,
+    "金幣": 10007,
+    "蘋果": 1
   },
-  "item_instances": {},
+  "item_instances": {
+    "麵包": [
+      {
+        "id": 6,
+        "name": "麵包",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 7,
+        "name": "麵包",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 8,
+        "name": "麵包",
+        "age": 0,
+        "stories": []
+      }
+    ]
+  },
   "status": "",
-  "x": 53,
+  "x": 52,
   "y": 56,
   "map": "beginMap",
-  "hp": 99900,
+  "hp": 99739,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 11016,
-  "last_hunger_hour": 14,
+  "age": 35411,
+  "last_hunger_hour": 22,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
+    "出售": [
+      {
+        "text": "好的，讓我看看你有什麼想賣的。",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
     "閒聊": [
       {
         "text": "最近的市場行情不錯，貨物銷售得很快！",
@@ -81,17 +110,10 @@
         "conditions": [],
         "weight": 1.0
       }
-    ],
-    "出售": [
-      {
-        "text": "好的，讓我看看你有什麼想賣的。",
-        "conditions": [],
-        "weight": 1.0
-      }
     ]
   },
   "talk_eagerness": 95,
-  "relationship": 0,
+  "relationship": 15,
   "dialogue_state": "",
   "met_player": false,
   "interaction_count": 0,

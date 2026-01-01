@@ -4,41 +4,34 @@
   "abilities": [],
   "items": {
     "舊布料": 1,
-    "弓": 1,
     "蘋果": 1,
-    "木劍": 2,
-    "繩索": 2,
-    "石子": 7,
-    "金幣": 9980,
+    "鐵劍": 5,
     "男溺泉": 1,
-    "鑰匙": 1,
-    "鐵劍": 5
+    "弓": 1,
+    "石子": 7,
+    "繩索": 2,
+    "木劍": 2,
+    "鑰匙": 2,
+    "金幣": 9980
   },
   "item_instances": {},
-  "status": "正常",
-  "x": 43,
-  "y": 54,
+  "status": "",
+  "x": 49,
+  "y": 49,
   "map": "beginMap",
-  "hp": 98389,
+  "hp": 98094,
   "mp": 99998,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 1199,
-  "last_hunger_hour": 14,
+  "age": 25594,
+  "last_hunger_hour": 22,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
-  "is_interacting": false,
+  "is_interacting": true,
   "dialogues": {
-    "閒聊": [
-      {
-        "text": "工作雖然辛苦，但我很享受web browsing的快感！",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
     "見面": [
       {
         "text": "哈囉，小姐，今天好嗎",
@@ -81,6 +74,13 @@
             "value": "女"
           }
         ],
+        "weight": 1.0
+      }
+    ],
+    "閒聊": [
+      {
+        "text": "工作雖然辛苦，但我很享受web browsing的快感！",
+        "conditions": [],
         "weight": 1.0
       }
     ]

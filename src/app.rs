@@ -29,7 +29,6 @@ pub struct AppContext<'a> {
     pub should_exit: &'a mut bool,
     pub output_manager: &'a mut OutputManager,
     pub game_world: &'a mut GameWorld,
-    pub me: &'a mut Person,
 }
 
 
@@ -50,31 +49,25 @@ fn create_npc_thread(
     npc_event_tx: mpsc::Sender<crate::game_event::GameEvent>,
 ) -> thread::JoinHandle<()> {
     thread::spawn(move || {
-        loop {
-            // 接收 NPC 視圖快照
-            if let Ok(npc_views) = npc_view_rx.recv() {
-                // 為每個 NPC 決定行為
-                for (npc_id, view) in npc_views {
-                    if let Some(action) = crate::npc_ai::NpcAiController::decide_action(&view) {
-                        // 發送行為事件回主執行緒
-                        let event = crate::game_event::GameEvent::NpcActions {
-                            npc_id,
-                            actions: vec![action],
-                        };
-                        
-                        if npc_event_tx.send(event).is_err() {
-                            // 主執行緒已關閉，退出
-                            return;
-                        }
+        while let Ok(npc_views) = npc_view_rx.recv() {
+            // 為每個 NPC 決定行為
+            for (npc_id, view) in npc_views {
+                if let Some(action) = crate::npc_ai::NpcAiController::decide_action(&view) {
+                    // 發送行為事件回主執行緒
+                    let event = crate::game_event::GameEvent::NpcActions {
+                        npc_id,
+                        actions: vec![action],
+                    };
+                    
+                    if npc_event_tx.send(event).is_err() {
+                        // 主執行緒已關閉，退出
+                        return;
                     }
                 }
-                
-                // 休眠 5 秒再處理下一批
-                thread::sleep(Duration::from_secs(5));
-            } else {
-                // Channel 已關閉，退出
-                break;
             }
+            
+            // 休眠 5 秒再處理下一批
+            thread::sleep(Duration::from_secs(5));
         }
     })
 }
@@ -115,6 +108,37 @@ pub fn run_main_loop(
             }
         }
         
+        // --- 1.5 檢測距離變化（靠近/離開通知）---
+        let current_controlled_id = game_world.current_controlled_id.as_deref().unwrap_or("me");
+        let (current_x, current_y, current_map) = if current_controlled_id == "me" {
+            (me.x, me.y, me.map.clone())
+        } else if let Some(npc) = game_world.npc_manager.get_npc(current_controlled_id) {
+            (npc.x, npc.y, npc.map.clone())
+        } else {
+            (me.x, me.y, me.map.clone())
+        };
+        
+        let proximity_notifications = game_world.npc_manager.update_proximity(
+            current_controlled_id,
+            current_x,
+            current_y,
+            &current_map,
+        );
+        
+        for (npc_id, message, should_greet) in proximity_notifications {
+            output_manager.print(message);
+            
+            // 如果應該說見面語
+            if should_greet {
+                if let Some(npc) = game_world.npc_manager.get_npc(&npc_id) {
+                    // 檢查是否有"見面"對話
+                    if let Some(greeting) = npc.get_weighted_dialogue("見面", &me) {
+                        output_manager.print(format!("{} 說：「{}」", npc.name, greeting));
+                    }
+                }
+            }
+        }
+        
         // --- 2. Input Handling ---
         // Process all pending input events from the channel non-blockingly
         for key in rx.try_iter() {
@@ -124,7 +148,6 @@ pub fn run_main_loop(
                 should_exit: &mut should_exit,
                 output_manager: &mut output_manager,
                 game_world: &mut game_world,
-                me: &mut me,
             };
             // Call the new method from input_handler
             if let Some(command_result) = input_handler.handle_input_events(key, &mut context) {
@@ -382,6 +405,7 @@ fn handle_command_result(
         CommandResult::SetRelationship(npc_name, relationship) => handle_set_relationship(npc_name, relationship, output_manager, game_world)?,
         CommandResult::ChangeRelationship(npc_name, delta) => handle_change_relationship(npc_name, delta, output_manager, game_world)?,
         CommandResult::Talk(npc_name, topic) => handle_talk(npc_name, topic, output_manager, game_world, me)?,
+        CommandResult::Wait(npc_name) => handle_wait(npc_name, output_manager, game_world, me)?,
         CommandResult::ListNpcs => handle_list_npcs(output_manager, game_world),
         CommandResult::CheckNpc(npc_name) => handle_check_npc(npc_name, output_manager, game_world),
         CommandResult::ToggleTypewriter => handle_toggle_typewriter(output_manager),
@@ -2283,6 +2307,84 @@ fn handle_talk(
         }
     } else {
         output_manager.set_status(format!("此處找不到 {npc_name}"));
+    }
+    
+    Ok(())
+}
+
+/// 嘗試叫住單個 NPC，返回是否成功
+fn try_stop_npc(
+    npc: &mut crate::person::Person,
+    output_manager: &mut OutputManager,
+) -> bool {
+    use rand::Rng;
+    
+    let success_rate = (50 + npc.relationship / 2).clamp(0, 100);
+    let mut rng = rand::thread_rng();
+    let roll = rng.gen_range(0..100);
+    
+    if roll < success_rate {
+        npc.is_interacting = true;
+        output_manager.print(format!("你叫住了 {}", npc.name));
+        
+        if let Some(response) = npc.get_dialogue("被叫住") {
+            output_manager.print(format!("{} 說：「{}」", npc.name, response));
+        }
+        true
+    } else {
+        output_manager.print(format!("{} 沒有理會你", npc.name));
+        false
+    }
+}
+
+/// 處理 wait 命令 - 叫住 NPC
+fn handle_wait(
+    npc_name: String,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &Person,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // 如果 npc_name 為空，叫住當前位置所有的 NPC
+    if npc_name.is_empty() {
+        let npcs_here = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, me.x, me.y);
+        
+        if npcs_here.is_empty() {
+            output_manager.print("此處沒有 NPC".to_string());
+            return Ok(());
+        }
+        
+        let npc_names: Vec<String> = npcs_here.iter().map(|npc| npc.name.clone()).collect();
+        let mut success_count = 0;
+        let total_count = npc_names.len();
+        
+        for name in npc_names {
+            if let Some(npc) = game_world.npc_manager.get_npc_mut(&name) {
+                if try_stop_npc(npc, output_manager) {
+                    success_count += 1;
+                }
+            }
+        }
+        
+        output_manager.set_status(format!("叫住了 {success_count}/{total_count} 個 NPC"));
+        return Ok(());
+    } 
+    // 指定了 NPC 名稱的情況
+    else if let Some(npc) =  game_world.npc_manager.get_npc_mut(&npc_name) {
+        if npc.map != game_world.current_map_name {
+            output_manager.print(format!("{} 不在這個地圖", npc.name));
+            return Ok(());
+        }
+        
+        let distance = ((npc.x as i32 - me.x as i32).abs() + (npc.y as i32 - me.y as i32).abs()) as usize;
+        
+        if distance > 1 {
+            output_manager.print(format!("{} 距離太遠，無法叫住", npc.name));
+            return Ok(());
+        }
+        
+        try_stop_npc(npc, output_manager);
+    } else {
+        output_manager.set_status(format!("找不到 {npc_name}"));
     }
     
     Ok(())

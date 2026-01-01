@@ -76,17 +76,17 @@ impl NpcAction {
     /// 獲取行為的描述（用於日誌）
     pub fn describe(&self) -> String {
         match self {
-            NpcAction::Say(text) => format!("說: {}", text),
-            NpcAction::Move(dir) => format!("移動: {:?}", dir),
+            NpcAction::Say(text) => format!("說: {text}"),
+            NpcAction::Move(dir) => format!("移動: {dir:?}"),
             NpcAction::PickupItem { item_name, quantity } => {
-                format!("撿起: {} x{}", item_name, quantity)
+                format!("撿起: {item_name} x{quantity}")
             },
-            NpcAction::UseItem(item) => format!("使用: {}", item),
+            NpcAction::UseItem(item) => format!("使用: {item}"),
             NpcAction::DropItem { item_name, quantity } => {
-                format!("放下: {} x{}", item_name, quantity)
+                format!("放下: {item_name} x{quantity}")
             },
-            NpcAction::Trade { target_id } => format!("交易請求: {}", target_id),
-            NpcAction::Attack { target_id } => format!("攻擊: {}", target_id),
+            NpcAction::Trade { target_id } => format!("交易請求: {target_id}"),
+            NpcAction::Attack { target_id } => format!("攻擊: {target_id}"),
             NpcAction::Idle => "閒置".to_string(),
         }
     }

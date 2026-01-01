@@ -788,10 +788,20 @@ impl InputHandler {
                     CommandResult::Talk(npc_name, topic)
                 }
             },
+            "wait" => {
+                // wait <npc> 命令，叫住 NPC（根據好感度判斷是否成功）
+                // 範例: wait 商人
+                if parts.len() < 2 {
+                    CommandResult::Wait("".to_string())
+                } else {
+                    let npc_name = parts[1].to_string();
+                    CommandResult::Wait(npc_name)
+                }
+            },
             "check" | "inspect" | "examine" => {
                 // check <npc> 命令，查看 NPC 的詳細資訊
                 if parts.len() < 2 {
-                    CommandResult::Error("Usage: check <npc>".to_string())
+                    CommandResult::CheckNpc("me".to_string())
                 } else {
                     let npc_name = parts[1..].join(" ");
                     CommandResult::CheckNpc(npc_name)
@@ -906,6 +916,7 @@ pub enum CommandResult {
     SetRelationship(String, i32),    // 設置 NPC 好感度 (NPC, 好感度-100~100)
     ChangeRelationship(String, i32), // 改變 NPC 好感度 (NPC, 變化量)
     Talk(String, String),            // 與 NPC 對話 (NPC名稱/ID, 話題)
+    Wait(String),                    // 叫住 NPC (NPC名稱/ID)
     ListNpcs,                        // 列出所有 NPC
     CheckNpc(String),                // 查看 NPC 詳細資訊 (NPC名稱/ID)
     ToggleTypewriter,                // 切換打字機效果
@@ -959,6 +970,7 @@ impl CommandResult {
             CommandResult::Buy(..) => Some(("buy <npc> <item> [數量]", "購買物品", "💰 交易")),
             CommandResult::Sell(..) => Some(("sell <npc> <item> [數量]", "出售物品", "💰 交易")),
             CommandResult::Give(..) => Some(("give <npc> <item> [數量]", "給予NPC物品", "👥 NPC互動")),
+            CommandResult::Wait(..) => Some(("wait <npc>", "叫住NPC（基於好感度）", "👥 NPC互動")),
             CommandResult::ListNpcs => Some(("npcs", "列出所有NPC", "👥 NPC互動")),
             _ => None,
         }
@@ -1007,6 +1019,7 @@ impl CommandResult {
             CommandResult::SetRelationship(String::new(), 0),
             CommandResult::ChangeRelationship(String::new(), 0),
             CommandResult::Talk(String::new(), String::new()),
+            CommandResult::Wait(String::new()),
             CommandResult::CheckNpc(String::new()),
             CommandResult::ToggleTypewriter,
             CommandResult::QuestList,

@@ -54,22 +54,22 @@ impl Message {
     pub fn to_display_text(&self) -> String {
         match self {
             Message::NpcSay { npc_name, text, .. } => {
-                format!("💬 {} 說：「{}」", npc_name, text)
+                format!("💬 {npc_name} 說：「{text}」")
             },
             Message::System(text) => text.clone(),
             Message::Combat { attacker, target, damage } => {
-                format!("⚔️  {} 攻擊 {}，造成 {} 點傷害", attacker, target, damage)
+                format!("⚔️  {attacker} 攻擊 {target}，造成 {damage} 點傷害")
             },
             Message::ItemPickup { entity, item, count } => {
-                format!("📦 {} 撿起了 {} x{}", entity, item, count)
+                format!("📦 {entity} 撿起了 {item} x{count}")
             },
             Message::ItemUse { entity, item, effect } => {
-                format!("✨ {} 使用了 {}，{}", entity, item, effect)
+                format!("✨ {entity} 使用了 {item}，{effect}")
             },
             Message::Movement { entity, to, .. } => {
                 format!("🚶 {} 移動到 ({}, {})", entity, to.0, to.1)
             },
-            Message::Error(text) => format!("❌ {}", text),
+            Message::Error(text) => format!("❌ {text}"),
             Message::Log(text) => text.clone(),
         }
     }

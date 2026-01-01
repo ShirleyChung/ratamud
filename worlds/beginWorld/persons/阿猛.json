@@ -3,36 +3,58 @@
   "description": "一個工人",
   "abilities": [],
   "items": {
-    "魔力藥水": 1,
+    "羽毛": 6,
     "漿果": 7,
-    "舊布料": 4,
-    "金幣": 10000,
-    "盾牌": 11,
-    "鎬": 1,
-    "治療藥水": 5,
     "毒藥": 12,
-    "羽毛": 5,
     "蘋果": 4,
+    "鎬": 1,
+    "盾牌": 11,
+    "金幣": 10000,
+    "治療藥水": 5,
+    "舊布料": 4,
+    "魔力藥水": 1,
     "乾肉": 3
   },
   "item_instances": {},
-  "status": "正常",
-  "x": 34,
-  "y": 51,
+  "status": "",
+  "x": 37,
+  "y": 53,
   "map": "forest",
-  "hp": 98538,
+  "hp": 98289,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 2909,
-  "last_hunger_hour": 14,
+  "age": 27304,
+  "last_hunger_hour": 22,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
+    "閒聊": [
+      {
+        "text": "工作雖然辛苦，但能賺錢養家也是值得的。",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "我聽說森林深處有寶藏，不知道是真是假？",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "有時候工作累了，就會想起家人，讓我更有動力了。",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "這附近的工作機會還不少，你要不要也來試試？",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
     "見面": [
       {
         "text": "哈囉，小姐，今天好嗎",
@@ -84,28 +106,6 @@
       },
       {
         "text": "你好！需要幫忙的話，找我就對了！",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
-    "閒聊": [
-      {
-        "text": "工作雖然辛苦，但能賺錢養家也是值得的。",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "我聽說森林深處有寶藏，不知道是真是假？",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "有時候工作累了，就會想起家人，讓我更有動力了。",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "這附近的工作機會還不少，你要不要也來試試？",
         "conditions": [],
         "weight": 1.0
       }

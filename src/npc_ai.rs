@@ -33,12 +33,12 @@ impl NpcAiController {
         if roll < 20 && !npc_view.visible_items.is_empty() {
             // 20% 機率撿起物品（如果當前位置有物品）
             let item = &npc_view.visible_items[0];
-            return Some(NpcAction::PickupItem {
+            Some(NpcAction::PickupItem {
                 item_name: item.item_name.clone(),
                 quantity: 1,
-            });
-        } else if roll < 50 {
-            // 30% 機率隨機移動
+            })
+        } else if roll < 30 {
+            // 10% 機率隨機移動
             let directions = [Direction::Up, Direction::Down, Direction::Left, Direction::Right];
             let direction = directions[rng.gen_range(0..directions.len())].clone();
             return Some(NpcAction::Move(direction));

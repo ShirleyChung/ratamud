@@ -6,6 +6,7 @@ use std::collections::HashMap;
 pub struct NpcManager {
     npcs: HashMap<String, Person>,  // NPC ID -> Person
     npc_aliases: HashMap<String, String>,  // 別名 -> NPC ID
+    previous_distances: HashMap<String, usize>,  // 用於追蹤 NPC 與 me 的前一次距離（for 靠近/離開檢測）
 }
 
 impl Default for NpcManager {
@@ -19,6 +20,7 @@ impl NpcManager {
         NpcManager {
             npcs: HashMap::new(),
             npc_aliases: HashMap::new(),
+            previous_distances: HashMap::new(),
         }
     }
 
@@ -178,7 +180,7 @@ impl NpcManager {
         }
     }
     
-    /// 從目錄載入所有 NPC（跳過指定的文件如 "me"）
+    /// 從目錄載入所有 NPC（包含 "me"）
     pub fn load_all_from_directory(&mut self, person_dir: &str, skip_files: Vec<&str>) -> Result<usize, Box<dyn std::error::Error>> {
         std::fs::create_dir_all(person_dir)?;
         let mut loaded_count = 0;
@@ -195,8 +197,8 @@ impl NpcManager {
                         
                         // 嘗試載入 NPC
                         if let Ok(mut npc) = Person::load(person_dir, file_stem) {
-                            // 確保 NPC 有預設的 10000 金幣
-                            if !npc.items.contains_key("金幣") || npc.items.get("金幣").copied().unwrap_or(0) == 0 {
+                            // 確保 NPC 有預設的 10000 金幣（me 除外）
+                            if file_stem != "me" && (!npc.items.contains_key("金幣") || npc.items.get("金幣").copied().unwrap_or(0) == 0) {
                                 npc.items.insert("金幣".to_string(), 10_000);
                             }
                             
@@ -214,5 +216,54 @@ impl NpcManager {
         }
         
         Ok(loaded_count)
+    }
+    
+    /// 獲取 "me" 的不可變引用
+    pub fn get_me(&self) -> Option<&Person> {
+        self.npcs.get("me")
+    }
+    
+    /// 計算兩個位置的曼哈頓距離
+    fn manhattan_distance(x1: usize, y1: usize, x2: usize, y2: usize) -> usize {
+        ((x1 as i32 - x2 as i32).abs() + (y1 as i32 - y2 as i32).abs()) as usize
+    }
+    
+    /// 更新 NPC 距離並返回靠近/離開的通知
+    /// current_controlled_id: 當前操控角色的 ID（"me" 或其他 NPC ID）
+    /// 返回 Vec<(npc_id, message, should_greet)> - should_greet 表示是否應該說見面語
+    pub fn update_proximity(&mut self, current_controlled_id: &str, current_x: usize, current_y: usize, current_map: &str) -> Vec<(String, String, bool)> {
+        let mut notifications = Vec::new();
+        
+        for (npc_id, npc) in &self.npcs {
+            // 跳過當前操控的角色自己
+            if npc_id == current_controlled_id {
+                continue;
+            }
+            
+            // 只檢測同地圖的 NPC
+            if npc.map != current_map {
+                continue;
+            }
+            
+            let current_distance = Self::manhattan_distance(npc.x, npc.y, current_x, current_y);
+            
+            // 為每個 NPC 使用獨立的 distance key（基於當前操控角色）
+            let distance_key = format!("{current_controlled_id}_{npc_id}");
+            let previous_distance = self.previous_distances.get(&distance_key).copied();
+            
+            // 檢測靠近（從 1 → 0）
+            if previous_distance == Some(1) && current_distance == 0 {
+                notifications.push((npc_id.clone(), format!("{} 往這邊走來", npc.name), true));
+            }
+            // 檢測離開（從 0 → 1）
+            else if previous_distance == Some(0) && current_distance == 1 {
+                notifications.push((npc_id.clone(), format!("{} 離開了", npc.name), false));
+            }
+            
+            // 更新距離記錄
+            self.previous_distances.insert(distance_key, current_distance);
+        }
+        
+        notifications
     }
 }

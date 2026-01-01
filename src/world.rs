@@ -457,8 +457,8 @@ impl GameWorld {
         
         // 檢查玩家是否在附近
         if self.player.map == map_name {
-            let dist_x = (self.player.x as i32 - x as i32).abs() as usize;
-            let dist_y = (self.player.y as i32 - y as i32).abs() as usize;
+            let dist_x = (self.player.x as i32 - x as i32).unsigned_abs() as usize;
+            let dist_y = (self.player.y as i32 - y as i32).unsigned_abs() as usize;
             
             if dist_x <= radius && dist_y <= radius {
                 entities.push(EntityInfo {
@@ -475,8 +475,8 @@ impl GameWorld {
         for npc_id in all_npc_ids {
             if let Some(npc) = self.npc_manager.get_npc(&npc_id) {
                 if npc.map == map_name {
-                    let dist_x = (npc.x as i32 - x as i32).abs() as usize;
-                    let dist_y = (npc.y as i32 - y as i32).abs() as usize;
+                    let dist_x = (npc.x as i32 - x as i32).unsigned_abs() as usize;
+                    let dist_y = (npc.y as i32 - y as i32).unsigned_abs() as usize;
                     
                     if dist_x <= radius && dist_y <= radius && !(npc.x == x && npc.y == y) {
                         entities.push(EntityInfo {
@@ -692,7 +692,7 @@ impl GameWorld {
                             messages.push(Message::ItemUse {
                                 entity: npc_name,
                                 item: item_name,
-                                effect: format!("回復了 {} HP", actual_restore),
+                                effect: format!("回復了 {actual_restore} HP"),
                             });
                         }
                     }
@@ -729,7 +729,7 @@ impl GameWorld {
                             point.add_objects(item_name.clone(), actual_quantity);
                             
                             messages.push(Message::Log(
-                                format!("{} 放下了 {} x{}", npc_name, item_name, actual_quantity)
+                                format!("{npc_name} 放下了 {item_name} x{actual_quantity}")
                             ));
                         }
                     }

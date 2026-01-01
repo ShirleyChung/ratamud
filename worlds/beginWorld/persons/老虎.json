@@ -3,45 +3,33 @@
   "description": "一個老虎",
   "abilities": [],
   "items": {
-    "毒藥": 5,
+    "漿果": 12,
+    "毒藥": 7,
     "鎬": 2,
-    "漿果": 9,
+    "石子": 12,
+    "繩索": 1,
     "金幣": 10000,
     "盾牌": 1,
-    "石子": 7,
-    "繩索": 1,
     "治療藥水": 1
   },
   "item_instances": {},
-  "status": "正常",
-  "x": 40,
-  "y": 65,
+  "status": "",
+  "x": 42,
+  "y": 64,
   "map": "forest",
-  "hp": 99515,
+  "hp": 99278,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 0,
-  "last_hunger_hour": 0,
+  "age": 24395,
+  "last_hunger_hour": 22,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
-    "閒聊": [
-      {
-        "text": "其實我是很溫和的",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "靠近我，我不會發怒！",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
     "見面": [
       {
         "text": "吼~~~",
@@ -62,6 +50,18 @@
             "value": "女"
           }
         ],
+        "weight": 1.0
+      }
+    ],
+    "閒聊": [
+      {
+        "text": "其實我是很溫和的",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "靠近我，我不會發怒！",
+        "conditions": [],
         "weight": 1.0
       }
     ]

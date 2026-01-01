@@ -3,34 +3,66 @@
   "description": "一個醫生",
   "abilities": [],
   "items": {
-    "麵包": 2,
-    "金幣": 10000,
-    "盾牌": 6,
-    "繩索": 2,
-    "火把": 3,
     "治療藥水": 5,
-    "蘋果": 2,
+    "繩索": 2,
+    "盾牌": 6,
+    "火把": 3,
+    "鎬": 7,
+    "金幣": 10000,
     "舊布料": 3,
-    "鎬": 7
+    "麵包": 2,
+    "蘋果": 2
   },
   "item_instances": {},
-  "status": "正常",
-  "x": 56,
-  "y": 54,
+  "status": "",
+  "x": 51,
+  "y": 49,
   "map": "beginMap",
-  "hp": 98401,
+  "hp": 98079,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 5735,
-  "last_hunger_hour": 14,
+  "age": 30130,
+  "last_hunger_hour": 22,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
+    "閒聊": [
+      {
+        "text": "健康是最重要的，記得多休息和補充營養！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "如果你有任何健康問題，隨時來找我！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "作為醫生，我總是樂於分享健康小貼士！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "保持積極的心態對健康也很重要哦！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "我喜歡幫助別人，這讓我感到很有成就感！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "醫學是一門不斷學習的藝術，我每天都在進步！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
     "見面": [
       {
         "text": "你好！我是櫻花，這裡有什麼我可以幫忙的嗎？",
@@ -78,38 +110,6 @@
             "value": "男"
           }
         ],
-        "weight": 1.0
-      }
-    ],
-    "閒聊": [
-      {
-        "text": "健康是最重要的，記得多休息和補充營養！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "如果你有任何健康問題，隨時來找我！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "作為醫生，我總是樂於分享健康小貼士！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "保持積極的心態對健康也很重要哦！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "我喜歡幫助別人，這讓我感到很有成就感！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "醫學是一門不斷學習的藝術，我每天都在進步！",
-        "conditions": [],
         "weight": 1.0
       }
     ]
