@@ -106,8 +106,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     };
     
-    // 設定 game_world.player 和 original_player
-    game_world.player = me.clone();
+    // 設定 game_world.original_player
     game_world.original_player = Some(me.clone());
     
     // 載入任務

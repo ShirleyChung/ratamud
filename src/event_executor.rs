@@ -7,15 +7,17 @@ pub struct EventExecutor;
 
 impl EventExecutor {
     /// 執行事件的所有動作
+    /// me: 當前玩家（用於某些動作如傳送）
     pub fn execute_event(
         event: &GameEvent,
         game_world: &mut GameWorld,
+        me: &mut crate::person::Person,
         output_manager: &mut OutputManager,
     ) -> Result<(), String> {
         output_manager.print(format!("🎭 事件觸發: {}", event.name));
         
         for action in &event.actions {
-            if let Err(e) = Self::execute_action(action, game_world, output_manager) {
+            if let Err(e) = Self::execute_action(action, game_world, me, output_manager) {
                 return Err(format!("執行動作失敗: {e}"));
             }
         }
@@ -27,6 +29,7 @@ impl EventExecutor {
     fn execute_action(
         action: &EventAction,
         game_world: &mut GameWorld,
+        me: &mut crate::person::Person,
         output_manager: &mut OutputManager,
     ) -> Result<(), String> {
         match action {
@@ -49,13 +52,13 @@ impl EventExecutor {
                 Self::remove_item(item, position, game_world, output_manager)
             }
             EventAction::Teleport { map, position } => {
-                Self::teleport_player(map, position, game_world, output_manager)
+                Self::teleport_player(map, position, game_world, me, output_manager)
             }
             EventAction::SetMapProperty { map, property, value } => {
                 Self::set_map_property(map, property, value, game_world, output_manager)
             }
             EventAction::RandomAction { actions } => {
-                Self::execute_random_action(actions, game_world, output_manager)
+                Self::execute_random_action(actions, game_world, me, output_manager)
             }
         }
     }
@@ -161,6 +164,7 @@ impl EventExecutor {
         map: &str,
         position: &crate::event::Position,
         game_world: &mut GameWorld,
+        me: &mut crate::person::Person,
         output_manager: &mut OutputManager,
     ) -> Result<(), String> {
         if game_world.change_map(map) {
@@ -170,7 +174,7 @@ impl EventExecutor {
             let resolved_pos = position.resolve(current_map)
                 .ok_or("無法解析目標位置")?;
             
-            game_world.player.move_to(resolved_pos[0], resolved_pos[1]);
+            me.move_to(resolved_pos[0], resolved_pos[1]);
             output_manager.print(format!(
                 "✨ 你被傳送到 {} ({}, {})",
                 map, resolved_pos[0], resolved_pos[1]
@@ -202,6 +206,7 @@ impl EventExecutor {
     fn execute_random_action(
         weighted_actions: &[crate::event::WeightedAction],
         game_world: &mut GameWorld,
+        me: &mut crate::person::Person,
         output_manager: &mut OutputManager,
     ) -> Result<(), String> {
         if weighted_actions.is_empty() {
@@ -224,13 +229,13 @@ impl EventExecutor {
         for weighted_action in weighted_actions {
             random_value -= weighted_action.weight;
             if random_value <= 0.0 {
-                return Self::execute_action(&weighted_action.action, game_world, output_manager);
+                return Self::execute_action(&weighted_action.action, game_world, me, output_manager);
             }
         }
 
         // 如果沒有選中任何動作（理論上不應該發生），執行最後一個
         if let Some(last) = weighted_actions.last() {
-            Self::execute_action(&last.action, game_world, output_manager)
+            Self::execute_action(&last.action, game_world, me, output_manager)
         } else {
             Err("無法選擇隨機動作".to_string())
         }

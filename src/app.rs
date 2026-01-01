@@ -154,7 +154,7 @@ pub fn run_main_loop(
         }
         
         // --- 4. 發送 NPC Views 到 AI 執行緒 ---
-        let npc_views = game_world.build_npc_views();
+        let npc_views = game_world.build_npc_views(&me);
         let _ = npc_view_tx.send(npc_views); // 忽略錯誤（AI 執行緒可能已關閉）
         
         // --- 5. Drawing ---
@@ -1502,6 +1502,7 @@ fn check_and_execute_events(
             if let Err(e) = crate::event_executor::EventExecutor::execute_event(
                 &event_clone,
                 game_world,
+                me,
                 output_manager
             ) {
                 output_manager.log(format!("⚠️  事件執行錯誤: {e}"));
@@ -1783,28 +1784,22 @@ fn handle_trade(
     npc_name: String,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
-    _me: &Person,  // 保留參數以保持 API 一致性，但使用 game_world.player
-    interaction_menu: &mut Option<Menu>,  // 新增：互動選單
+    me: &Person,
+    interaction_menu: &mut Option<Menu>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // 使用當前控制的角色（game_world.player）而不是 me 參數
-    let current_player = &game_world.player;
-    
     // 先檢查 NPC 是否在同一位置，並收集必要資訊
     let (npc_found, npc_id, npc_display_name, goods_data) = {
-        let npcs_here = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, current_player.x, current_player.y);
+        let npcs_here = game_world.npc_manager.get_npcs_with_ids_at_in_map(&game_world.current_map_name, me.x, me.y);
         
         // 在當前位置的 NPC 中查找（支援名稱和別名）
-        // 先嘗試通過 get_npc 查找（支援別名），然後檢查是否在當前位置
-        let npc_opt = if let Some(global_npc) = game_world.npc_manager.get_npc(&npc_name) {
-            // 找到 NPC 後，檢查是否在當前位置
-            npcs_here.iter().find(|n| n.name == global_npc.name)
-        } else {
-            // 如果通過別名找不到，直接在當前位置的 NPC 中搜尋名稱
-            npcs_here.iter().find(|n| n.name.to_lowercase() == npc_name.to_lowercase())
-        };
+        let npc_opt = npcs_here.iter().find(|(id, npc)| {
+            // 通過 ID 或名字匹配
+            id.to_lowercase() == npc_name.to_lowercase() || 
+            npc.name.to_lowercase() == npc_name.to_lowercase()
+        });
         
-        if let Some(npc) = npc_opt {
-            let id = npc.name.clone();
+        if let Some((id, npc)) = npc_opt {
+            let npc_id = id.clone();
             let display = npc.name.clone();
             
             // 如果是 Buying 狀態，收集商品資料
@@ -1814,7 +1809,7 @@ fn handle_trade(
                 None
             };
             
-            (true, id, display, goods)
+            (true, npc_id, display, goods)
         } else {
             (false, String::new(), String::new(), None)
         }
@@ -1856,7 +1851,7 @@ fn handle_trade(
         },
         crate::world::InteractionState::Selling { .. } => {
             // 顯示出售物品選單（顯示當前控制的角色持有的物品）
-            let player_items = crate::trade::TradeSystem::get_player_items(&game_world.player);
+            let player_items = crate::trade::TradeSystem::get_player_items(me);
             
             if player_items.is_empty() {
                 output_manager.print("你目前沒有可以出售的物品".to_string());
@@ -1940,34 +1935,35 @@ fn handle_buy(
     // 計算價格
     let price = crate::trade::TradeSystem::calculate_buy_price(&resolved_item, quantity);
     
-    // 獲取 NPC 名稱的克隆，以便在調用 buy_from_npc 時釋放 game_world 的可變借用
-    let npc_name_clone_for_trade = {
-        if let Some(npc) = game_world.npc_manager.get_npc(&npc_name) {
-            let npc_id = npc.name.clone();
-            // 確認這個 NPC 在當前位置
-            if npcs_here.iter().any(|n| n.name == npc_id) {
-                Some(npc_id)
-            } else {
-                None
-            }
-        } else {
-            None
-        }
+    // 獲取 NPC 的真實 ID（不是 name）
+    let npc_id_for_trade = {
+        let npcs_with_ids = game_world.npc_manager.get_npcs_with_ids_at_in_map(&game_world.current_map_name, me.x, me.y);
+        npcs_with_ids.iter()
+            .find(|(id, _npc)| {
+                // 通過 ID 或別名匹配
+                id.to_lowercase() == npc_name.to_lowercase() ||
+                game_world.npc_manager.get_npc(&npc_name)
+                    .map(|n| n.name == _npc.name)
+                    .unwrap_or(false)
+            })
+            .map(|(id, _)| id.clone())
     };
 
-    if let Some(npc_id) = npc_name_clone_for_trade {
-        let result = crate::trade::TradeSystem::buy_from_npc(game_world, &npc_id, &resolved_item, quantity, price);
+    if let Some(npc_id) = npc_id_for_trade {
+        let result = crate::trade::TradeSystem::buy_from_npc(game_world, me, &npc_id, &resolved_item, quantity, price);
         
         match result {
             crate::trade::TradeResult::Success(msg) => {
                 output_manager.print(msg);
                 
-                // 同步 me 和 game_world.player（因為 buy_from_npc 修改了 world.player）
-                *me = game_world.player.clone();
-                
                 // 保存玩家
                 let person_dir = format!("{}/persons", game_world.world_dir);
                 let _ = me.save(&person_dir, "me");
+                
+                // 購買成功後，保持 Buying 狀態並重新顯示購買選單（數據會刷新）
+                game_world.interaction_state = crate::world::InteractionState::Buying { 
+                    npc_name: npc_name.clone() 
+                };
             },
             crate::trade::TradeResult::Failed(msg) => {
                 output_manager.set_status(msg);
@@ -2010,33 +2006,34 @@ fn handle_sell(
     // 計算價格
     let price = crate::trade::TradeSystem::calculate_sell_price(&resolved_item, quantity);
     
-    // 獲取 NPC 名稱的克隆，以便在調用 sell_to_npc 時釋放 game_world 的可變借用
-    let npc_name_clone_for_trade = {
-        if let Some(npc) = game_world.npc_manager.get_npc(&npc_name) {
-            let npc_id = npc.name.clone();
-            // 確認這個 NPC 在當前位置
-            if npcs_here.iter().any(|n| n.name == npc_id) {
-                Some(npc_id)
-            } else {
-                None
-            }
-        } else {
-            None
-        }
+    // 獲取 NPC 的真實 ID（不是 name）
+    let npc_id_for_trade = {
+        let npcs_with_ids = game_world.npc_manager.get_npcs_with_ids_at_in_map(&game_world.current_map_name, me.x, me.y);
+        npcs_with_ids.iter()
+            .find(|(id, _npc)| {
+                // 通過 ID 或別名匹配
+                id.to_lowercase() == npc_name.to_lowercase() ||
+                game_world.npc_manager.get_npc(&npc_name)
+                    .map(|n| n.name == _npc.name)
+                    .unwrap_or(false)
+            })
+            .map(|(id, _)| id.clone())
     };
 
-    if let Some(npc_id) = npc_name_clone_for_trade {
-        let result = crate::trade::TradeSystem::sell_to_npc(game_world, &npc_id, &resolved_item, quantity, price);
+    if let Some(npc_id) = npc_id_for_trade {
+        let result = crate::trade::TradeSystem::sell_to_npc(game_world, me, &npc_id, &resolved_item, quantity, price);
          match result {
             crate::trade::TradeResult::Success(msg) => {
                 output_manager.print(msg);
                 
-                // 同步 me 和 game_world.player（因為 sell_to_npc 修改了 world.player）
-                *me = game_world.player.clone();
-                
                 // 保存玩家
                 let person_dir = format!("{}/persons", game_world.world_dir);
                 let _ = me.save(&person_dir, "me");
+                
+                // 出售成功後，保持 Selling 狀態並重新顯示出售選單（數據會刷新）
+                game_world.interaction_state = crate::world::InteractionState::Selling { 
+                    npc_name: npc_name.clone() 
+                };
             },
             crate::trade::TradeResult::Failed(msg) => {
                 output_manager.set_status(msg);

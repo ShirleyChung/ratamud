@@ -4,11 +4,11 @@
   "abilities": [],
   "items": {
     "魔法書": 10,
-    "魔力藥水": 100,
-    "治療藥水": 100,
-    "匕首": 10,
+    "木劍": 10,
     "金幣": 10000,
-    "木劍": 10
+    "匕首": 10,
+    "治療藥水": 100,
+    "魔力藥水": 100
   },
   "item_instances": {},
   "status": "",
@@ -22,39 +22,12 @@
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 88784,
+  "age": 113540,
   "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
-    "閒聊": [
-      {
-        "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "如果你有什麼特別需求，隨時告訴我！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "做生意要講信用，這是我的座右銘。",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "旅途辛苦了，來買點補給吧！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "我聽說附近有個神秘的寶藏，不知道是真是假？",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
     "見面": [
       {
         "text": "哈囉，小姐，今天好嗎",
@@ -106,6 +79,33 @@
       },
       {
         "text": "哈囉！有什麼我可以幫忙的嗎？",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "閒聊": [
+      {
+        "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "如果你有什麼特別需求，隨時告訴我！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "做生意要講信用，這是我的座右銘。",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "旅途辛苦了，來買點補給吧！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "我聽說附近有個神秘的寶藏，不知道是真是假？",
         "conditions": [],
         "weight": 1.0
       }

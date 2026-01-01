@@ -63,15 +63,14 @@ impl InputHandler {
                                     }
                                 },
                                 crate::world::InteractionState::Buying { npc_name } => {
-                                    // 清除互動狀態
-                                    context.game_world.interaction_state = crate::world::InteractionState::None;
-                                    // 取消 NPC 的互動狀態
-                                    if let Some(npc) = context.game_world.npc_manager.get_npc_mut(&npc_name) {
-                                        npc.is_interacting = false;
-                                    }
-                                    
                                     // 解析選單項目（格式：物品名 x數量 - 價格 金幣）
-                                    if let Some((item_name, _)) = selected_item.split_once(" x") {
+                                    if selected_item == "返回" {
+                                        // 返回交易主選單
+                                        context.game_world.interaction_state = 
+                                            crate::world::InteractionState::Trading { npc_name: npc_name.clone() };
+                                        return Some(CommandResult::Trade(npc_name));
+                                    } else if let Some((item_name, _)) = selected_item.split_once(" x") {
+                                        // 購買物品
                                         return Some(CommandResult::Buy(npc_name, item_name.to_string(), 1));
                                     }
                                 },

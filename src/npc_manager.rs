@@ -109,6 +109,14 @@ impl NpcManager {
             .map(|(_, npc)| npc)
             .collect()
     }
+    
+    /// 獲取指定地圖和位置的 NPC，返回 (id, npc) 元組
+    pub fn get_npcs_with_ids_at_in_map(&self, map_name: &str, x: usize, y: usize) -> Vec<(String, &Person)> {
+        self.npcs.iter()
+            .filter(|(_, npc)| npc.map == map_name && npc.x == x && npc.y == y)
+            .map(|(id, npc)| (id.clone(), npc))
+            .collect()
+    }
 
     /// 移除 NPC
     #[allow(dead_code)]

@@ -4,10 +4,18 @@
   "abilities": [],
   "items": {
     "乾肉": 1,
-    "羽毛": 2,
-    "金幣": 10000
+    "金幣": 10000,
+    "羽毛": 2
   },
   "item_instances": {
+    "乾肉": [
+      {
+        "id": 4,
+        "name": "乾肉",
+        "age": 0,
+        "stories": []
+      }
+    ],
     "羽毛": [
       {
         "id": 2,
@@ -21,28 +29,20 @@
         "age": 0,
         "stories": []
       }
-    ],
-    "乾肉": [
-      {
-        "id": 4,
-        "name": "乾肉",
-        "age": 0,
-        "stories": []
-      }
     ]
   },
   "status": "",
-  "x": 45,
-  "y": 46,
+  "x": 50,
+  "y": 47,
   "map": "forest",
-  "hp": 99084,
+  "hp": 99054,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 84080,
+  "age": 108836,
   "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,

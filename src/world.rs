@@ -129,9 +129,8 @@ pub struct GameWorld {
     pub npc_manager: crate::npc_manager::NpcManager,
     pub quest_manager: QuestManager,
     pub current_controlled_id: String,  // 當前操控的角色 ID (預設是 "me")
-    pub original_player: Option<Person>,         // 原始玩家資料備份
-    pub player: Person,
-    pub interaction_state: InteractionState,     // NPC 互動狀態
+    pub original_player: Option<Person>,  // 原始玩家資料備份
+    pub interaction_state: InteractionState,  // NPC 互動狀態
 }
 
 impl Default for GameWorld {
@@ -172,7 +171,6 @@ impl GameWorld {
             quest_manager: QuestManager::new(),
             current_controlled_id: "me".to_string(),
             original_player: None,
-            player: Person::new("未初始化".to_string(), "".to_string()),  // 臨時預設值，將由 npc_manager 設定
             interaction_state: InteractionState::None,
         }
     }
@@ -383,7 +381,8 @@ impl GameWorld {
     
     /// 建立所有 NPC 的視圖（不可變快照）
     /// 這些視圖將傳送給 NPC AI 執行緒用於決策
-    pub fn build_npc_views(&self) -> std::collections::HashMap<String, crate::npc_view::NpcView> {
+    /// me: 當前玩家（用於計算 nearby_entities）
+    pub fn build_npc_views(&self, me: &Person) -> std::collections::HashMap<String, crate::npc_view::NpcView> {
         use crate::npc_view::{NpcView, Position, GameTime, TerrainInfo};
         
         let mut views = std::collections::HashMap::new();
@@ -427,7 +426,7 @@ impl GameWorld {
                 };
                 
                 // 建立附近實體列表
-                let nearby_entities = self.get_nearby_entities_for_view(&npc.map, npc.x, npc.y, 5);
+                let nearby_entities = self.get_nearby_entities_for_view(me, &npc.map, npc.x, npc.y, 5);
                 
                 // 建立可見物品列表
                 let visible_items = self.get_visible_items_for_view(&npc.map, npc.x, npc.y);
@@ -461,22 +460,23 @@ impl GameWorld {
     }
     
     /// 獲取附近的實體（用於建立 NpcView）
-    fn get_nearby_entities_for_view(&self, map_name: &str, x: usize, y: usize, radius: usize) -> Vec<crate::npc_view::EntityInfo> {
+    /// me: 當前玩家
+    fn get_nearby_entities_for_view(&self, me: &Person, map_name: &str, x: usize, y: usize, radius: usize) -> Vec<crate::npc_view::EntityInfo> {
         use crate::npc_view::{EntityInfo, EntityType, Position};
         
         let mut entities = Vec::new();
         
         // 檢查玩家是否在附近
-        if self.player.map == map_name {
-            let dist_x = (self.player.x as i32 - x as i32).unsigned_abs() as usize;
-            let dist_y = (self.player.y as i32 - y as i32).unsigned_abs() as usize;
+        if me.map == map_name {
+            let dist_x = (me.x as i32 - x as i32).unsigned_abs() as usize;
+            let dist_y = (me.y as i32 - y as i32).unsigned_abs() as usize;
             
             if dist_x <= radius && dist_y <= radius {
                 entities.push(EntityInfo {
                     entity_type: EntityType::Player,
                     id: "player".to_string(),
-                    pos: Position { x: self.player.x, y: self.player.y },
-                    name: self.player.name.clone(),
+                    pos: Position { x: me.x, y: me.y },
+                    name: me.name.clone(),
                 });
             }
         }

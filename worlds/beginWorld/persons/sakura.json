@@ -3,41 +3,49 @@
   "description": "一個醫生",
   "abilities": [],
   "items": {
-    "蘋果": 5,
-    "鎬": 1,
     "治療藥水": 1,
-    "木劍": 3,
     "盾牌": 4,
-    "弓": 4,
-    "麵包": 2,
+    "羽毛": 2,
+    "木劍": 3,
+    "鎬": 1,
+    "蘋果": 5,
     "金幣": 9972,
-    "羽毛": 2
+    "麵包": 4,
+    "弓": 4
   },
-  "item_instances": {},
+  "item_instances": {
+    "麵包": [
+      {
+        "id": 3,
+        "name": "麵包",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 4,
+        "name": "麵包",
+        "age": 0,
+        "stories": []
+      }
+    ]
+  },
   "status": "",
-  "x": 48,
-  "y": 66,
+  "x": 46,
+  "y": 67,
   "map": "beginMap",
-  "hp": 98889,
+  "hp": 98866,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 78993,
+  "age": 103749,
   "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
-    "閒聊": [
-      {
-        "text": "健康是最重要的，記得多休息和保持良好的飲食習慣！",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
     "見面": [
       {
         "text": "哈囉，小姐，今天好嗎",
@@ -79,6 +87,13 @@
       },
       {
         "text": "你好！我是櫻花醫生，有什麼我可以幫助你的嗎？",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "閒聊": [
+      {
+        "text": "健康是最重要的，記得多休息和保持良好的飲食習慣！",
         "conditions": [],
         "weight": 1.0
       }

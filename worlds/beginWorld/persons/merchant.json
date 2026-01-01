@@ -3,8 +3,8 @@
   "description": "精明的商人，販售各種物品",
   "abilities": [],
   "items": {
-    "金幣": 10000,
-    "麵包": 1
+    "麵包": 1,
+    "金幣": 10000
   },
   "item_instances": {
     "麵包": [
@@ -17,22 +17,34 @@
     ]
   },
   "status": "",
-  "x": 54,
-  "y": 44,
+  "x": 55,
+  "y": 46,
   "map": "beginMap",
-  "hp": 98905,
+  "hp": 98838,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 88424,
+  "age": 113180,
   "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
+    "閒聊": [
+      {
+        "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "如果你有什麼特別需求，隨時告訴我！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
     "見面": [
       {
         "text": "哈囉，小姐，今天好嗎",
@@ -84,18 +96,6 @@
       },
       {
         "text": "哈囉！有什麼我可以幫忙的嗎？",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
-    "閒聊": [
-      {
-        "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "如果你有什麼特別需求，隨時告訴我！",
         "conditions": [],
         "weight": 1.0
       }
