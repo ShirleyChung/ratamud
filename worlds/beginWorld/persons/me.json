@@ -7,166 +7,31 @@
     "探險"
   ],
   "items": {
-    "羽毛": 1,
-    "魔法書": 1,
     "火把": 3,
-    "雷神劍": 1,
-    "金幣": 999990,
-    "石子": 3,
-    "繩索": 3,
-    "匕首": 1,
     "毒藥": 2,
-    "鎬": 1,
+    "金幣": 999990,
+    "繩索": 3,
+    "羽毛": 1,
+    "乾肉": 2,
+    "匕首": 1,
     "舊布料": 2,
-    "木劍": 2
+    "雷神劍": 1,
+    "石子": 3,
+    "木劍": 2,
+    "魔法書": 1,
+    "鎬": 1
   },
   "item_instances": {
-    "火把": [
-      {
-        "id": 4,
-        "name": "火把",
-        "age": 0,
-        "stories": []
-      },
-      {
-        "id": 5,
-        "name": "火把",
-        "age": 0,
-        "stories": []
-      },
-      {
-        "id": 6,
-        "name": "火把",
-        "age": 0,
-        "stories": []
-      }
-    ],
-    "毒藥": [
-      {
-        "id": 4,
-        "name": "毒藥",
-        "age": 0,
-        "stories": []
-      },
-      {
-        "id": 5,
-        "name": "毒藥",
-        "age": 0,
-        "stories": []
-      }
-    ],
-    "鎬": [
+    "乾肉": [
       {
         "id": 1,
-        "name": "鎬",
-        "age": 0,
-        "stories": []
-      }
-    ],
-    "舊布料": [
-      {
-        "id": 4,
-        "name": "舊布料",
+        "name": "乾肉",
         "age": 0,
         "stories": []
       },
       {
-        "id": 5,
-        "name": "舊布料",
-        "age": 0,
-        "stories": []
-      }
-    ],
-    "蘋果": [
-      {
-        "id": 4,
-        "name": "蘋果",
-        "age": 0,
-        "stories": []
-      },
-      {
-        "id": 5,
-        "name": "蘋果",
-        "age": 0,
-        "stories": []
-      },
-      {
-        "id": 6,
-        "name": "蘋果",
-        "age": 0,
-        "stories": []
-      }
-    ],
-    "男溺泉": [
-      {
-        "id": 8,
-        "name": "男溺泉",
-        "age": 0,
-        "stories": []
-      },
-      {
-        "id": 6,
-        "name": "男溺泉",
-        "age": 0,
-        "stories": []
-      },
-      {
-        "id": 4,
-        "name": "男溺泉",
-        "age": 0,
-        "stories": []
-      }
-    ],
-    "girl_spring": [
-      {
-        "id": 4,
-        "name": "girl_spring",
-        "age": 0,
-        "stories": []
-      }
-    ],
-    "羽毛": [
-      {
-        "id": 6,
-        "name": "羽毛",
-        "age": 0,
-        "stories": []
-      }
-    ],
-    "娘溺泉": [
-      {
-        "id": 4,
-        "name": "娘溺泉",
-        "age": 0,
-        "stories": []
-      }
-    ],
-    "木劍": [
-      {
-        "id": 7,
-        "name": "木劍",
-        "age": 0,
-        "stories": []
-      },
-      {
-        "id": 8,
-        "name": "木劍",
-        "age": 0,
-        "stories": []
-      }
-    ],
-    "弓": [
-      {
-        "id": 4,
-        "name": "弓",
-        "age": 0,
-        "stories": []
-      }
-    ],
-    "匕首": [
-      {
-        "id": 5,
-        "name": "匕首",
+        "id": 2,
+        "name": "乾肉",
         "age": 0,
         "stories": []
       }
@@ -191,10 +56,66 @@
         "stories": []
       }
     ],
+    "鎬": [
+      {
+        "id": 1,
+        "name": "鎬",
+        "age": 0,
+        "stories": []
+      }
+    ],
     "石子": [
       {
         "id": 4,
         "name": "石子",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "舊布料": [
+      {
+        "id": 4,
+        "name": "舊布料",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 5,
+        "name": "舊布料",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "火把": [
+      {
+        "id": 4,
+        "name": "火把",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 5,
+        "name": "火把",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 6,
+        "name": "火把",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "木劍": [
+      {
+        "id": 7,
+        "name": "木劍",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 8,
+        "name": "木劍",
         "age": 0,
         "stories": []
       }
@@ -224,21 +145,121 @@
         "age": 0,
         "stories": []
       }
+    ],
+    "羽毛": [
+      {
+        "id": 6,
+        "name": "羽毛",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "毒藥": [
+      {
+        "id": 4,
+        "name": "毒藥",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 5,
+        "name": "毒藥",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "男溺泉": [
+      {
+        "id": 8,
+        "name": "男溺泉",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 6,
+        "name": "男溺泉",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 4,
+        "name": "男溺泉",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "娘溺泉": [
+      {
+        "id": 4,
+        "name": "娘溺泉",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 2,
+        "name": "娘溺泉",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "girl_spring": [
+      {
+        "id": 4,
+        "name": "girl_spring",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "蘋果": [
+      {
+        "id": 4,
+        "name": "蘋果",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 5,
+        "name": "蘋果",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 6,
+        "name": "蘋果",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "匕首": [
+      {
+        "id": 5,
+        "name": "匕首",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "弓": [
+      {
+        "id": 4,
+        "name": "弓",
+        "age": 0,
+        "stories": []
+      }
     ]
   },
   "status": "",
-  "x": 42,
-  "y": 63,
+  "x": 34,
+  "y": 71,
   "map": "beginMap",
-  "hp": 99288,
-  "mp": 99288,
+  "hp": 99908,
+  "mp": 99175,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 351268,
-  "last_hunger_hour": 22,
+  "age": 405866,
+  "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,

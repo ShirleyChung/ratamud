@@ -8,14 +8,6 @@
     "金幣": 10000
   },
   "item_instances": {
-    "男溺泉": [
-      {
-        "id": 7,
-        "name": "男溺泉",
-        "age": 0,
-        "stories": []
-      }
-    ],
     "蘋果": [
       {
         "id": 7,
@@ -35,25 +27,40 @@
         "age": 0,
         "stories": []
       }
+    ],
+    "男溺泉": [
+      {
+        "id": 7,
+        "name": "男溺泉",
+        "age": 0,
+        "stories": []
+      }
     ]
   },
   "status": "",
-  "x": 46,
-  "y": 71,
+  "x": 35,
+  "y": 69,
   "map": "beginMap",
-  "hp": 99640,
+  "hp": 99465,
   "mp": 4997,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 11316,
-  "last_hunger_hour": 22,
+  "age": 65914,
+  "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
+    "見面": [
+      {
+        "text": "哈囉，你好",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
     "add": [
       {
         "text": "見面 天氣真好 when 天氣 == 晴天",
@@ -70,20 +77,13 @@
         "conditions": [],
         "weight": 1.0
       }
-    ],
-    "見面": [
-      {
-        "text": "哈囉，你好",
-        "conditions": [],
-        "weight": 1.0
-      }
     ]
   },
   "talk_eagerness": 100,
-  "relationship": 30,
+  "relationship": 35,
   "dialogue_state": "初見",
   "met_player": false,
   "interaction_count": 0,
-  "gender": "男",
+  "gender": "女",
   "appearance": 50
 }

@@ -3,25 +3,17 @@
   "description": "一個商人",
   "abilities": [],
   "items": {
-    "男溺泉": 1,
-    "girl_spring": 1,
     "金幣": 10000,
     "弓": 1,
-    "麵包": 1
+    "麵包": 1,
+    "girl_spring": 1,
+    "男溺泉": 1
   },
   "item_instances": {
     "男溺泉": [
       {
         "id": 9,
         "name": "男溺泉",
-        "age": 0,
-        "stories": []
-      }
-    ],
-    "弓": [
-      {
-        "id": 5,
-        "name": "弓",
         "age": 0,
         "stories": []
       }
@@ -41,51 +33,33 @@
         "age": 0,
         "stories": []
       }
+    ],
+    "弓": [
+      {
+        "id": 5,
+        "name": "弓",
+        "age": 0,
+        "stories": []
+      }
     ]
   },
   "status": "",
-  "x": 42,
-  "y": 64,
+  "x": 34,
+  "y": 71,
   "map": "beginMap",
-  "hp": 99355,
+  "hp": 99170,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 26128,
-  "last_hunger_hour": 22,
+  "age": 80726,
+  "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
-    "閒聊": [
-      {
-        "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "如果你有什麼特別需求，隨時告訴我！",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
-    "出售": [
-      {
-        "text": "好的，讓我看看你有什麼想賣的。",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
-    "購買": [
-      {
-        "text": "當然可以！請告訴我你想買什麼。",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
     "見面": [
       {
         "text": "哈囉，小姐，今天好嗎",
@@ -137,6 +111,32 @@
       },
       {
         "text": "哈囉！有什麼我可以幫忙的嗎？",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "閒聊": [
+      {
+        "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "如果你有什麼特別需求，隨時告訴我！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "購買": [
+      {
+        "text": "當然可以！請告訴我你想買什麼。",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "出售": [
+      {
+        "text": "好的，讓我看看你有什麼想賣的。",
         "conditions": [],
         "weight": 1.0
       }

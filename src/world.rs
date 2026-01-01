@@ -128,14 +128,20 @@ pub struct GameWorld {
     pub time_thread: Option<crate::time_thread::TimeThread>,
     pub npc_manager: crate::npc_manager::NpcManager,
     pub quest_manager: QuestManager,
-    pub current_controlled_id: Option<String>,  // 當前操控的角色 ID (None = 原始玩家)
+    pub current_controlled_id: String,  // 當前操控的角色 ID (預設是 "me")
     pub original_player: Option<Person>,         // 原始玩家資料備份
     pub player: Person,
     pub interaction_state: InteractionState,     // NPC 互動狀態
 }
 
+impl Default for GameWorld {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl GameWorld {
-    pub fn new(player: Person) -> Self {
+    pub fn new() -> Self {
         // 建立世界資料夾
         let world_dir = "worlds/beginWorld".to_string();
         let _ = fs::create_dir_all(&world_dir);
@@ -164,10 +170,10 @@ impl GameWorld {
             time_thread: Some(time_thread),
             npc_manager: crate::npc_manager::NpcManager::new(),
             quest_manager: QuestManager::new(),
-            current_controlled_id: None,
-            original_player: Some(player.clone()),
-            player,
-            interaction_state: InteractionState::None,  // 初始無互動狀態
+            current_controlled_id: "me".to_string(),
+            original_player: None,
+            player: Person::new("未初始化".to_string(), "".to_string()),  // 臨時預設值，將由 npc_manager 設定
+            interaction_state: InteractionState::None,
         }
     }
 
@@ -386,6 +392,11 @@ impl GameWorld {
         let all_npc_ids = self.npc_manager.get_all_npc_ids();
         
         for npc_id in all_npc_ids {
+            // 跳過當前被玩家控制的角色（不應由 AI 控制）
+            if npc_id == self.current_controlled_id {
+                continue;
+            }
+            
             if let Some(npc) = self.npc_manager.get_npc(&npc_id) {
                 // 建立時間資訊
                 let time = GameTime {

@@ -41,7 +41,6 @@ use ratatui::{
 
 use input::InputHandler;
 use output::OutputManager;
-use person::Person;
 use world::GameWorld;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -67,11 +66,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // 初始化遊戲世界
-    let mut game_world = GameWorld::new(Person::new("臨時".to_string(), "".to_string()));
+    let mut game_world = GameWorld::new();
     
     // 嘗試加載世界元數據和時間
     let _ = game_world.load_metadata();
-    let _ = game_world.load_time();  // 載入保存的世界時間
+    let _ = game_world.load_time();
     
     // 設置初始時間顯示
     output_manager.set_current_time(game_world.format_time());
@@ -92,52 +91,24 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 顯示當前時間
     output_manager.log(format!("⏰ {}", game_world.format_time()));
     
-    // 載入所有角色（包含 me）- 不跳過任何文件
+    // 初始化 NPC Manager（載入所有角色並確保 me 存在）
     let person_dir = format!("{}/persons", game_world.world_dir);
-    std::fs::create_dir_all(&person_dir)?;
-    
-    match game_world.npc_manager.load_all_from_directory(&person_dir, vec![]) {
-        Ok(count) => {
-            output_manager.log(format!("從文件載入了 {count} 個角色（包含 me）"));
-            
-            // 記錄每個角色的詳細資訊
+    let me = match game_world.npc_manager.initialize(&person_dir) {
+        Ok((count, me)) => {
+            output_manager.log(format!("已載入 {count} 個角色"));
             for npc in game_world.npc_manager.get_all_npcs() {
-                output_manager.log(format!("已載入角色: {} 在位置 ({}, {})", npc.name, npc.x, npc.y));
+                output_manager.log(format!("  - {} 在位置 ({}, {})", npc.name, npc.x, npc.y));
             }
+            me
         }
         Err(e) => {
-            output_manager.log(format!("⚠️  載入角色失敗: {e}"));
+            return Err(format!("初始化角色系統失敗: {e}").into());
         }
-    }
-    
-    // 如果沒有 me，創建預設的 me
-    let me = if let Some(loaded_me) = game_world.npc_manager.get_me() {
-        loaded_me.clone()
-    } else {
-        output_manager.log("未找到 me 存檔，創建新角色...".to_string());
-        let mut new_me = Person::new(
-            "勇士".to_string(),
-            "冒險的勇士，探索未知的世界".to_string(),
-        );
-        new_me.add_ability("劍術".to_string());
-        new_me.add_ability("魔法".to_string());
-        new_me.add_ability("探險".to_string());
-        new_me.add_item("木劍".to_string());
-        new_me.add_item("魔法書".to_string());
-        new_me.add_item("治療藥水".to_string());
-        new_me.set_status("精力充沛".to_string());
-        
-        // 保存新 me
-        let _ = new_me.save(&person_dir, "me");
-        
-        // 添加到 npc_manager
-        game_world.npc_manager.add_npc("me".to_string(), new_me.clone(), vec!["勇士".to_string()]);
-        output_manager.log("已保存新角色: Me".to_string());
-        new_me
     };
     
-    // 同步 me 到 game_world.player（向後兼容）
+    // 設定 game_world.player 和 original_player
     game_world.player = me.clone();
+    game_world.original_player = Some(me.clone());
     
     // 載入任務
     load_quest(&mut game_world, &mut output_manager);

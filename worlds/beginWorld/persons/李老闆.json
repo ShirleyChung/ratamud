@@ -3,27 +3,88 @@
   "description": "一個商人",
   "abilities": [],
   "items": {
-    "蘋果": 2,
+    "蘋果": 5,
     "金幣": 10000
   },
-  "item_instances": {},
+  "item_instances": {
+    "蘋果": [
+      {
+        "id": 1,
+        "name": "蘋果",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 2,
+        "name": "蘋果",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 4,
+        "name": "蘋果",
+        "age": 0,
+        "stories": []
+      }
+    ]
+  },
   "status": "",
-  "x": 59,
-  "y": 54,
+  "x": 65,
+  "y": 60,
   "map": "beginMap",
-  "hp": 99152,
+  "hp": 99002,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 33826,
-  "last_hunger_hour": 22,
+  "age": 88424,
+  "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
+    "閒聊": [
+      {
+        "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "如果你有什麼特別需求，隨時告訴我！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "感謝": [
+      {
+        "text": "不客氣！隨時歡迎你來店裡看看。",
+        "conditions": [],
+        "weight": 0.8
+      }
+    ],
+    "袐密": [
+      {
+        "text": "其實我有一個隱藏的商品清單，只有特別的客人才能看到哦！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "再見": [
+      {
+        "text": "感謝你的光臨，期待下次再見！",
+        "conditions": [],
+        "weight": 0.5
+      }
+    ],
+    "出售": [
+      {
+        "text": "好的，讓我看看你有什麼想賣的。",
+        "conditions": [],
+        "weight": 0.5
+      }
+    ],
     "見面": [
       {
         "text": "哈囉，小姐，今天好嗎",
@@ -79,51 +140,11 @@
         "weight": 1.0
       }
     ],
-    "再見": [
-      {
-        "text": "感謝你的光臨，期待下次再見！",
-        "conditions": [],
-        "weight": 0.5
-      }
-    ],
-    "袐密": [
-      {
-        "text": "其實我有一個隱藏的商品清單，只有特別的客人才能看到哦！",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
     "購買": [
       {
         "text": "當然可以！請告訴我你想買什麼。",
         "conditions": [],
         "weight": 1.0
-      }
-    ],
-    "感謝": [
-      {
-        "text": "不客氣！隨時歡迎你來店裡看看。",
-        "conditions": [],
-        "weight": 0.8
-      }
-    ],
-    "閒聊": [
-      {
-        "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "如果你有什麼特別需求，隨時告訴我！",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
-    "出售": [
-      {
-        "text": "好的，讓我看看你有什麼想賣的。",
-        "conditions": [],
-        "weight": 0.5
       }
     ]
   },

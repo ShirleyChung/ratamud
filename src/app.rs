@@ -109,35 +109,7 @@ pub fn run_main_loop(
         }
         
         // --- 1.5 檢測距離變化（靠近/離開通知）---
-        let current_controlled_id = game_world.current_controlled_id.as_deref().unwrap_or("me");
-        let (current_x, current_y, current_map) = if current_controlled_id == "me" {
-            (me.x, me.y, me.map.clone())
-        } else if let Some(npc) = game_world.npc_manager.get_npc(current_controlled_id) {
-            (npc.x, npc.y, npc.map.clone())
-        } else {
-            (me.x, me.y, me.map.clone())
-        };
-        
-        let proximity_notifications = game_world.npc_manager.update_proximity(
-            current_controlled_id,
-            current_x,
-            current_y,
-            &current_map,
-        );
-        
-        for (npc_id, message, should_greet) in proximity_notifications {
-            output_manager.print(message);
-            
-            // 如果應該說見面語
-            if should_greet {
-                if let Some(npc) = game_world.npc_manager.get_npc(&npc_id) {
-                    // 檢查是否有"見面"對話
-                    if let Some(greeting) = npc.get_weighted_dialogue("見面", &me) {
-                        output_manager.print(format!("{} 說：「{}」", npc.name, greeting));
-                    }
-                }
-            }
-        }
+        check_and_handle_proximity(&mut output_manager, &mut game_world, &me, false);
         
         // --- 2. Input Handling ---
         // Process all pending input events from the channel non-blockingly
@@ -420,6 +392,9 @@ fn handle_command_result(
         CommandResult::QuestAbandon(quest_id) => handle_quest_abandon(quest_id, output_manager, game_world)?,
     }
     
+    // 玩家指令執行後，檢測靠近/離開（玩家主動行動）
+    check_and_handle_proximity(output_manager, game_world, me, true);
+    
     // 所有命令執行後，如果小地圖已打開，更新小地圖資料
     if output_manager.is_minimap_open() {
         update_minimap_display(output_manager, game_world, me);
@@ -438,12 +413,28 @@ fn handle_exit(
     game_world.save_metadata()?;
     game_world.save_time()?;
     
-    // 保存玩家狀態
     let person_dir = format!("{}/persons", game_world.world_dir);
     std::fs::create_dir_all(&person_dir)?;
-    me.save(&person_dir, "me")?;
     
-    // 保存所有 NPC 的狀態
+    // 同步當前 me 到 npc_manager（避免 npc_manager 中的舊資料覆蓋）
+    if game_world.current_controlled_id == "me" {
+        // 控制 me：更新 npc_manager 中的 me
+        let aliases = vec![me.name.clone()];
+        game_world.npc_manager.add_npc("me".to_string(), me.clone(), aliases);
+    } else {
+        // 控制其他 NPC：將當前 NPC 狀態同步回 npc_manager
+        let id = game_world.current_controlled_id.clone();
+        let aliases = vec![me.name.clone()];
+        game_world.npc_manager.add_npc(id, me.clone(), aliases);
+        
+        // 並更新原始玩家到 npc_manager
+        if let Some(original_player) = &game_world.original_player {
+            let aliases = vec![original_player.name.clone()];
+            game_world.npc_manager.add_npc("me".to_string(), original_player.clone(), aliases);
+        }
+    }
+    
+    // 保存所有 NPC 的狀態（已包含更新後的 me）
     game_world.npc_manager.save_all(&person_dir)?;
     
     // 保存遊戲設置
@@ -642,8 +633,13 @@ fn display_look(
                 }
             }
             
-            // 顯示當前位置的 NPC
-            let npcs_here = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, me.x, me.y);
+            // 顯示當前位置的 NPC（排除當前控制的角色）
+            let npcs_here = game_world.npc_manager.get_npcs_at_in_map_excluding(
+                &game_world.current_map_name, 
+                me.x, 
+                me.y,
+                &game_world.current_controlled_id
+            );
             if !npcs_here.is_empty() {
                 output_manager.print("\n👥 此處的人物:".to_string());
                 for npc in npcs_here {
@@ -657,6 +653,45 @@ fn display_look(
             }
             
             output_manager.print("".to_string());          
+        }
+    }
+}
+
+/// 檢測並處理靠近/離開通知
+fn check_and_handle_proximity(
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &Person,
+    player_initiated: bool,  // true = 玩家主動行動, false = NPC AI 移動
+) {
+    let current_controlled_id = &game_world.current_controlled_id;
+    let (current_x, current_y, current_map) = if current_controlled_id == "me" {
+        (me.x, me.y, me.map.clone())
+    } else if let Some(npc) = game_world.npc_manager.get_npc(current_controlled_id) {
+        (npc.x, npc.y, npc.map.clone())
+    } else {
+        (me.x, me.y, me.map.clone())
+    };
+    
+    let proximity_notifications = game_world.npc_manager.update_proximity(
+        current_controlled_id,
+        current_x,
+        current_y,
+        &current_map,
+        player_initiated,
+    );
+    
+    for (npc_id, message, should_greet) in proximity_notifications {
+        output_manager.print(message);
+        
+        // 如果應該說見面語
+        if should_greet {
+            if let Some(npc) = game_world.npc_manager.get_npc(&npc_id) {
+                // 檢查是否有"見面"對話
+                if let Some(greeting) = npc.get_weighted_dialogue("見面", me) {
+                    output_manager.print(format!("{} 說：「{}」", npc.name, greeting));
+                }
+            }
         }
     }
 }
@@ -748,8 +783,13 @@ pub fn update_minimap_display(
                         Style::default().fg(Color::Red)
                     ));
                 } else {
-                    // 檢查該位置是否有 NPC
-                    let npcs_at_pos = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, check_x, check_y);
+                    // 檢查該位置是否有 NPC（排除當前控制的角色）
+                    let npcs_at_pos = game_world.npc_manager.get_npcs_at_in_map_excluding(
+                        &game_world.current_map_name, 
+                        check_x, 
+                        check_y,
+                        &game_world.current_controlled_id
+                    );
                     let has_merchant = npcs_at_pos.iter().any(|npc| 
                         npc.name.contains("商人") || npc.name.to_lowercase().contains("merchant")
                     );
@@ -1697,16 +1737,16 @@ fn handle_switch_control(
     game_world: &mut GameWorld,
     me: &mut Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // 步驟1: 如果當前控制的是 NPC，先把狀態同步回去並重新加入 NPC 列表
-    if let Some(current_id) = &game_world.current_controlled_id {
+    // 步驟1: 如果當前控制的不是原始玩家，先把狀態同步回去並重新加入 NPC 列表
+    if game_world.current_controlled_id != "me" {
         // 將當前操控的角色（me）加回 NPC 列表
         let npc_to_restore = me.clone();
-        let id = current_id.clone();
+        let id = game_world.current_controlled_id.clone();
         // 使用名字作為別名
         let aliases = vec![npc_to_restore.name.clone()];
         game_world.npc_manager.add_npc(id, npc_to_restore, aliases);
     } else {
-        // 如果當前沒有控制 NPC（即控制的是原始玩家），更新 original_player 的狀態
+        // 如果當前控制的是原始玩家，更新 original_player 的狀態
         game_world.original_player = Some(me.clone());
     }
     
@@ -1714,7 +1754,7 @@ fn handle_switch_control(
     if npc_name.to_lowercase() == "me" || npc_name == "我" || npc_name.to_lowercase() == "player" {
         if let Some(original) = &game_world.original_player {
             *me = original.clone();
-            game_world.current_controlled_id = None;
+            game_world.current_controlled_id = "me".to_string();
             output_manager.print("已切換回原始角色".to_string());
             output_manager.set_status(format!("現在操控: {}", me.name));
         } else {
@@ -1727,7 +1767,7 @@ fn handle_switch_control(
     if let Some(npc) = game_world.npc_manager.remove_npc(&npc_name) {
         let npc_id = npc_name.clone();
         *me = npc;  // 直接使用移除的 NPC，不需要克隆
-        game_world.current_controlled_id = Some(npc_id);
+        game_world.current_controlled_id = npc_id;
         
         output_manager.print(format!("已切換控制角色為: {}", me.name));
         output_manager.set_status(format!("現在操控: {}", me.name));

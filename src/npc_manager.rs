@@ -99,6 +99,16 @@ impl NpcManager {
             .filter(|npc| npc.map == map_name && npc.x == x && npc.y == y)
             .collect()
     }
+    
+    /// 獲取指定地圖和位置的 NPC（排除指定 ID）
+    pub fn get_npcs_at_in_map_excluding(&self, map_name: &str, x: usize, y: usize, exclude_id: &str) -> Vec<&Person> {
+        self.npcs.iter()
+            .filter(|(id, npc)| {
+                npc.map == map_name && npc.x == x && npc.y == y && id.as_str() != exclude_id
+            })
+            .map(|(_, npc)| npc)
+            .collect()
+    }
 
     /// 移除 NPC
     #[allow(dead_code)]
@@ -223,6 +233,50 @@ impl NpcManager {
         self.npcs.get("me")
     }
     
+    /// 初始化 NpcManager：載入所有 NPC 並確保 me 存在
+    /// 返回 (loaded_count, me)
+    pub fn initialize(&mut self, person_dir: &str) -> Result<(usize, Person), Box<dyn std::error::Error>> {
+        std::fs::create_dir_all(person_dir)?;
+        
+        // 載入所有 NPC
+        let loaded_count = self.load_all_from_directory(person_dir, vec![])?;
+        
+        // 確保 me 存在
+        let me = self.ensure_me(person_dir)?;
+        
+        Ok((loaded_count, me))
+    }
+    
+    /// 確保 "me" 存在，如果不存在則創建預設的 me
+    /// 返回 me 的 clone
+    fn ensure_me(&mut self, person_dir: &str) -> Result<Person, Box<dyn std::error::Error>> {
+        if let Some(me) = self.get_me() {
+            // me 已存在，直接返回
+            Ok(me.clone())
+        } else {
+            // 創建預設的 me
+            let mut new_me = Person::new(
+                "勇士".to_string(),
+                "冒險的勇士，探索未知的世界".to_string(),
+            );
+            new_me.add_ability("劍術".to_string());
+            new_me.add_ability("魔法".to_string());
+            new_me.add_ability("探險".to_string());
+            new_me.add_item("木劍".to_string());
+            new_me.add_item("魔法書".to_string());
+            new_me.add_item("治療藥水".to_string());
+            new_me.set_status("精力充沛".to_string());
+            
+            // 保存到文件
+            new_me.save(person_dir, "me")?;
+            
+            // 添加到 npc_manager
+            self.add_npc("me".to_string(), new_me.clone(), vec!["勇士".to_string()]);
+            
+            Ok(new_me)
+        }
+    }
+    
     /// 計算兩個位置的曼哈頓距離
     fn manhattan_distance(x1: usize, y1: usize, x2: usize, y2: usize) -> usize {
         ((x1 as i32 - x2 as i32).abs() + (y1 as i32 - y2 as i32).abs()) as usize
@@ -230,8 +284,9 @@ impl NpcManager {
     
     /// 更新 NPC 距離並返回靠近/離開的通知
     /// current_controlled_id: 當前操控角色的 ID（"me" 或其他 NPC ID）
+    /// player_just_moved: 是否是玩家剛執行移動指令（用於區分訊息文字）
     /// 返回 Vec<(npc_id, message, should_greet)> - should_greet 表示是否應該說見面語
-    pub fn update_proximity(&mut self, current_controlled_id: &str, current_x: usize, current_y: usize, current_map: &str) -> Vec<(String, String, bool)> {
+    pub fn update_proximity(&mut self, current_controlled_id: &str, current_x: usize, current_y: usize, current_map: &str, player_just_moved: bool) -> Vec<(String, String, bool)> {
         let mut notifications = Vec::new();
         
         for (npc_id, npc) in &self.npcs {
@@ -253,10 +308,18 @@ impl NpcManager {
             
             // 檢測靠近（從 1 → 0）
             if previous_distance == Some(1) && current_distance == 0 {
-                notifications.push((npc_id.clone(), format!("{} 往這邊走來", npc.name), true));
+                let message = if player_just_moved {
+                    // 玩家移動到 NPC 位置
+                    format!("你看到這裡有 {}", npc.name)
+                } else {
+                    // NPC 移動到玩家位置
+                    format!("{} 往這邊走來", npc.name)
+                };
+                notifications.push((npc_id.clone(), message, true));
             }
-            // 檢測離開（從 0 → 1）
-            else if previous_distance == Some(0) && current_distance == 1 {
+            // 檢測離開（從 0 → 1）- 只在 NPC 主動離開時顯示
+            else if previous_distance == Some(0) && current_distance == 1 && !player_just_moved {
+                // 只有 NPC 移動離開時才通知，玩家主動離開不通知
                 notifications.push((npc_id.clone(), format!("{} 離開了", npc.name), false));
             }
             

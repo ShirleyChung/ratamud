@@ -3,22 +3,32 @@
   "description": "精明的商人，販售各種物品",
   "abilities": [],
   "items": {
-    "金幣": 10000
+    "金幣": 10000,
+    "麵包": 1
   },
-  "item_instances": {},
+  "item_instances": {
+    "麵包": [
+      {
+        "id": 1,
+        "name": "麵包",
+        "age": 0,
+        "stories": []
+      }
+    ]
+  },
   "status": "",
-  "x": 64,
-  "y": 53,
+  "x": 54,
+  "y": 44,
   "map": "beginMap",
-  "hp": 99092,
+  "hp": 98905,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 33826,
-  "last_hunger_hour": 22,
+  "age": 88424,
+  "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
