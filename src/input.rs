@@ -69,9 +69,18 @@ impl InputHandler {
                                         context.game_world.interaction_state = 
                                             crate::world::InteractionState::Trading { npc_name: npc_name.clone() };
                                         return Some(CommandResult::Trade(npc_name));
-                                    } else if let Some((item_name, _)) = selected_item.split_once(" x") {
+                                    } else if let Some((item_part, _)) = selected_item.split_once(" x") {
                                         // 購買物品
-                                        return Some(CommandResult::Buy(npc_name, item_name.to_string(), 1));
+                                        // 提取物品名稱：去掉可能的英文別名 "木劍 (sword)" -> "木劍"
+                                        let item_name = if let Some((chinese_name, _)) = item_part.split_once(" (") {
+                                            chinese_name.trim()
+                                        } else {
+                                            item_part.trim()
+                                        };
+                                        
+                                        // 解析物品名稱（應該已經是中文名稱了，但保險起見還是解析一次）
+                                        let resolved_item = crate::item_registry::resolve_item_name(item_name);
+                                        return Some(CommandResult::Buy(npc_name, resolved_item, 1));
                                     }
                                 },
                                 crate::world::InteractionState::Selling { npc_name } => {
@@ -82,9 +91,15 @@ impl InputHandler {
                                             crate::world::InteractionState::Trading { npc_name: npc_name.clone() };
                                         return Some(CommandResult::Trade(npc_name));
                                     } else if let Some((item_part, _)) = selected_item.split_once(" x") {
-                                        // 提取物品名稱（可能包含中文顯示名稱，需要解析）
-                                        let item_name = item_part.trim();
-                                        // 使用 item_registry 解析物品名稱
+                                        // 出售物品
+                                        // 提取物品名稱：去掉可能的英文別名 "木劍 (sword)" -> "木劍"
+                                        let item_name = if let Some((chinese_name, _)) = item_part.split_once(" (") {
+                                            chinese_name.trim()
+                                        } else {
+                                            item_part.trim()
+                                        };
+                                        
+                                        // 解析物品名稱（應該已經是中文名稱了，但保險起見還是解析一次）
                                         let resolved_item = crate::item_registry::resolve_item_name(item_name);
                                         return Some(CommandResult::Sell(npc_name, resolved_item, 1));
                                     }

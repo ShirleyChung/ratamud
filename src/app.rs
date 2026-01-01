@@ -368,8 +368,8 @@ fn handle_command_result(
         CommandResult::Set(target, attribute, value) => handle_set(target, attribute, value, output_manager, game_world, me)?,
         CommandResult::SwitchControl(npc_name) => handle_switch_control(npc_name, output_manager, game_world, me)?,
         CommandResult::Trade(npc_name) => handle_trade(npc_name, output_manager, game_world, me, interaction_menu)?,
-        CommandResult::Buy(npc_name, item, quantity) => handle_buy(npc_name, item, quantity, output_manager, game_world, me)?,
-        CommandResult::Sell(npc_name, item, quantity) => handle_sell(npc_name, item, quantity, output_manager, game_world, me)?,
+        CommandResult::Buy(npc_name, item, quantity) => handle_buy(npc_name, item, quantity, output_manager, game_world, me, interaction_menu)?,
+        CommandResult::Sell(npc_name, item, quantity) => handle_sell(npc_name, item, quantity, output_manager, game_world, me, interaction_menu)?,
         CommandResult::Give(npc_name, item, quantity) => handle_give(npc_name, item, quantity, output_manager, game_world, me)?,
         CommandResult::SetDialogue(npc_name, topic, dialogue) => handle_set_dialogue(npc_name, topic, dialogue, output_manager, game_world)?,
         CommandResult::SetDialogueWithConditions(npc_name, topic, dialogue, conditions) => handle_set_dialogue_with_conditions(npc_name, topic, dialogue, conditions, output_manager, game_world)?,
@@ -1787,8 +1787,35 @@ fn handle_trade(
     me: &Person,
     interaction_menu: &mut Option<Menu>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // 先檢查 NPC 是否在同一位置，並收集必要資訊
-    let (npc_found, npc_id, npc_display_name, goods_data) = {
+    // 檢查當前是否已經在交易狀態中
+    let already_trading = matches!(
+        game_world.interaction_state,
+        crate::world::InteractionState::Trading { .. } |
+        crate::world::InteractionState::Buying { .. } |
+        crate::world::InteractionState::Selling { .. }
+    );
+    
+    // 如果已經在交易中，npc_name 就是 npc_id，不需要再檢查位置
+    // 如果是新交易，需要檢查 NPC 是否在附近
+    let (npc_found, npc_id, npc_display_name, goods_data) = if already_trading {
+        // 已經在交易中，直接使用 npc_name（實際上是 npc_id）
+        if let Some(npc) = game_world.npc_manager.get_npc(&npc_name) {
+            let npc_id = npc_name.clone();
+            let display = npc.name.clone();
+            
+            // 如果是 Buying 狀態，收集商品資料
+            let goods = if matches!(game_world.interaction_state, crate::world::InteractionState::Buying { .. }) {
+                Some(crate::trade::TradeSystem::get_npc_goods(npc))
+            } else {
+                None
+            };
+            
+            (true, npc_id, display, goods)
+        } else {
+            (false, String::new(), String::new(), None)
+        }
+    } else {
+        // 新交易，需要檢查 NPC 是否在同一位置
         let npcs_here = game_world.npc_manager.get_npcs_with_ids_at_in_map(&game_world.current_map_name, me.x, me.y);
         
         // 在當前位置的 NPC 中查找（支援名稱和別名）
@@ -1801,15 +1828,7 @@ fn handle_trade(
         if let Some((id, npc)) = npc_opt {
             let npc_id = id.clone();
             let display = npc.name.clone();
-            
-            // 如果是 Buying 狀態，收集商品資料
-            let goods = if matches!(game_world.interaction_state, crate::world::InteractionState::Buying { .. }) {
-                Some(crate::trade::TradeSystem::get_npc_goods(npc))
-            } else {
-                None
-            };
-            
-            (true, npc_id, display, goods)
+            (true, npc_id, display, None)
         } else {
             (false, String::new(), String::new(), None)
         }
@@ -1913,21 +1932,10 @@ fn handle_buy(
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
     me: &mut Person,
+    interaction_menu: &mut Option<Menu>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // 檢查 NPC 是否在同一位置
-    let npcs_here: Vec<&crate::person::Person> = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, me.x, me.y);
-    
-    // 使用別名系統查找 NPC
-    let npc_found = if let Some(npc) = game_world.npc_manager.get_npc(&npc_name) {
-        npcs_here.iter().any(|n| n.name == npc.name)
-    } else {
-        false
-    };
-    
-    if !npc_found {
-        output_manager.set_status(format!("此處找不到 {npc_name}"));
-        return Ok(())
-    }
+    // npc_name 實際上是 npc_id（從 InteractionState 傳來）
+    let npc_id = npc_name;
     
     // 解析物品名稱
     let resolved_item = item_registry::resolve_item_name(&item_name);
@@ -1935,42 +1943,28 @@ fn handle_buy(
     // 計算價格
     let price = crate::trade::TradeSystem::calculate_buy_price(&resolved_item, quantity);
     
-    // 獲取 NPC 的真實 ID（不是 name）
-    let npc_id_for_trade = {
-        let npcs_with_ids = game_world.npc_manager.get_npcs_with_ids_at_in_map(&game_world.current_map_name, me.x, me.y);
-        npcs_with_ids.iter()
-            .find(|(id, _npc)| {
-                // 通過 ID 或別名匹配
-                id.to_lowercase() == npc_name.to_lowercase() ||
-                game_world.npc_manager.get_npc(&npc_name)
-                    .map(|n| n.name == _npc.name)
-                    .unwrap_or(false)
-            })
-            .map(|(id, _)| id.clone())
-    };
-
-    if let Some(npc_id) = npc_id_for_trade {
-        let result = crate::trade::TradeSystem::buy_from_npc(game_world, me, &npc_id, &resolved_item, quantity, price);
-        
-        match result {
-            crate::trade::TradeResult::Success(msg) => {
-                output_manager.print(msg);
-                
-                // 保存玩家
-                let person_dir = format!("{}/persons", game_world.world_dir);
-                let _ = me.save(&person_dir, "me");
-                
-                // 購買成功後，保持 Buying 狀態並重新顯示購買選單（數據會刷新）
-                game_world.interaction_state = crate::world::InteractionState::Buying { 
-                    npc_name: npc_name.clone() 
-                };
-            },
-            crate::trade::TradeResult::Failed(msg) => {
-                output_manager.set_status(msg);
-            },
-        }
-    } else {
-        output_manager.set_status(format!("此處找不到 {npc_name}"));
+    // 直接執行交易（不需要再次檢查位置，因為交易已經開始）
+    let result = crate::trade::TradeSystem::buy_from_npc(game_world, me, &npc_id, &resolved_item, quantity, price);
+    
+    match result {
+        crate::trade::TradeResult::Success(msg) => {
+            output_manager.print(msg);
+            
+            // 保存玩家
+            let person_dir = format!("{}/persons", game_world.world_dir);
+            let _ = me.save(&person_dir, "me");
+            
+            // 購買成功後，保持 Buying 狀態並重新顯示購買選單（數據會刷新）
+            game_world.interaction_state = crate::world::InteractionState::Buying { 
+                npc_name: npc_id.clone() 
+            };
+            
+            // 重新調用 handle_trade 以刷新選單
+            handle_trade(npc_id, output_manager, game_world, me, interaction_menu)?;
+        },
+        crate::trade::TradeResult::Failed(msg) => {
+            output_manager.set_status(msg);
+        },
     }
     
     Ok(())
@@ -1984,21 +1978,10 @@ fn handle_sell(
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
     me: &mut Person,
+    interaction_menu: &mut Option<Menu>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // 檢查 NPC 是否在同一位置
-    let npcs_here: Vec<&crate::person::Person> = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, me.x, me.y);
-    
-    // 使用別名系統查找 NPC
-    let npc_found = if let Some(npc) = game_world.npc_manager.get_npc(&npc_name) {
-        npcs_here.iter().any(|n| n.name == npc.name)
-    } else {
-        false
-    };
-    
-    if !npc_found {
-        output_manager.set_status(format!("此處找不到 {npc_name}"));
-        return Ok(())
-    }
+    // npc_name 實際上是 npc_id（從 InteractionState 傳來）
+    let npc_id = npc_name;
     
     // 解析物品名稱
     let resolved_item = item_registry::resolve_item_name(&item_name);
@@ -2006,41 +1989,28 @@ fn handle_sell(
     // 計算價格
     let price = crate::trade::TradeSystem::calculate_sell_price(&resolved_item, quantity);
     
-    // 獲取 NPC 的真實 ID（不是 name）
-    let npc_id_for_trade = {
-        let npcs_with_ids = game_world.npc_manager.get_npcs_with_ids_at_in_map(&game_world.current_map_name, me.x, me.y);
-        npcs_with_ids.iter()
-            .find(|(id, _npc)| {
-                // 通過 ID 或別名匹配
-                id.to_lowercase() == npc_name.to_lowercase() ||
-                game_world.npc_manager.get_npc(&npc_name)
-                    .map(|n| n.name == _npc.name)
-                    .unwrap_or(false)
-            })
-            .map(|(id, _)| id.clone())
-    };
-
-    if let Some(npc_id) = npc_id_for_trade {
-        let result = crate::trade::TradeSystem::sell_to_npc(game_world, me, &npc_id, &resolved_item, quantity, price);
-         match result {
-            crate::trade::TradeResult::Success(msg) => {
-                output_manager.print(msg);
-                
-                // 保存玩家
-                let person_dir = format!("{}/persons", game_world.world_dir);
-                let _ = me.save(&person_dir, "me");
-                
-                // 出售成功後，保持 Selling 狀態並重新顯示出售選單（數據會刷新）
-                game_world.interaction_state = crate::world::InteractionState::Selling { 
-                    npc_name: npc_name.clone() 
-                };
-            },
-            crate::trade::TradeResult::Failed(msg) => {
-                output_manager.set_status(msg);
-            },
-        }
-    } else {
-        output_manager.set_status(format!("此處找不到 {npc_name}"));
+    // 直接執行交易（不需要再次檢查位置，因為交易已經開始）
+    let result = crate::trade::TradeSystem::sell_to_npc(game_world, me, &npc_id, &resolved_item, quantity, price);
+    
+    match result {
+        crate::trade::TradeResult::Success(msg) => {
+            output_manager.print(msg);
+            
+            // 保存玩家
+            let person_dir = format!("{}/persons", game_world.world_dir);
+            let _ = me.save(&person_dir, "me");
+            
+            // 出售成功後，保持 Selling 狀態並重新顯示出售選單（數據會刷新）
+            game_world.interaction_state = crate::world::InteractionState::Selling { 
+                npc_name: npc_id.clone() 
+            };
+            
+            // 重新調用 handle_trade 以刷新選單
+            handle_trade(npc_id, output_manager, game_world, me, interaction_menu)?;
+        },
+        crate::trade::TradeResult::Failed(msg) => {
+            output_manager.set_status(msg);
+        },
     }
     
     Ok(())

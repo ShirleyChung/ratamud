@@ -4,10 +4,20 @@
   "abilities": [],
   "items": {
     "蘋果": 3,
-    "金幣": 10000,
-    "男溺泉": 1
+    "雷神劍": 1,
+    "男溺泉": 1,
+    "金幣": 10002,
+    "匕首": 1
   },
   "item_instances": {
+    "男溺泉": [
+      {
+        "id": 7,
+        "name": "男溺泉",
+        "age": 0,
+        "stories": []
+      }
+    ],
     "蘋果": [
       {
         "id": 7,
@@ -27,28 +37,20 @@
         "age": 0,
         "stories": []
       }
-    ],
-    "男溺泉": [
-      {
-        "id": 7,
-        "name": "男溺泉",
-        "age": 0,
-        "stories": []
-      }
     ]
   },
   "status": "",
-  "x": 36,
-  "y": 70,
+  "x": 35,
+  "y": 69,
   "map": "beginMap",
-  "hp": 99453,
+  "hp": 99443,
   "mp": 4997,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 90670,
+  "age": 107349,
   "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,

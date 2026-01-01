@@ -3,8 +3,8 @@
   "description": "一個商人",
   "abilities": [],
   "items": {
-    "蘋果": 1,
     "金幣": 10007,
+    "蘋果": 1,
     "麵包": 3
   },
   "item_instances": {
@@ -30,17 +30,17 @@
     ]
   },
   "status": "",
-  "x": 54,
+  "x": 59,
   "y": 58,
   "map": "beginMap",
-  "hp": 99527,
+  "hp": 99498,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 114765,
+  "age": 131444,
   "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
@@ -49,6 +49,25 @@
     "出售": [
       {
         "text": "好的，讓我看看你有什麼想賣的。",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "購買": [
+      {
+        "text": "當然可以！請告訴我你想買什麼。",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "閒聊": [
+      {
+        "text": "最近的市場行情不錯，貨物銷售得很快！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "但是經營商店也有不少挑戰呢！",
         "conditions": [],
         "weight": 1.0
       }
@@ -88,25 +107,6 @@
       },
       {
         "text": "嘿！又見面了，有什麼想買的嗎？",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
-    "閒聊": [
-      {
-        "text": "最近的市場行情不錯，貨物銷售得很快！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "但是經營商店也有不少挑戰呢！",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
-    "購買": [
-      {
-        "text": "當然可以！請告訴我你想買什麼。",
         "conditions": [],
         "weight": 1.0
       }

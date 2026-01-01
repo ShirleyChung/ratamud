@@ -3,25 +3,17 @@
   "description": "一個商人",
   "abilities": [],
   "items": {
-    "金幣": 10000,
     "麵包": 1,
-    "弓": 1,
     "男溺泉": 1,
+    "金幣": 10000,
+    "弓": 1,
     "girl_spring": 1
   },
   "item_instances": {
-    "弓": [
+    "麵包": [
       {
-        "id": 5,
-        "name": "弓",
-        "age": 0,
-        "stories": []
-      }
-    ],
-    "girl_spring": [
-      {
-        "id": 5,
-        "name": "girl_spring",
+        "id": 6,
+        "name": "麵包",
         "age": 0,
         "stories": []
       }
@@ -34,10 +26,18 @@
         "stories": []
       }
     ],
-    "麵包": [
+    "girl_spring": [
       {
-        "id": 6,
-        "name": "麵包",
+        "id": 5,
+        "name": "girl_spring",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "弓": [
+      {
+        "id": 5,
+        "name": "弓",
         "age": 0,
         "stories": []
       }
@@ -54,7 +54,7 @@
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 105482,
+  "age": 122161,
   "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
@@ -127,16 +127,16 @@
         "weight": 1.0
       }
     ],
-    "出售": [
+    "購買": [
       {
-        "text": "好的，讓我看看你有什麼想賣的。",
+        "text": "當然可以！請告訴我你想買什麼。",
         "conditions": [],
         "weight": 1.0
       }
     ],
-    "購買": [
+    "出售": [
       {
-        "text": "當然可以！請告訴我你想買什麼。",
+        "text": "好的，讓我看看你有什麼想賣的。",
         "conditions": [],
         "weight": 1.0
       }

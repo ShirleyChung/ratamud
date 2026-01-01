@@ -7,52 +7,82 @@
     "探險"
   ],
   "items": {
-    "羽毛": 1,
-    "繩索": 3,
-    "雷神劍": 1,
-    "魔法書": 1,
-    "鐵劍": 3,
-    "匕首": 1,
+    "金幣": 999988,
     "石子": 3,
-    "火把": 3,
-    "毒藥": 2,
-    "金幣": 999990,
-    "鎬": 1,
-    "乾肉": 2,
+    "羽毛": 3,
+    "水": 1,
+    "頭盔": 2,
     "舊布料": 2,
-    "木劍": 2
+    "鐵劍": 3,
+    "繩索": 3,
+    "毒藥": 2,
+    "魔法書": 1,
+    "乾肉": 2,
+    "火把": 6,
+    "木劍": 2,
+    "鎬": 2
   },
   "item_instances": {
-    "繩索": [
+    "舊布料": [
       {
         "id": 4,
-        "name": "繩索",
-        "age": 0,
-        "stories": []
-      },
-      {
-        "id": 6,
-        "name": "繩索",
-        "age": 0,
-        "stories": []
-      },
-      {
-        "id": 7,
-        "name": "繩索",
-        "age": 0,
-        "stories": []
-      }
-    ],
-    "毒藥": [
-      {
-        "id": 4,
-        "name": "毒藥",
+        "name": "舊布料",
         "age": 0,
         "stories": []
       },
       {
         "id": 5,
-        "name": "毒藥",
+        "name": "舊布料",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "弓": [
+      {
+        "id": 4,
+        "name": "弓",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "乾肉": [
+      {
+        "id": 1,
+        "name": "乾肉",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 2,
+        "name": "乾肉",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "石子": [
+      {
+        "id": 4,
+        "name": "石子",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "羽毛": [
+      {
+        "id": 6,
+        "name": "羽毛",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 8,
+        "name": "羽毛",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 9,
+        "name": "羽毛",
         "age": 0,
         "stories": []
       }
@@ -61,6 +91,34 @@
       {
         "id": 5,
         "name": "匕首",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "頭盔": [
+      {
+        "id": 6,
+        "name": "頭盔",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 7,
+        "name": "頭盔",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "鎬": [
+      {
+        "id": 1,
+        "name": "鎬",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 2,
+        "name": "鎬",
         "age": 0,
         "stories": []
       }
@@ -85,6 +143,66 @@
         "stories": []
       }
     ],
+    "girl_spring": [
+      {
+        "id": 4,
+        "name": "girl_spring",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "毒藥": [
+      {
+        "id": 4,
+        "name": "毒藥",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 5,
+        "name": "毒藥",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "火把": [
+      {
+        "id": 4,
+        "name": "火把",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 5,
+        "name": "火把",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 6,
+        "name": "火把",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 3,
+        "name": "火把",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 4,
+        "name": "火把",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 5,
+        "name": "火把",
+        "age": 0,
+        "stories": []
+      }
+    ],
     "蘋果": [
       {
         "id": 4,
@@ -105,16 +223,36 @@
         "stories": []
       }
     ],
-    "乾肉": [
+    "娘溺泉": [
       {
-        "id": 1,
-        "name": "乾肉",
+        "id": 4,
+        "name": "娘溺泉",
         "age": 0,
         "stories": []
       },
       {
         "id": 2,
-        "name": "乾肉",
+        "name": "娘溺泉",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "繩索": [
+      {
+        "id": 4,
+        "name": "繩索",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 6,
+        "name": "繩索",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 7,
+        "name": "繩索",
         "age": 0,
         "stories": []
       }
@@ -133,52 +271,10 @@
         "stories": []
       }
     ],
-    "鎬": [
+    "水": [
       {
-        "id": 1,
-        "name": "鎬",
-        "age": 0,
-        "stories": []
-      }
-    ],
-    "娘溺泉": [
-      {
-        "id": 4,
-        "name": "娘溺泉",
-        "age": 0,
-        "stories": []
-      },
-      {
-        "id": 2,
-        "name": "娘溺泉",
-        "age": 0,
-        "stories": []
-      }
-    ],
-    "男溺泉": [
-      {
-        "id": 8,
-        "name": "男溺泉",
-        "age": 0,
-        "stories": []
-      },
-      {
-        "id": 6,
-        "name": "男溺泉",
-        "age": 0,
-        "stories": []
-      },
-      {
-        "id": 4,
-        "name": "男溺泉",
-        "age": 0,
-        "stories": []
-      }
-    ],
-    "弓": [
-      {
-        "id": 4,
-        "name": "弓",
+        "id": 5,
+        "name": "水",
         "age": 0,
         "stories": []
       }
@@ -209,77 +305,39 @@
         "stories": []
       }
     ],
-    "石子": [
+    "男溺泉": [
       {
-        "id": 4,
-        "name": "石子",
-        "age": 0,
-        "stories": []
-      }
-    ],
-    "火把": [
-      {
-        "id": 4,
-        "name": "火把",
-        "age": 0,
-        "stories": []
-      },
-      {
-        "id": 5,
-        "name": "火把",
+        "id": 8,
+        "name": "男溺泉",
         "age": 0,
         "stories": []
       },
       {
         "id": 6,
-        "name": "火把",
-        "age": 0,
-        "stories": []
-      }
-    ],
-    "羽毛": [
-      {
-        "id": 6,
-        "name": "羽毛",
-        "age": 0,
-        "stories": []
-      }
-    ],
-    "girl_spring": [
-      {
-        "id": 4,
-        "name": "girl_spring",
-        "age": 0,
-        "stories": []
-      }
-    ],
-    "舊布料": [
-      {
-        "id": 4,
-        "name": "舊布料",
+        "name": "男溺泉",
         "age": 0,
         "stories": []
       },
       {
-        "id": 5,
-        "name": "舊布料",
+        "id": 4,
+        "name": "男溺泉",
         "age": 0,
         "stories": []
       }
     ]
   },
   "status": "",
-  "x": 38,
-  "y": 71,
+  "x": 24,
+  "y": 75,
   "map": "beginMap",
-  "hp": 99862,
-  "mp": 99096,
+  "hp": 99792,
+  "mp": 99940,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 430622,
+  "age": 447301,
   "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,

@@ -4,28 +4,46 @@
   "abilities": [],
   "items": {
     "木劍": 6,
-    "金幣": 10015,
     "羽毛": 4,
+    "金幣": 10015,
     "蘋果": 2
   },
   "item_instances": {},
   "status": "",
-  "x": 50,
-  "y": 70,
+  "x": 47,
+  "y": 71,
   "map": "beginMap",
-  "hp": 98831,
+  "hp": 98809,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 103749,
+  "age": 120428,
   "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
+    "閒聊": [
+      {
+        "text": "今天天氣不錯",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "你好厲害啊",
+        "conditions": [
+          {
+            "attribute": "力量",
+            "operator": ">",
+            "value": "100"
+          }
+        ],
+        "weight": 1.0
+      }
+    ],
     "見面": [
       {
         "text": "哈囉，小姐，今天好嗎",
@@ -68,24 +86,6 @@
       {
         "text": "哈囉",
         "conditions": [],
-        "weight": 1.0
-      }
-    ],
-    "閒聊": [
-      {
-        "text": "今天天氣不錯",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "你好厲害啊",
-        "conditions": [
-          {
-            "attribute": "力量",
-            "operator": ">",
-            "value": "100"
-          }
-        ],
         "weight": 1.0
       }
     ]

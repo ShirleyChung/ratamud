@@ -3,7 +3,7 @@
   "description": "一個商人",
   "abilities": [],
   "items": {
-    "蘋果": 5,
+    "蘋果": 6,
     "金幣": 10000
   },
   "item_instances": {
@@ -25,33 +25,32 @@
         "name": "蘋果",
         "age": 0,
         "stories": []
+      },
+      {
+        "id": 1,
+        "name": "蘋果",
+        "age": 0,
+        "stories": []
       }
     ]
   },
   "status": "",
-  "x": 58,
-  "y": 59,
+  "x": 59,
+  "y": 54,
   "map": "beginMap",
-  "hp": 98964,
+  "hp": 98942,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 113180,
+  "age": 129859,
   "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
-    "出售": [
-      {
-        "text": "好的，讓我看看你有什麼想賣的。",
-        "conditions": [],
-        "weight": 0.5
-      }
-    ],
     "感謝": [
       {
         "text": "不客氣！隨時歡迎你來店裡看看。",
@@ -59,18 +58,25 @@
         "weight": 0.8
       }
     ],
+    "出售": [
+      {
+        "text": "好的，讓我看看你有什麼想賣的。",
+        "conditions": [],
+        "weight": 0.5
+      }
+    ],
+    "購買": [
+      {
+        "text": "當然可以！請告訴我你想買什麼。",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
     "袐密": [
       {
         "text": "其實我有一個隱藏的商品清單，只有特別的客人才能看到哦！",
         "conditions": [],
         "weight": 1.0
-      }
-    ],
-    "再見": [
-      {
-        "text": "感謝你的光臨，期待下次再見！",
-        "conditions": [],
-        "weight": 0.5
       }
     ],
     "閒聊": [
@@ -140,11 +146,11 @@
         "weight": 1.0
       }
     ],
-    "購買": [
+    "再見": [
       {
-        "text": "當然可以！請告訴我你想買什麼。",
+        "text": "感謝你的光臨，期待下次再見！",
         "conditions": [],
-        "weight": 1.0
+        "weight": 0.5
       }
     ]
   },
