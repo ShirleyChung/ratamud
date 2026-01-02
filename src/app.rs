@@ -14,7 +14,6 @@ use crate::output::OutputManager;
 use crate::world::GameWorld;
 use crate::settings::GameSettings;
 use crate::person::Person;
-use crate::observable::WorldInfo;
 use crate::input::CommandResult;
 use crate::quest::{QuestReward};
 use crate::item_registry;
@@ -337,7 +336,6 @@ fn handle_command_result(
         CommandResult::Error(err) => handle_error(err, output_manager),
         CommandResult::Clear => handle_clear(output_manager),
         CommandResult::AddToSide(msg) => handle_add_to_side(msg, output_manager),
-        CommandResult::ShowStatus => handle_show_status(output_manager, me),
         CommandResult::ShowWorld => handle_show_world(output_manager, game_world),
         CommandResult::ShowMinimap => handle_show_minimap(output_manager, game_world, me),
         CommandResult::HideMinimap => handle_hide_minimap(output_manager),
@@ -493,27 +491,26 @@ fn handle_add_to_side(msg: String, output_manager: &mut OutputManager) {
     }
 }
 
-/// 處理顯示狀態面板
-fn handle_show_status(output_manager: &mut OutputManager, me: &Person) {
-    // 顯示狀態面板
-    if !output_manager.is_status_panel_open() {
-        output_manager.toggle_status_panel();
-    }
-    output_manager.set_side_observable(Box::new(me.clone()));
-    output_manager.set_status("已顯示角色狀態".to_string());
-}
-
 /// 處理顯示世界資訊
 fn handle_show_world(output_manager: &mut OutputManager, game_world: &GameWorld) {
     if !output_manager.is_status_panel_open() {
         output_manager.toggle_status_panel();
     }
-    let world_info = WorldInfo::new(
-        game_world.metadata.name.clone(),
-        game_world.metadata.description.clone(),
-        game_world.metadata.maps.clone(),
+    
+    // 格式化世界資訊
+    let mut content = format!("【{}】\n\n{}\n", 
+        game_world.metadata.name,
+        game_world.metadata.description
     );
-    output_manager.set_side_observable(Box::new(world_info));
+    
+    if !game_world.metadata.maps.is_empty() {
+        content.push('\n');
+        for map in &game_world.metadata.maps {
+            content.push_str(&format!("• {map}\n"));
+        }
+    }
+    
+    output_manager.set_side_content(content);
     output_manager.set_status(String::new());
 }
 
@@ -1656,22 +1653,22 @@ fn handle_set(
         // 設置玩家屬性
         match attribute.to_lowercase().as_str() {
             "hp" => {
-                me.hp = value;
+                me.set_hp(value);
                 output_manager.print(format!("你的 HP 設置為 {value}"));
             },
             "mp" => {
                 me.mp = value;
                 output_manager.print(format!("你的 MP 設置為 {value}"));
             },
-            "strength" | "str" => {
-                me.strength = value;
+            "strength" | "str" | "力量" => {
+                me.set_strength(value);
                 output_manager.print(format!("你的力量設置為 {value}"));
             },
-            "knowledge" | "kno" => {
+            "knowledge" | "kno" | "知識" => {
                 me.knowledge = value;
                 output_manager.print(format!("你的知識設置為 {value}"));
             },
-            "sociality" | "soc" => {
+            "sociality" | "soc" | "交誼" => {
                 me.sociality = value;
                 output_manager.print(format!("你的交誼設置為 {value}"));
             },
@@ -1680,12 +1677,21 @@ fn handle_set(
                 me.items.insert("金幣".to_string(), gold_value);
                 output_manager.print(format!("你的金幣設置為 {gold_value}"));                
             },
-             "sex" | "性別" => {
-                me.gender = value.to_string();           
-                // 保存玩家
+            "appearance" | "顏值" => {
+                me.set_appearance(value);
+                output_manager.print(format!("你的顏值設置為 {value}"));
+            },
+            "build" | "體格" => {
+                me.set_build(value);
+                output_manager.print(format!("你的體格設置為 {value}"));
+            },
+            "sex" | "gender" | "性別" => {
+                let gender_str = if value == 0 { "女".to_string() } else { "男".to_string() };
+                me.set_gender(gender_str.clone());
+                output_manager.print(format!("你的性別設置為 {gender_str}"));
             },
             _ => {
-                output_manager.set_status(format!("未知屬性: {attribute}，支持: hp, mp, strength, knowledge, sociality, gold/金幣"));
+                output_manager.set_status(format!("未知屬性: {attribute}，支持: hp, mp, strength, knowledge, sociality, gold/金幣, appearance/顏值, build/體格, sex/性別"));
             }
         }
         let person_dir = format!("{}/persons", game_world.world_dir);
@@ -1695,22 +1701,22 @@ fn handle_set(
         if let Some(npc) = game_world.npc_manager.get_npc_mut(&target) {
             match attribute.to_lowercase().as_str() {
                 "hp" => {
-                    npc.hp = value;
+                    npc.set_hp(value);
                     output_manager.print(format!("{target}的 HP 設置為 {value}"));
                 },
                 "mp" => {
                     npc.mp = value;
                     output_manager.print(format!("{target}的 MP 設置為 {value}"));
                 },
-                "strength" | "str" => {
-                    npc.strength = value;
+                "strength" | "str" | "力量" => {
+                    npc.set_strength(value);
                     output_manager.print(format!("{target}的力量設置為 {value}"));
                 },
-                "knowledge" | "kno" => {
+                "knowledge" | "kno" | "知識" => {
                     npc.knowledge = value;
                     output_manager.print(format!("{target}的知識設置為 {value}"));
                 },
-                "sociality" | "soc" => {
+                "sociality" | "soc" | "交誼" => {
                     npc.sociality = value;
                     output_manager.print(format!("{target}的交誼設置為 {value}"));
                 },
@@ -1719,8 +1725,21 @@ fn handle_set(
                     npc.items.insert("金幣".to_string(), gold_value);
                     output_manager.print(format!("{target}的金幣設置為 {gold_value}"));
                 },
+                "appearance" | "顏值" => {
+                    npc.set_appearance(value);
+                    output_manager.print(format!("{target}的顏值設置為 {value}"));
+                },
+                "build" | "體格" => {
+                    npc.set_build(value);
+                    output_manager.print(format!("{target}的體格設置為 {value}"));
+                },
+                "sex" | "gender" | "性別" => {
+                    let gender_str = if value == 0 { "女".to_string() } else { "男".to_string() };
+                    npc.set_gender(gender_str.clone());
+                    output_manager.print(format!("{target}的性別設置為 {gender_str}"));
+                },
                 _ => {
-                    output_manager.set_status(format!("未知屬性: {attribute}，支持: hp, mp, strength, knowledge, sociality, gold/金幣"));
+                    output_manager.set_status(format!("未知屬性: {attribute}，支持: hp, mp, strength, knowledge, sociality, gold/金幣, appearance/顏值, build/體格, sex/性別"));
                 }
             }
         } else {
@@ -2126,7 +2145,17 @@ fn handle_check_npc(
     game_world: &mut GameWorld,
 ) {
     if let Some(npc) = game_world.npc_manager.get_npc(&npc_name) {
-        output_manager.print(npc.show_detail());
+        // 如果是檢查 "me"，則顯示到側邊面板（重用 show_detail 功能）
+        if npc_name == "me" {
+            if !output_manager.is_status_panel_open() {
+                output_manager.toggle_status_panel();
+            }
+            output_manager.set_side_content(npc.show_detail());
+            output_manager.set_status("已顯示角色狀態".to_string());
+        } else {
+            // 其他 NPC 則輸出到主輸出區
+            output_manager.print(npc.show_detail());
+        }
     } else {
         output_manager.print(format!("找不到 NPC: {npc_name}"));
     }
@@ -2334,7 +2363,7 @@ fn try_stop_npc(
         npc.is_interacting = true;
         output_manager.print(format!("你叫住了 {}", npc.name));
         
-        if let Some(response) = npc.get_dialogue("被叫住") {
+        if let Some(response) = npc.get_weighted_dialogue("被叫住", npc) {
             output_manager.print(format!("{} 說：「{}」", npc.name, response));
         }
         true

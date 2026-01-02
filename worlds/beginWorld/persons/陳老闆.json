@@ -3,21 +3,17 @@
   "description": "一個商人",
   "abilities": [],
   "items": {
-    "麵包": 1,
     "男溺泉": 1,
-    "金幣": 10000,
-    "弓": 1,
-    "girl_spring": 1
+    "魔法書": 1,
+    "頭盔": 2,
+    "金幣": 9938,
+    "水": 1,
+    "麵包": 1,
+    "鐵劍": 5,
+    "舊布料": 2,
+    "弓": 1
   },
   "item_instances": {
-    "麵包": [
-      {
-        "id": 6,
-        "name": "麵包",
-        "age": 0,
-        "stories": []
-      }
-    ],
     "男溺泉": [
       {
         "id": 9,
@@ -26,10 +22,10 @@
         "stories": []
       }
     ],
-    "girl_spring": [
+    "麵包": [
       {
-        "id": 5,
-        "name": "girl_spring",
+        "id": 6,
+        "name": "麵包",
         "age": 0,
         "stories": []
       }
@@ -41,25 +37,47 @@
         "age": 0,
         "stories": []
       }
+    ],
+    "girl_spring": [
+      {
+        "id": 5,
+        "name": "girl_spring",
+        "age": 0,
+        "stories": []
+      }
     ]
   },
   "status": "",
   "x": 38,
-  "y": 71,
+  "y": 65,
   "map": "beginMap",
-  "hp": 99146,
+  "hp": 99116,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 122161,
+  "age": 151282,
   "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
-  "is_interacting": true,
+  "is_interacting": false,
   "dialogues": {
+    "出售": [
+      {
+        "text": "好的，讓我看看你有什麼想賣的。",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "購買": [
+      {
+        "text": "當然可以！請告訴我你想買什麼。",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
     "閒聊": [
       {
         "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
@@ -126,27 +144,14 @@
         "conditions": [],
         "weight": 1.0
       }
-    ],
-    "購買": [
-      {
-        "text": "當然可以！請告訴我你想買什麼。",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
-    "出售": [
-      {
-        "text": "好的，讓我看看你有什麼想賣的。",
-        "conditions": [],
-        "weight": 1.0
-      }
     ]
   },
   "talk_eagerness": 100,
-  "relationship": 20,
+  "relationship": 25,
   "dialogue_state": "",
   "met_player": false,
   "interaction_count": 0,
-  "gender": "未知",
-  "appearance": 50
+  "gender": "女",
+  "appearance": 50,
+  "build": 50
 }

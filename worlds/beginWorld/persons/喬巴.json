@@ -3,36 +3,48 @@
   "description": "一個醫生",
   "abilities": [],
   "items": {
-    "弓": 6,
-    "火把": 4,
-    "盾牌": 6,
-    "毒藥": 2,
-    "頭盔": 1,
     "繩索": 9,
-    "鐵劍": 3,
-    "金幣": 10000,
+    "木劍": 4,
+    "弓": 6,
     "漿果": 2,
+    "毒藥": 2,
+    "盾牌": 6,
+    "金幣": 10000,
+    "鐵劍": 3,
+    "火把": 4,
     "匕首": 3,
-    "木劍": 4
+    "頭盔": 1
   },
   "item_instances": {},
   "status": "",
   "x": 7,
-  "y": 24,
+  "y": 20,
   "map": "beginMap",
-  "hp": 97931,
+  "hp": 97877,
   "mp": 99998,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 121888,
+  "age": 151009,
   "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
+    "閒聊": [
+      {
+        "text": "健康是最重要的，記得多休息和補充營養！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "如果你有任何健康問題，隨時來找我！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
     "見面": [
       {
         "text": "哇！真是漂亮的小姐姐！",
@@ -87,18 +99,6 @@
         "conditions": [],
         "weight": 1.0
       }
-    ],
-    "閒聊": [
-      {
-        "text": "健康是最重要的，記得多休息和補充營養！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "如果你有任何健康問題，隨時來找我！",
-        "conditions": [],
-        "weight": 1.0
-      }
     ]
   },
   "talk_eagerness": 100,
@@ -107,5 +107,6 @@
   "met_player": false,
   "interaction_count": 0,
   "gender": "未知",
-  "appearance": 50
+  "appearance": 50,
+  "build": 50
 }

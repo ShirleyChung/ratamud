@@ -407,8 +407,8 @@ impl InputHandler {
             },
             "clear" => CommandResult::Clear,
             "status" | "i" => {
-                // status/i 命令，顯示玩家狀態到側邊面板
-                CommandResult::ShowStatus
+                // status/i 命令，顯示玩家詳細資訊（重用 check me 功能）
+                CommandResult::CheckNpc("me".to_string())
             },
             "hello" => {
                 // hello <message> 命令，在輸出區顯示 hello 之後的字串
@@ -433,7 +433,7 @@ impl InputHandler {
                 if parts.len() < 2 {
                     CommandResult::Error("Usage: show <command>".to_string())
                 } else if parts[1] == "status" {
-                    CommandResult::ShowStatus
+                    CommandResult::CheckNpc("me".to_string())
                 } else if parts[1] == "world" {
                     CommandResult::ShowWorld
                 } else if parts[1] == "minimap" {
@@ -918,7 +918,6 @@ pub enum CommandResult {
     Exit,
     Clear,                           // 清除文本區塊
     AddToSide(String),               // 添加到側邊面板
-    ShowStatus,                      // 打開狀態面板
     ShowWorld,                       // 打開世界資訊面板
     ShowMinimap,                     // 打開小地圖面板
     HideMinimap,                     // 關閉小地圖面板
@@ -993,7 +992,6 @@ impl CommandResult {
             CommandResult::Dream(..) => Some(("dream [<內容>]", "做夢（睡眠時）", "💤 睡眠")),
             CommandResult::WakeUp => Some(("wakeup / wake", "從睡眠中醒來", "💤 睡眠")),
             CommandResult::Summon(..) => Some(("summon / sn <npc>", "召喚NPC到此", "👥 NPC互動")),
-            CommandResult::ShowStatus => Some(("status / i", "顯示角色狀態", "ℹ️  資訊查詢")),
             CommandResult::ShowWorld => Some(("show world", "顯示世界資訊", "ℹ️  資訊查詢")),
             CommandResult::ShowMinimap => Some(("show minimap", "顯示小地圖", "🗺️  介面控制")),
             CommandResult::HideMinimap => Some(("hide minimap", "隱藏小地圖", "🗺️  介面控制")),
@@ -1039,7 +1037,6 @@ impl CommandResult {
             CommandResult::ShowLog,
             CommandResult::HideLog,
             CommandResult::ShowMap,
-            CommandResult::ShowStatus,
             CommandResult::ShowWorld,
             CommandResult::Clear,
             CommandResult::Destroy(String::new()),

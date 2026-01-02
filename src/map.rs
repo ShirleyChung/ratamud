@@ -1,5 +1,4 @@
 use rand::Rng;
-use crate::observable::Observable;
 use serde::{Serialize, Deserialize};
 use std::collections::HashMap;
 
@@ -465,27 +464,6 @@ impl Map {
     #[allow(dead_code)]
     pub fn get_property(&self, key: &str) -> Option<&String> {
         self.properties.get(key)
-    }
-}
-
-impl Observable for Map {
-    fn show_title(&self) -> String {
-        format!("地圖: {}", self.name)
-    }
-
-    fn show_description(&self) -> String {
-        let (walkable, unwalkable) = self.get_stats();
-        format!(
-            "大小: {} x {}\n可行走點: {}\n不可行走點: {}",
-            self.width, self.height, walkable, unwalkable
-        )
-    }
-
-    fn show_list(&self) -> Vec<String> {
-        vec![
-            format!("總點數: {}", self.width * self.height),
-            format!("類型: MUD地圖"),
-        ]
     }
 }
 

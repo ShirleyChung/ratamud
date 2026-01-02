@@ -1,5 +1,4 @@
 pub mod map;
-pub mod observable;
 pub mod item;
 pub mod item_registry;
 pub mod person;

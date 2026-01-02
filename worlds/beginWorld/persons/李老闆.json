@@ -3,8 +3,8 @@
   "description": "一個商人",
   "abilities": [],
   "items": {
-    "蘋果": 6,
-    "金幣": 10000
+    "金幣": 10000,
+    "蘋果": 7
   },
   "item_instances": {
     "蘋果": [
@@ -31,64 +31,37 @@
         "name": "蘋果",
         "age": 0,
         "stories": []
+      },
+      {
+        "id": 1,
+        "name": "蘋果",
+        "age": 0,
+        "stories": []
       }
     ]
   },
   "status": "",
-  "x": 59,
-  "y": 54,
+  "x": 63,
+  "y": 52,
   "map": "beginMap",
-  "hp": 98942,
+  "hp": 98908,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 129859,
+  "age": 158980,
   "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
-    "感謝": [
-      {
-        "text": "不客氣！隨時歡迎你來店裡看看。",
-        "conditions": [],
-        "weight": 0.8
-      }
-    ],
     "出售": [
       {
         "text": "好的，讓我看看你有什麼想賣的。",
         "conditions": [],
         "weight": 0.5
-      }
-    ],
-    "購買": [
-      {
-        "text": "當然可以！請告訴我你想買什麼。",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
-    "袐密": [
-      {
-        "text": "其實我有一個隱藏的商品清單，只有特別的客人才能看到哦！",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
-    "閒聊": [
-      {
-        "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "如果你有什麼特別需求，隨時告訴我！",
-        "conditions": [],
-        "weight": 1.0
       }
     ],
     "見面": [
@@ -146,11 +119,44 @@
         "weight": 1.0
       }
     ],
+    "閒聊": [
+      {
+        "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "如果你有什麼特別需求，隨時告訴我！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "感謝": [
+      {
+        "text": "不客氣！隨時歡迎你來店裡看看。",
+        "conditions": [],
+        "weight": 0.8
+      }
+    ],
     "再見": [
       {
         "text": "感謝你的光臨，期待下次再見！",
         "conditions": [],
         "weight": 0.5
+      }
+    ],
+    "購買": [
+      {
+        "text": "當然可以！請告訴我你想買什麼。",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "袐密": [
+      {
+        "text": "其實我有一個隱藏的商品清單，只有特別的客人才能看到哦！",
+        "conditions": [],
+        "weight": 1.0
       }
     ]
   },
@@ -160,5 +166,6 @@
   "met_player": false,
   "interaction_count": 0,
   "gender": "未知",
-  "appearance": 50
+  "appearance": 50,
+  "build": 50
 }

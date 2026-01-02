@@ -1,4 +1,3 @@
-use crate::observable::Observable;
 use crate::time_updatable::{TimeUpdatable, TimeInfo};
 use crate::item_registry;
 use serde::{Deserialize, Serialize};
@@ -6,6 +5,107 @@ use std::fs;
 use std::path::Path;
 use std::collections::HashMap;
 use rand::Rng;
+use std::sync::OnceLock;
+
+// 全域靜態描述資料
+static PERSON_DESCRIPTIONS: OnceLock<PersonDescriptions> = OnceLock::new();
+
+// 描述資料結構
+#[derive(Debug, Deserialize)]
+pub struct PersonDescriptions {
+    pub appearance: HashMap<String, String>,
+    pub strength: AttributeRanges,
+    pub build: AttributeRanges,
+    pub health_status: HealthStatusRanges,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AttributeRanges {
+    pub ranges: Vec<AttributeRange>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct AttributeRange {
+    pub min: i32,
+    pub max: i32,
+    pub description: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct HealthStatusRanges {
+    pub ranges: Vec<HealthStatusRange>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct HealthStatusRange {
+    pub hp_ratio: f32,
+    pub description: String,
+}
+
+impl PersonDescriptions {
+    pub fn load() -> Result<Self, Box<dyn std::error::Error>> {
+        let json_path = "worlds/person_descriptions.json";
+        let json_str = fs::read_to_string(json_path)?;
+        let descriptions: PersonDescriptions = serde_json::from_str(&json_str)?;
+        Ok(descriptions)
+    }
+
+    pub fn get_appearance_description(&self, appearance: i32) -> String {
+        let clamped = appearance.clamp(1, 100);
+        self.appearance
+            .get(&clamped.to_string())
+            .cloned()
+            .unwrap_or_else(|| "普通的".to_string())
+    }
+
+    pub fn get_strength_description(&self, strength: i32) -> String {
+        for range in &self.strength.ranges {
+            if strength >= range.min && strength <= range.max {
+                return range.description.clone();
+            }
+        }
+        "普通的".to_string()
+    }
+
+    pub fn get_build_description(&self, build: i32) -> String {
+        for range in &self.build.ranges {
+            if build >= range.min && build <= range.max {
+                return range.description.clone();
+            }
+        }
+        "普通".to_string()
+    }
+
+    pub fn get_health_status_description(&self, hp: i32, max_hp: i32) -> String {
+        if max_hp <= 0 {
+            return "未知".to_string();
+        }
+        
+        let hp_ratio = hp as f32 / max_hp as f32;
+        
+        for range in &self.health_status.ranges {
+            if hp_ratio <= range.hp_ratio {
+                return range.description.clone();
+            }
+        }
+        
+        "健康的".to_string()
+    }
+}
+
+/// 初始化描述資料（應在程式啟動時調用）
+pub fn init_person_descriptions() {
+    PERSON_DESCRIPTIONS.get_or_init(|| {
+        PersonDescriptions::load().expect("Failed to load person descriptions")
+    });
+}
+
+/// 獲取全域描述資料
+fn get_descriptions() -> &'static PersonDescriptions {
+    PERSON_DESCRIPTIONS.get_or_init(|| {
+        PersonDescriptions::load().expect("Failed to load person descriptions")
+    })
+}
 
 // 對話條件
 #[derive(Clone, Serialize, Deserialize, Debug)]
@@ -126,6 +226,10 @@ fn default_appearance() -> i32 {
     50  // 預設顏值 50
 }
 
+fn default_build() -> i32 {
+    50  // 預設體格 50
+}
+
 // Person 類別，實現 Observable trait
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Person {
@@ -169,6 +273,8 @@ pub struct Person {
     pub gender: String,              // 性別
     #[serde(default = "default_appearance")]
     pub appearance: i32,             // 顏值 (0-100)
+    #[serde(default = "default_build")]
+    pub build: i32,                  // 體格 (0-100)
 }
 
 fn default_talk_eagerness() -> u8 {
@@ -211,12 +317,79 @@ impl Person {
             interaction_count: 0,
             gender: "".to_string(),
             appearance: 50,
+            build: 50,
         };
         
         // 設置預設的"被叫住"對話
         person.set_dialogue("被叫住".to_string(), format!("{name} 有什麼事嗎？"));
         
+        // 更新描述
+        person.update_description();
+        
         person
+    }
+
+    /// 根據屬性自動生成描述
+    pub fn update_description(&mut self) {
+        let desc = get_descriptions();
+        
+        // 外貌描述
+        let appearance_desc = desc.get_appearance_description(self.appearance);
+        
+        // 體格描述
+        let build_desc = desc.get_build_description(self.build);
+        
+        // 性別描述
+        let gender_desc = if self.gender == "男" || self.gender == "male" || self.gender == "男性" {
+            "男子"
+        } else if self.gender == "女" || self.gender == "female" || self.gender == "女性" {
+            "女子"
+        } else {
+            "人"
+        };
+        
+        // 力量描述
+        let strength_desc = desc.get_strength_description(self.strength);
+        
+        // 健康狀態描述
+        let health_desc = desc.get_health_status_description(self.hp, self.max_hp);
+        
+        // 組合描述
+        if self.gender.is_empty() {
+            self.description = format!("一位{appearance_desc}，{strength_desc}人，看起來{health_desc}。");
+        } else {
+            self.description = format!("一位{appearance_desc}，{build_desc}體格，{strength_desc}{gender_desc}，看起來{health_desc}。");
+        }
+    }
+
+    /// 設置外貌並更新描述
+    pub fn set_appearance(&mut self, appearance: i32) {
+        self.appearance = appearance.clamp(0, 100);
+        self.update_description();
+    }
+
+    /// 設置體格並更新描述
+    pub fn set_build(&mut self, build: i32) {
+        self.build = build.clamp(0, 100);
+        self.update_description();
+    }
+
+    /// 設置性別並更新描述
+    pub fn set_gender(&mut self, gender: String) {
+        self.gender = gender;
+        self.update_description();
+    }
+
+    /// 設置力量並更新描述
+    pub fn set_strength(&mut self, strength: i32) {
+        self.strength = strength;
+        self.update_description();
+    }
+
+    /// 設置 HP 並更新描述
+    pub fn set_hp(&mut self, hp: i32) {
+        self.hp = hp;
+        self.update_description();
     }
 
     /// 設置台詞（新版：支援多個選項）
@@ -316,12 +489,6 @@ impl Person {
         info
     }
 
-    /// 獲取台詞（已廢棄，用於向後兼容）
-    #[allow(dead_code)]
-    pub fn get_dialogue(&self, topic: &str) -> Option<String> {
-        self.get_weighted_dialogue(topic, self)
-    }
-
     /// 根據權重選擇對話（新版）
     /// target_person: 用來評估條件的 Person（通常是玩家）
     pub fn get_weighted_dialogue(&self, topic: &str, target_person: &Person) -> Option<String> {
@@ -373,9 +540,9 @@ impl Person {
             None
         }
     }
-
-    /// 根據好感度和狀態動態選擇對話（已棄用，保留用於兼容）
-    #[allow(dead_code)]
+    
+    /// 根據好感度和狀態動態選擇對話（僅測試使用）
+    #[cfg(test)]
     pub fn get_context_dialogue(&self, scene: &str) -> Option<String> {
         self.get_weighted_dialogue(scene, self)
     }
@@ -397,20 +564,13 @@ impl Person {
         };
     }
     
-    /// 標記為已見過玩家
-    #[allow(dead_code)]
+    /// 標記為已見過玩家（僅測試使用）
+    #[cfg(test)]
     pub fn mark_met_player(&mut self) {
         if !self.met_player {
             self.met_player = true;
-            // 初見時通常給予一些好感度
             self.change_relationship(5);
         }
-    }
-    
-    /// 增加互動次數
-    #[allow(dead_code)]
-    pub fn increment_interaction(&mut self) {
-        self.interaction_count += 1;
     }
     
     /// 獲取關係等級描述
@@ -481,12 +641,6 @@ impl Person {
             instances.push(crate::item::ItemInstance::new(item_name.clone()));
         }
     }
-
-    // 放下物品（預設數量1）
-    #[allow(dead_code)]
-    pub fn drop_item(&mut self, item_name: &str) -> Option<String> {
-        self.drop_items(item_name, 1)
-    }
     
     // 放下指定數量的物品
     pub fn drop_items(&mut self, item_name: &str, quantity: u32) -> Option<String> {
@@ -512,23 +666,11 @@ impl Person {
         self.status = status;
     }
 
-    // 設置描述
-    #[allow(dead_code)]
-    pub fn set_description(&mut self, description: String) {
-        self.description = description;
-    }
-
     // 移動到指定位置
     pub fn move_to(&mut self, x: usize, y: usize) {
         self.check_hp(-1); // 移動消耗體力
         self.x = x;
         self.y = y;
-    }
-
-    // 獲取位置
-    #[allow(dead_code)]
-    pub fn position(&self) -> (usize, usize) {
-        (self.x, self.y)
     }
 
     // 保存 Person 到文件
@@ -550,73 +692,6 @@ impl Person {
         } else {
             Err("Person file not found".into())
         }
-    }
-}
-
-impl Observable for Person {
-    fn show_title(&self) -> String {
-        format!("{}【位置: ({}, {})】", self.name, self.x, self.y)
-    }
-
-    fn show_description(&self) -> String {
-        let mut desc = self.description.clone();
-        desc.push_str(&format!("\n狀態: {}", self.status));
-        desc
-    }
-
-    fn show_list(&self) -> Vec<String> {
-        let mut list = Vec::new();
-
-        // 添加睡眠狀態
-        if self.is_sleeping {
-            list.push("【狀態】".to_string());
-            list.push("💤 睡眠中（不會消耗HP，每10分鐘恢復10% MP）".to_string());
-        }
-
-        // 添加屬性
-        list.push("【屬性】".to_string());
-        list.push(format!("HP: {}", self.hp));
-        list.push(format!("MP: {} / {}", self.mp, self.max_mp));
-        list.push(format!("力量: {}", self.strength));
-        list.push(format!("知識: {}", self.knowledge));
-        list.push(format!("交誼: {}", self.sociality));
-        list.push(format!("存在時間: {}秒 ({}天{}時{}分{}秒)", 
-            self.age,
-            self.age / 86400,
-            (self.age % 86400) / 3600,
-            (self.age % 3600) / 60,
-            self.age % 60
-        ));
-
-        // 添加能力
-        if !self.abilities.is_empty() {
-            list.push("【能力】".to_string());
-            for ability in &self.abilities {
-                list.push(ability.clone());
-            }
-        }
-
-        // 添加物品（顯示數量和英文名）
-        if !self.items.is_empty() {
-            let total_types = self.items.len();
-            let total_count: u32 = self.items.values().sum();
-            list.push(format!("【持有物品】({total_types} 種, {total_count} 個)"));
-            for (item, count) in &self.items {
-                let display_name = item_registry::get_item_display_name(item);
-                list.push(format!("{display_name} x{count}"));
-            }
-        } else {
-            list.push("【持有物品】(0 種, 0 個)".to_string());
-            list.push("未持有物品".to_string());
-        }
-
-        // 如果沒有能力，顯示空能力
-        if self.abilities.is_empty() {
-            list.push("【能力】".to_string());
-            list.push("無特殊能力".to_string());
-        }
-
-        list
     }
 }
 

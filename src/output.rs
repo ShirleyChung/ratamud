@@ -3,7 +3,6 @@ use ratatui::widgets::{Block, Borders, Paragraph};
 use ratatui::layout::{Rect, Alignment};
 use ratatui::style::{Color, Modifier, Style};
 use std::time::{Instant, Duration};
-use crate::observable::{Observable, Empty};
 
 // 打字機效果狀態
 struct TypewriterState {
@@ -22,7 +21,7 @@ pub struct OutputManager {
     side_messages: Vec<String>, // 儲存側邊輸出訊息
     side_scroll: usize,         // 側邊輸出的滾動位置
     show_status_panel: bool,      // 是否顯示側邊面板
-    side_observable: Box<dyn Observable>, // 側邊面板的可觀察對象
+    side_content: String,       // 側邊面板的內容
     current_time: String,       // 當前遊戲時間顯示
     show_minimap: bool,         // 是否顯示小地圖
     minimap_lines: Vec<Line<'static>>, // 小地圖的行內容（支援顏色）
@@ -53,7 +52,7 @@ impl OutputManager {
             side_messages: Vec::new(),
             side_scroll: 0,
             show_status_panel: false,
-            side_observable: Box::new(Empty),
+            side_content: String::new(),
             current_time: String::from("Day 1 09:00:00"),
             show_minimap: false,
             minimap_lines: Vec::new(),
@@ -275,8 +274,12 @@ impl OutputManager {
     }
     // 取得stats內容
     pub fn get_side_panel(&self, _area: Rect) -> Paragraph<'_> {
-            // 渲染 Status 面板
-        let lines = crate::observable::observable_to_lines(self.side_observable.as_ref());
+        // 將 side_content 轉換為 Lines
+        let lines: Vec<Line> = self.side_content
+            .lines()
+            .map(|s| Line::from(s.to_string()))
+            .collect();
+            
         Paragraph::new(Text::from(lines))
             .block(Block::default()
                 .title("")
@@ -287,13 +290,13 @@ impl OutputManager {
     
     // 獲取側邊面板內容的行數
     pub fn get_side_panel_content_height(&self) -> u16 {
-        let lines = crate::observable::observable_to_lines(self.side_observable.as_ref());
-        (lines.len() + 2) as u16  // 內容行數 + 上下邊框
+        let line_count = self.side_content.lines().count();
+        (line_count + 2) as u16  // 內容行數 + 上下邊框
     }
 
-    // 設置側邊面板的 Observable 對象
-    pub fn set_side_observable(&mut self, obs: Box<dyn Observable>) {
-        self.side_observable = obs;
+    // 設置側邊面板的內容
+    pub fn set_side_content(&mut self, content: String) {
+        self.side_content = content;
     }
 
     // 開啟小地圖
@@ -334,21 +337,6 @@ impl OutputManager {
                 .style(Style::default().bg(Color::DarkGray).fg(Color::Cyan)))
             .style(Style::default().bg(Color::DarkGray).fg(Color::Cyan))
             .alignment(Alignment::Left)
-    }
-
-    // 在Output Message印出物件
-    #[allow(dead_code)]
-    pub fn print_obserable(&mut self, obs: &dyn Observable) {
-        self.print(obs.show_title());
-        self.print(obs.show_description());
-        let list = obs.show_list();
-        if !list.is_empty() {
-            self.print("--".to_string());
-            for item in list {
-                self.print(format!("• {item}"));
-            }
-        }
-
     }
 
     // === 日誌視窗相關方法 ===

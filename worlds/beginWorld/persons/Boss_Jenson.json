@@ -3,9 +3,9 @@
   "description": "一個商人",
   "abilities": [],
   "items": {
+    "麵包": 3,
     "金幣": 10007,
-    "蘋果": 1,
-    "麵包": 3
+    "蘋果": 1
   },
   "item_instances": {
     "麵包": [
@@ -30,29 +30,22 @@
     ]
   },
   "status": "",
-  "x": 59,
-  "y": 58,
+  "x": 64,
+  "y": 59,
   "map": "beginMap",
-  "hp": 99498,
+  "hp": 99464,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 131444,
+  "age": 160565,
   "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
-    "出售": [
-      {
-        "text": "好的，讓我看看你有什麼想賣的。",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
     "購買": [
       {
         "text": "當然可以！請告訴我你想買什麼。",
@@ -110,6 +103,13 @@
         "conditions": [],
         "weight": 1.0
       }
+    ],
+    "出售": [
+      {
+        "text": "好的，讓我看看你有什麼想賣的。",
+        "conditions": [],
+        "weight": 1.0
+      }
     ]
   },
   "talk_eagerness": 95,
@@ -118,5 +118,6 @@
   "met_player": false,
   "interaction_count": 0,
   "gender": "未知",
-  "appearance": 50
+  "appearance": 50,
+  "build": 50
 }

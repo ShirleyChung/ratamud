@@ -3,15 +3,15 @@
   "description": "一個醫生",
   "abilities": [],
   "items": {
+    "治療藥水": 5,
+    "火把": 3,
+    "蘋果": 3,
+    "鎬": 7,
+    "繩索": 2,
     "金幣": 10000,
     "麵包": 2,
     "盾牌": 8,
-    "舊布料": 3,
-    "火把": 3,
-    "蘋果": 3,
-    "繩索": 2,
-    "鎬": 7,
-    "治療藥水": 5
+    "舊布料": 3
   },
   "item_instances": {
     "蘋果": [
@@ -38,17 +38,17 @@
     ]
   },
   "status": "",
-  "x": 53,
-  "y": 41,
+  "x": 51,
+  "y": 42,
   "map": "beginMap",
-  "hp": 97861,
+  "hp": 97844,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 126163,
+  "age": 155284,
   "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
@@ -143,5 +143,6 @@
   "met_player": false,
   "interaction_count": 0,
   "gender": "未知",
-  "appearance": 50
+  "appearance": 50,
+  "build": 50
 }

@@ -3,21 +3,29 @@
   "description": "一個老虎",
   "abilities": [],
   "items": {
-    "匕首": 1,
     "石子": 14,
-    "毒藥": 7,
-    "金幣": 10000,
-    "繩索": 1,
-    "漿果": 13,
-    "治療藥水": 1,
     "盾牌": 1,
-    "鎬": 2
+    "金幣": 10000,
+    "鎬": 2,
+    "治療藥水": 2,
+    "毒藥": 7,
+    "匕首": 3,
+    "繩索": 1,
+    "漿果": 13
   },
   "item_instances": {
-    "匕首": [
+    "治療藥水": [
       {
         "id": 1,
-        "name": "匕首",
+        "name": "治療藥水",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "漿果": [
+      {
+        "id": 1,
+        "name": "漿果",
         "age": 0,
         "stories": []
       }
@@ -36,27 +44,39 @@
         "stories": []
       }
     ],
-    "漿果": [
+    "匕首": [
       {
         "id": 1,
-        "name": "漿果",
+        "name": "匕首",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 1,
+        "name": "匕首",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 2,
+        "name": "匕首",
         "age": 0,
         "stories": []
       }
     ]
   },
   "status": "",
-  "x": 40,
+  "x": 38,
   "y": 72,
   "map": "forest",
-  "hp": 99048,
+  "hp": 99024,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 120428,
+  "age": 149549,
   "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
@@ -104,5 +124,6 @@
   "met_player": false,
   "interaction_count": 0,
   "gender": "未知",
-  "appearance": 50
+  "appearance": 50,
+  "build": 50
 }

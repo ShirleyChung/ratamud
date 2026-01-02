@@ -3,16 +3,16 @@
   "description": "一個工人",
   "abilities": [],
   "items": {
-    "弓": 1,
-    "木劍": 2,
-    "舊布料": 1,
     "鐵劍": 5,
-    "繩索": 2,
-    "鑰匙": 2,
     "石子": 7,
     "金幣": 9980,
+    "鑰匙": 2,
     "蘋果": 1,
-    "男溺泉": 1
+    "男溺泉": 1,
+    "木劍": 2,
+    "舊布料": 1,
+    "弓": 1,
+    "繩索": 2
   },
   "item_instances": {},
   "status": "",
@@ -26,7 +26,7 @@
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 121627,
+  "age": 150748,
   "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
@@ -91,5 +91,6 @@
   "met_player": false,
   "interaction_count": 0,
   "gender": "未知",
-  "appearance": 50
+  "appearance": 50,
+  "build": 50
 }

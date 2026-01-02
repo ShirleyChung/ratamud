@@ -3,7 +3,6 @@ mod input;
 mod output;
 mod ui;
 mod world;
-mod observable;
 mod person;
 mod npc_manager;
 mod npc_ai;
@@ -44,6 +43,9 @@ use output::OutputManager;
 use world::GameWorld;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // 初始化 Person 描述資料
+    person::init_person_descriptions();
+    
     // 初始化 InputHandler, OutputManager, GameWorld, Person
     let mut output_manager = OutputManager::new();
         

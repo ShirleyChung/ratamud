@@ -264,8 +264,8 @@ impl NpcManager {
         } else {
             // 創建預設的 me
             let mut new_me = Person::new(
-                "勇士".to_string(),
-                "冒險的勇士，探索未知的世界".to_string(),
+                "創造者".to_string(),
+                "創造世界的創造者，探索未知的世界".to_string(),
             );
             new_me.add_ability("劍術".to_string());
             new_me.add_ability("魔法".to_string());
@@ -279,7 +279,7 @@ impl NpcManager {
             new_me.save(person_dir, "me")?;
             
             // 添加到 npc_manager
-            self.add_npc("me".to_string(), new_me.clone(), vec!["勇士".to_string()]);
+            self.add_npc("me".to_string(), new_me.clone(), vec!["創造者".to_string()]);
             
             Ok(new_me)
         }
