@@ -101,6 +101,12 @@ static ITEM_NAME_MAP: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
     m.insert("gold", "金幣");
     m.insert("coin", "金幣");
     
+    m.insert("gs", "娘溺泉");
+    m.insert("bs", "男溺泉");
+    m.insert("js", "雞溺泉");
+    m.insert("ns", "牛溺泉");
+    m.insert("zs", "豬溺泉");
+
     m
 });
 

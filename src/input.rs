@@ -29,229 +29,253 @@ impl InputHandler {
     // Process key events, modifying AppContext and returning CommandResult if one is generated
     pub fn handle_input_events(&mut self, key: KeyEvent, context: &mut AppContext) -> Option<CommandResult> {
         // 優先處理互動選單（交易、對話等）
-        if let Some(interaction_menu) = context.interaction_menu {
-            if key.kind == KeyEventKind::Press {
-                match key.code {
-                    KeyCode::Up => interaction_menu.previous(),
-                    KeyCode::Down => interaction_menu.next(),
-                    KeyCode::Enter => {
-                        if let Some(selected_item) = interaction_menu.get_selected_item().cloned() {
-                            let state = context.game_world.interaction_state.clone();
-                            
-                            interaction_menu.deactivate();
-                            *context.interaction_menu = None;
-                            
-                            // 根據互動狀態處理選單結果
-                            match state {
-                                crate::world::InteractionState::Trading { npc_name } => {
-                                    if selected_item == "購買物品" {
-                                        context.game_world.interaction_state = 
-                                            crate::world::InteractionState::Buying { npc_name: npc_name.clone() };
-                                        return Some(CommandResult::Trade(npc_name));
-                                    } else if selected_item == "出售物品" {
-                                        context.game_world.interaction_state = 
-                                            crate::world::InteractionState::Selling { npc_name: npc_name.clone() };
-                                        return Some(CommandResult::Trade(npc_name));
-                                    } else if selected_item == "離開" {
-                                        // 清除互動狀態
-                                        context.game_world.interaction_state = crate::world::InteractionState::None;
-                                        // 取消 NPC 的互動狀態
-                                        if let Some(npc) = context.game_world.npc_manager.get_npc_mut(&npc_name) {
-                                            npc.is_interacting = false;
-                                        }
-                                        context.output_manager.print("結束交易".to_string());
-                                    }
-                                },
-                                crate::world::InteractionState::Buying { npc_name } => {
-                                    // 解析選單項目（格式：物品名 x數量 - 價格 金幣）
-                                    if selected_item == "返回" {
-                                        // 返回交易主選單
-                                        context.game_world.interaction_state = 
-                                            crate::world::InteractionState::Trading { npc_name: npc_name.clone() };
-                                        return Some(CommandResult::Trade(npc_name));
-                                    } else if let Some((item_part, _)) = selected_item.split_once(" x") {
-                                        // 購買物品
-                                        // 提取物品名稱：去掉可能的英文別名 "木劍 (sword)" -> "木劍"
-                                        let item_name = if let Some((chinese_name, _)) = item_part.split_once(" (") {
-                                            chinese_name.trim()
-                                        } else {
-                                            item_part.trim()
-                                        };
-                                        
-                                        // 解析物品名稱（應該已經是中文名稱了，但保險起見還是解析一次）
-                                        let resolved_item = crate::item_registry::resolve_item_name(item_name);
-                                        return Some(CommandResult::Buy(npc_name, resolved_item, 1));
-                                    }
-                                },
-                                crate::world::InteractionState::Selling { npc_name } => {
-                                    // 解析選單項目（格式：物品名 x數量 - 價格 金幣/個）
-                                    if selected_item == "返回" {
-                                        // 返回交易主選單
-                                        context.game_world.interaction_state = 
-                                            crate::world::InteractionState::Trading { npc_name: npc_name.clone() };
-                                        return Some(CommandResult::Trade(npc_name));
-                                    } else if let Some((item_part, _)) = selected_item.split_once(" x") {
-                                        // 出售物品
-                                        // 提取物品名稱：去掉可能的英文別名 "木劍 (sword)" -> "木劍"
-                                        let item_name = if let Some((chinese_name, _)) = item_part.split_once(" (") {
-                                            chinese_name.trim()
-                                        } else {
-                                            item_part.trim()
-                                        };
-                                        
-                                        // 解析物品名稱（應該已經是中文名稱了，但保險起見還是解析一次）
-                                        let resolved_item = crate::item_registry::resolve_item_name(item_name);
-                                        return Some(CommandResult::Sell(npc_name, resolved_item, 1));
-                                    }
-                                    
-                                    // 如果沒有匹配，清除互動狀態
-                                    context.game_world.interaction_state = crate::world::InteractionState::None;
-                                    // 取消 NPC 的互動狀態
-                                    if let Some(npc) = context.game_world.npc_manager.get_npc_mut(&npc_name) {
-                                        npc.is_interacting = false;
-                                    }
-                                },
-                                crate::world::InteractionState::None => {},
-                            }
-                        }
-                    },
-                    KeyCode::Esc => {
-                        // ESC 取消交易，清除所有互動狀態
-                        let state = context.game_world.interaction_state.clone();
-                        
-                        // 根據狀態找到 NPC 並清除互動狀態
-                        match state {
-                            crate::world::InteractionState::Trading { npc_name } |
-                            crate::world::InteractionState::Buying { npc_name } |
-                            crate::world::InteractionState::Selling { npc_name } => {
-                                if let Some(npc) = context.game_world.npc_manager.get_npc_mut(&npc_name) {
-                                    npc.is_interacting = false;
-                                }
-                            },
-                            crate::world::InteractionState::None => {},
-                        }
-                        
-                        context.output_manager.print("取消交易".to_string());
-                        context.game_world.interaction_state = crate::world::InteractionState::None;
-                        interaction_menu.deactivate();
-                        *context.interaction_menu = None;
-                    },
-                    _ => {}
-                }
-            }
-            return None; // Input consumed by interaction menu
+        if context.interaction_menu.is_some() {
+            return self.handle_interaction_menu(key, context);
         }
         
         // If menu is open, handle menu input first
-        if let Some(active_menu) = context.menu {
-            if key.kind == KeyEventKind::Press {
-                match key.code {
-                    KeyCode::Up => active_menu.previous(),
-                    KeyCode::Down => active_menu.next(),
-                    KeyCode::Enter => {
-                        if let Some(selected_item) = active_menu.get_selected_item() {
-                            context.output_manager.print(format!("選單確認: {selected_item}"));
-                            if selected_item == "離開遊戲" {
-                                *context.should_exit = true; // Set should_exit via context
-                            }
-                        }
-                        active_menu.deactivate();
-                        *context.menu = None; // Close menu via context
-                    },
-                    KeyCode::Esc | KeyCode::Char('q' | 'Q') => {
-                        context.output_manager.print("選單取消".to_string());
-                        active_menu.deactivate();
-                        *context.menu = None; // Close menu via context
-                    },
-                    _ => {}
-                }
-            }
-            return None; // Input consumed by menu
+        if context.menu.is_some() {
+            return self.handle_context_menu(key, context);
         }
 
-        // Only process Press events for other actions
+        // Handle normal key events
+        self.handle_normal_keyevent(key, context)
+    }
+
+    fn handle_interaction_menu(&mut self, key: KeyEvent, context: &mut AppContext) -> Option<CommandResult> {
+        let interaction_menu = context.interaction_menu.as_mut()?;
+        
         if key.kind == KeyEventKind::Press {
             match key.code {
+                KeyCode::Up => interaction_menu.previous(),
+                KeyCode::Down => interaction_menu.next(),
+                KeyCode::Enter => {
+                    if let Some(selected_item) = interaction_menu.get_selected_item().cloned() {
+                        let state = context.game_world.interaction_state.clone();
+                        
+                        interaction_menu.deactivate();
+                        *context.interaction_menu = None;
+                        
+                        return match state {
+                            crate::world::InteractionState::Trading { npc_name } => {
+                                self.handle_trading_state(context, &selected_item, &npc_name)
+                            },
+                            crate::world::InteractionState::Buying { npc_name } => {
+                                self.handle_buying_state(context, &selected_item, &npc_name)
+                            },
+                            crate::world::InteractionState::Selling { npc_name } => {
+                                self.handle_selling_state(context, &selected_item, &npc_name)
+                            },
+                            crate::world::InteractionState::None => None,
+                        };
+                    }
+                },
                 KeyCode::Esc => {
-                    if context.menu.is_none() {
-                        let mut new_menu = Menu::new(
-                            "遊戲選單".to_string(),
-                            vec![
-                                "繼續遊戲".to_string(),
-                                "儲存遊戲".to_string(),
-                                "載入遊戲".to_string(),
-                                "設定".to_string(),
-                                "離開遊戲".to_string(),
-                            ],
-                        );
-                        new_menu.activate();
-                        *context.menu = Some(new_menu);
-                        context.output_manager.print("選單開啟".to_string());
-                    } else {
-                        *context.menu = None;
-                        context.output_manager.print("選單關閉".to_string());
-                    }
-                    None
+                    self.cancel_interaction(context);
                 },
-                KeyCode::F(1) => {
-                    context.output_manager.toggle_status_panel();
-                    None
-                },
-                KeyCode::Char('q' | 'Q') => {
-                    if context.output_manager.is_map_open() {
-                        context.output_manager.close_map();
-                        context.output_manager.set_status("大地圖已關閉".to_string());
-                        None // Input consumed by map, no command generated
-                    } else {
-                        self.handle_key_event(key) // Return command result for app.rs to handle
-                    }
-                },
-                KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right => {
-                    if key.modifiers.contains(crossterm::event::KeyModifiers::SHIFT) {
-                        match key.code {
-                            KeyCode::Up => {
-                                context.output_manager.scroll_up();
-                                context.output_manager.set_status("向上捲動訊息".to_string());
-                            },
-                            KeyCode::Down => {
-                                context.output_manager.scroll_down(20);
-                                context.output_manager.set_status("向下捲動訊息".to_string());
-                            },
-                            _ => {}
-                        }
-                        None // Input consumed by scrolling, no command generated
-                    } else if context.output_manager.is_map_open() {
-                        if let Some(current_map_data) = context.game_world.get_current_map() {
-                            let (dx, dy) = match key.code {
-                                KeyCode::Up => (0, -5),
-                                KeyCode::Down => (0, 5),
-                                KeyCode::Left => (-5, 0),
-                                KeyCode::Right => (5, 0),
-                                _ => (0, 0),
-                            };
-                            context.output_manager.move_map_view(dx, dy, current_map_data.width, current_map_data.height);
-                        }
-                        None // Input consumed by map movement, no command generated
-                    } else {
-                        self.handle_key_event(key) // Return command result for app.rs to handle
-                    }
-                },
-                KeyCode::PageUp => {
-                    context.output_manager.scroll_up();
-                    context.output_manager.set_status("向上捲動訊息".to_string());
-                    None // Input consumed by scrolling, no command generated
-                },
-                KeyCode::PageDown => {
-                    context.output_manager.scroll_down(20);
-                    context.output_manager.set_status("向下捲動訊息".to_string());
-                    None // Input consumed by scrolling, no command generated
-                },
-                _ => {
-                    self.handle_key_event(key) // Return command result for app.rs to handle
-                }
+                _ => {}
             }
+        }
+        None
+    }
+
+    fn handle_trading_state(&mut self, context: &mut AppContext, selected_item: &str, npc_name: &str) -> Option<CommandResult> {
+        if selected_item == "購買物品" {
+            context.game_world.interaction_state = 
+                crate::world::InteractionState::Buying { npc_name: npc_name.to_string() };
+            Some(CommandResult::Trade(npc_name.to_string()))
+        } else if selected_item == "出售物品" {
+            context.game_world.interaction_state = 
+                crate::world::InteractionState::Selling { npc_name: npc_name.to_string() };
+            Some(CommandResult::Trade(npc_name.to_string()))
+        } else if selected_item == "離開" {
+            context.game_world.interaction_state = crate::world::InteractionState::None;
+            if let Some(npc) = context.game_world.npc_manager.get_npc_mut(npc_name) {
+                npc.is_interacting = false;
+            }
+            context.output_manager.print("結束交易".to_string());
+            None
         } else {
-            None // Non-Press event, no command generated
+            None
+        }
+    }
+
+    fn handle_buying_state(&mut self, context: &mut AppContext, selected_item: &str, npc_name: &str) -> Option<CommandResult> {
+        if selected_item == "返回" {
+            context.game_world.interaction_state = 
+                crate::world::InteractionState::Trading { npc_name: npc_name.to_string() };
+            Some(CommandResult::Trade(npc_name.to_string()))
+        } else if let Some((item_part, _)) = selected_item.split_once(" x") {
+            let item_name = if let Some((chinese_name, _)) = item_part.split_once(" (") {
+                chinese_name.trim()
+            } else {
+                item_part.trim()
+            };
+            
+            let resolved_item = crate::item_registry::resolve_item_name(item_name);
+            Some(CommandResult::Buy(npc_name.to_string(), resolved_item, 1))
+        } else {
+            None
+        }
+    }
+
+    fn handle_selling_state(&mut self, context: &mut AppContext, selected_item: &str, npc_name: &str) -> Option<CommandResult> {
+        if selected_item == "返回" {
+            context.game_world.interaction_state = 
+                crate::world::InteractionState::Trading { npc_name: npc_name.to_string() };
+            Some(CommandResult::Trade(npc_name.to_string()))
+        } else if let Some((item_part, _)) = selected_item.split_once(" x") {
+            let item_name = if let Some((chinese_name, _)) = item_part.split_once(" (") {
+                chinese_name.trim()
+            } else {
+                item_part.trim()
+            };
+            
+            let resolved_item = crate::item_registry::resolve_item_name(item_name);
+            Some(CommandResult::Sell(npc_name.to_string(), resolved_item, 1))
+        } else {
+            context.game_world.interaction_state = crate::world::InteractionState::None;
+            if let Some(npc) = context.game_world.npc_manager.get_npc_mut(npc_name) {
+                npc.is_interacting = false;
+            }
+            None
+        }
+    }
+
+    fn cancel_interaction(&mut self, context: &mut AppContext) {
+        let state = context.game_world.interaction_state.clone();
+        
+        match state {
+            crate::world::InteractionState::Trading { npc_name } |
+            crate::world::InteractionState::Buying { npc_name } |
+            crate::world::InteractionState::Selling { npc_name } => {
+                if let Some(npc) = context.game_world.npc_manager.get_npc_mut(&npc_name) {
+                    npc.is_interacting = false;
+                }
+            },
+            crate::world::InteractionState::None => {},
+        }
+        
+        context.output_manager.print("取消交易".to_string());
+        context.game_world.interaction_state = crate::world::InteractionState::None;
+        
+        if let Some(menu) = context.interaction_menu.as_mut() {
+            menu.deactivate();
+        }
+        *context.interaction_menu = None;
+    }
+
+    fn handle_context_menu(&mut self, key: KeyEvent, context: &mut AppContext) -> Option<CommandResult> {
+        let active_menu = context.menu.as_mut()?;
+        
+        if key.kind == KeyEventKind::Press {
+            match key.code {
+                KeyCode::Up => active_menu.previous(),
+                KeyCode::Down => active_menu.next(),
+                KeyCode::Enter => {
+                    if let Some(selected_item) = active_menu.get_selected_item() {
+                        context.output_manager.print(format!("選單確認: {selected_item}"));
+                        if selected_item == "離開遊戲" {
+                            *context.should_exit = true;
+                        }
+                    }
+                    active_menu.deactivate();
+                    *context.menu = None;
+                },
+                KeyCode::Esc | KeyCode::Char('q' | 'Q') => {
+                    context.output_manager.print("選單取消".to_string());
+                    active_menu.deactivate();
+                    *context.menu = None;
+                },
+                _ => {}
+            }
+        }
+        None
+    }
+
+    fn handle_normal_keyevent(&mut self, key: KeyEvent, context: &mut AppContext) -> Option<CommandResult> {
+        if key.kind != KeyEventKind::Press {
+            return None;
+        }
+
+        match key.code {
+            KeyCode::Esc => {
+                if context.menu.is_none() {
+                    let mut new_menu = Menu::new(
+                        "遊戲選單".to_string(),
+                        vec![
+                            "繼續遊戲".to_string(),
+                            "儲存遊戲".to_string(),
+                            "載入遊戲".to_string(),
+                            "設定".to_string(),
+                            "離開遊戲".to_string(),
+                        ],
+                    );
+                    new_menu.activate();
+                    *context.menu = Some(new_menu);
+                    context.output_manager.print("選單開啟".to_string());
+                } else {
+                    *context.menu = None;
+                    context.output_manager.print("選單關閉".to_string());
+                }
+                None
+            },
+            KeyCode::F(1) => {
+                context.output_manager.toggle_status_panel();
+                None
+            },
+            KeyCode::Char('q' | 'Q') => {
+                if context.output_manager.is_map_open() {
+                    context.output_manager.close_map();
+                    context.output_manager.set_status("大地圖已關閉".to_string());
+                    None
+                } else {
+                    self.handle_key_event(key)
+                }
+            },
+            KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right => {
+                if key.modifiers.contains(crossterm::event::KeyModifiers::SHIFT) {
+                    match key.code {
+                        KeyCode::Up => {
+                            context.output_manager.scroll_up();
+                            context.output_manager.set_status("向上捲動訊息".to_string());
+                        },
+                        KeyCode::Down => {
+                            context.output_manager.scroll_down(20);
+                            context.output_manager.set_status("向下捲動訊息".to_string());
+                        },
+                        _ => {}
+                    }
+                    None
+                } else if context.output_manager.is_map_open() {
+                    if let Some(current_map_data) = context.game_world.get_current_map() {
+                        let (dx, dy) = match key.code {
+                            KeyCode::Up => (0, -5),
+                            KeyCode::Down => (0, 5),
+                            KeyCode::Left => (-5, 0),
+                            KeyCode::Right => (5, 0),
+                            _ => (0, 0),
+                        };
+                        context.output_manager.move_map_view(dx, dy, current_map_data.width, current_map_data.height);
+                    }
+                    None
+                } else {
+                    self.handle_key_event(key)
+                }
+            },
+            KeyCode::PageUp => {
+                context.output_manager.scroll_up();
+                context.output_manager.set_status("向上捲動訊息".to_string());
+                None
+            },
+            KeyCode::PageDown => {
+                context.output_manager.scroll_down(20);
+                context.output_manager.set_status("向下捲動訊息".to_string());
+                None
+            },
+            _ => {
+                self.handle_key_event(key)
+            }
         }
     }
 
