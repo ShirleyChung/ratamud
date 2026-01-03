@@ -31,6 +31,9 @@ impl NpcManager {
             npc.items.insert("金幣".to_string(), 10_000);
         }
         
+        // 根據 NPC 屬性更新描述
+        npc.update_description();
+        
         self.npcs.insert(id.clone(), npc);
         
         // 添加別名映射

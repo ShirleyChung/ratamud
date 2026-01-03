@@ -1039,7 +1039,7 @@ fn handle_eat(
         
         // 回復 HP
         let old_hp = me.hp;
-        me.hp += hp_restore;
+        me.check_hp(hp_restore);
         let actual_restore = me.hp - old_hp;
         
         output_manager.print(format!("你吃了 \"{}\"，回復了 {} HP！", item_registry::get_item_display_name(&resolved_name), actual_restore));
@@ -1694,6 +1694,7 @@ fn handle_set(
                 output_manager.set_status(format!("未知屬性: {attribute}，支持: hp, mp, strength, knowledge, sociality, gold/金幣, appearance/顏值, build/體格, sex/性別"));
             }
         }
+        me.update_description();
         let person_dir = format!("{}/persons", game_world.world_dir);
         let _ = me.save(&person_dir, "me");
     } else {
@@ -1742,6 +1743,7 @@ fn handle_set(
                     output_manager.set_status(format!("未知屬性: {attribute}，支持: hp, mp, strength, knowledge, sociality, gold/金幣, appearance/顏值, build/體格, sex/性別"));
                 }
             }
+            npc.update_description();
         } else {
             output_manager.set_status(format!("找不到 NPC: {target}"));
         }

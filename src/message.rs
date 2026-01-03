@@ -76,6 +76,6 @@ impl Message {
     
     /// 是否為日誌訊息（不顯示在主輸出）
     pub fn is_log(&self) -> bool {
-        matches!(self, Message::Log(_))
+        matches!(self, Message::Log(_) | Message::Movement { .. })
     }
 }

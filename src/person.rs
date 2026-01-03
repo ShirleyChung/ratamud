@@ -406,6 +406,7 @@ impl Person {
     /// 設置說話積極度 (0-100)
     pub fn set_talk_eagerness(&mut self, eagerness: u8) {
         self.talk_eagerness = eagerness.min(100);
+        self.update_description();
     }
     
     /// 顯示 Person 的詳細資料
@@ -602,6 +603,7 @@ impl Person {
         } else {
             self.status = "正常".to_string();
         }
+        self.update_description();
     }
 
     /// 消耗 MP，並檢查是否進入睡眠狀態
@@ -801,6 +803,9 @@ impl Person {
         // 消耗物品
         self.remove_item(&resolved_name, 1);
         
+        // 更新描述（因為屬性可能改變）
+        self.update_description();
+        
         Ok(format!("使用了 {resolved_name}：{}", result_messages.join("、")))
     }
 }
@@ -829,6 +834,7 @@ impl TimeUpdatable for Person {
             if self.mp > self.max_mp {
                 self.mp = self.max_mp;
             }
+            self.update_description();
         } 
         // 根據遊戲時間更新人物狀態（非睡眠時）
         else {
