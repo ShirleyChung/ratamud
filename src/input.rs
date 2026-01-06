@@ -849,6 +849,26 @@ impl InputHandler {
                 // disband 命令，解散隊伍
                 CommandResult::Disband
             },
+            "punch" | "ph" => {
+                // punch/ph [目標] 命令，使用拳擊
+                if parts.len() < 2 {
+                    CommandResult::Punch(None)
+                } else {
+                    CommandResult::Punch(Some(parts[1].to_string()))
+                }
+            },
+            "kick" | "kk" => {
+                // kick/kk [目標] 命令，使用踢擊
+                if parts.len() < 2 {
+                    CommandResult::Kick(None)
+                } else {
+                    CommandResult::Kick(Some(parts[1].to_string()))
+                }
+            },
+            "escape" | "esc" => {
+                // escape/esc 命令，逃離戰鬥
+                CommandResult::Escape
+            },
             "check" | "inspect" | "examine" => {
                 // check <npc> 命令，查看 NPC 的詳細資訊
                 if parts.len() < 2 {
@@ -969,6 +989,9 @@ pub enum CommandResult {
     Wait(String),                    // 叫住 NPC (NPC名稱/ID)
     Party(String),                   // 邀請 NPC 組隊 (NPC名稱/ID)
     Disband,                         // 解散隊伍
+    Punch(Option<String>),           // 拳擊 (可選：目標)
+    Kick(Option<String>),            // 踢擊 (可選：目標)
+    Escape,                          // 逃離戰鬥
     ListNpcs,                        // 列出所有 NPC
     CheckNpc(String),                // 查看 NPC 詳細資訊 (NPC名稱/ID)
     ToggleTypewriter,                // 切換打字機效果
@@ -1024,6 +1047,9 @@ impl CommandResult {
             CommandResult::Wait(..) => Some(("wait <npc>", "叫住NPC（基於好感度）", "👥 NPC互動")),
             CommandResult::Party(..) => Some(("party <npc>", "邀請NPC組隊", "👥 NPC互動")),
             CommandResult::Disband => Some(("disband", "解散隊伍", "👥 NPC互動")),
+            CommandResult::Punch(..) => Some(("punch / ph [目標]", "拳擊（無目標=練習）", "⚔️  戰鬥")),
+            CommandResult::Kick(..) => Some(("kick / kk [目標]", "踢擊（無目標=練習）", "⚔️  戰鬥")),
+            CommandResult::Escape => Some(("escape / esc", "逃離戰鬥", "⚔️  戰鬥")),
             CommandResult::ListNpcs => Some(("npcs", "列出所有NPC", "👥 NPC互動")),
             _ => None,
         }

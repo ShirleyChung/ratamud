@@ -99,7 +99,29 @@ pub fn run_main_loop(
         while let Ok(event) = npc_event_rx.try_recv() {
             let messages = game_world.apply_event(event);
             for msg in messages {
-                if msg.is_log() {
+                // 特殊處理戰鬥動作
+                if let crate::message::Message::CombatAction { 
+                    attacker_id, 
+                    skill_name, 
+                    target_id, 
+                    damage,
+                    ..
+                } = &msg {
+                    // 執行傷害和技能冷卻
+                    if target_id == "me" {
+                        me.check_hp(-damage);
+                        output_manager.print(format!("{} 你剩餘 HP: {}/{}", 
+                            msg.to_display_text(), me.hp, me.max_hp));
+                    }
+                    
+                    // 設置NPC技能冷卻
+                    if let Some(npc) = game_world.npc_manager.get_npc_mut(attacker_id) {
+                        let _ = npc.practice_skill(skill_name, true);
+                    }
+                    
+                    // 檢查戰鬥是否結束
+                    let _ = check_combat_end(&mut output_manager, &mut game_world, &mut me);
+                } else if msg.is_log() {
                     output_manager.log(msg.to_display_text());
                 } else {
                     output_manager.print(msg.to_display_text());
@@ -378,6 +400,9 @@ fn handle_command_result(
         CommandResult::Wait(npc_name) => handle_wait(npc_name, output_manager, game_world, me)?,
         CommandResult::Party(npc_name) => handle_party(npc_name, output_manager, game_world, me)?,
         CommandResult::Disband => handle_disband(output_manager, game_world, me)?,
+        CommandResult::Punch(target) => handle_punch(target, output_manager, game_world, me)?,
+        CommandResult::Kick(target) => handle_kick(target, output_manager, game_world, me)?,
+        CommandResult::Escape => handle_escape(output_manager, game_world, me)?,
         CommandResult::ListNpcs => handle_list_npcs(output_manager, game_world),
         CommandResult::CheckNpc(npc_name) => handle_check_npc(npc_name, output_manager, game_world),
         CommandResult::ToggleTypewriter => handle_toggle_typewriter(output_manager),
@@ -894,6 +919,14 @@ fn handle_movement(
     game_world: &mut GameWorld,
     me: &mut Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    use crate::world::CombatState;
+    
+    // 檢查是否在戰鬥中
+    if !matches!(game_world.combat_state, CombatState::None) {
+        output_manager.print("戰鬥中無法移動！".to_string());
+        return Ok(());
+    }
+    
     let new_x = (me.x as i32 + dx) as usize;
     let new_y = (me.y as i32 + dy) as usize;
     
@@ -1276,6 +1309,14 @@ fn handle_flyto(
     game_world: &mut GameWorld,
     me: &mut Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    use crate::world::CombatState;
+    
+    // 檢查是否在戰鬥中
+    if !matches!(game_world.combat_state, CombatState::None) {
+        output_manager.print("戰鬥中無法使用傳送！".to_string());
+        return Ok(());
+    }
+    
     // 嘗試解析為坐標 (x,y)
     if let Some((x, y)) = parse_coordinates(&target) {
         // 檢查坐標是否在當前地圖範圍內
@@ -2528,6 +2569,302 @@ fn handle_disband(
         output_manager.print("當前沒有隊員".to_string());
     } else {
         output_manager.print(format!("已解散隊伍，共 {disbanded_count} 名隊員離隊"));
+    }
+    
+    Ok(())
+}
+
+// =================================================================
+// Combat System Handlers
+// =================================================================
+
+/// 處理拳擊命令
+fn handle_punch(
+    target: Option<String>,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &mut Person,
+) -> Result<(), Box<dyn std::error::Error>> {
+    handle_combat_skill("punch", target, output_manager, game_world, me)
+}
+
+/// 處理踢擊命令
+fn handle_kick(
+    target: Option<String>,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &mut Person,
+) -> Result<(), Box<dyn std::error::Error>> {
+    handle_combat_skill("kick", target, output_manager, game_world, me)
+}
+
+/// 通用戰鬥技能處理
+fn handle_combat_skill(
+    skill_name: &str,
+    target: Option<String>,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &mut Person,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use crate::world::CombatState;
+    
+    // 檢查是否在戰鬥中
+    let in_combat = !matches!(game_world.combat_state, CombatState::None);
+    
+    // 確定目標
+    let target_name = if let Some(t) = target {
+        t
+    } else if in_combat {
+        // 在戰鬥中且沒指定目標，自動選擇第一個NPC
+        if let CombatState::InCombat { participants, .. } = &game_world.combat_state {
+            participants.iter()
+                .find(|p| *p != "me")
+                .cloned()
+                .unwrap_or_else(|| {
+                    output_manager.print("戰鬥中沒有可攻擊的目標".to_string());
+                    String::new()
+                })
+        } else {
+            // 不在戰鬥中，沒有目標，進入練習模式
+            if let Some(msg) = me.practice_skill(skill_name, false) {
+                output_manager.print(msg);
+            } else {
+                output_manager.print(format!("未知技能: {skill_name}"));
+            }
+            return Ok(());
+        }
+    } else {
+        // 不在戰鬥中，沒有目標，進入練習模式
+        if let Some(msg) = me.practice_skill(skill_name, false) {
+            output_manager.print(msg);
+        } else {
+            output_manager.print(format!("未知技能: {skill_name}"));
+        }
+        return Ok(());
+    };
+    
+    // 空字符串表示沒有有效目標
+    if target_name.is_empty() {
+        return Ok(());
+    }
+    
+    // 檢查玩家是否有足夠HP發動戰鬥
+    if !me.can_start_combat() && !in_combat {
+        output_manager.print(format!("你沒力氣戰鬥"));
+        return Ok(());
+    }
+    
+    // 檢查目標NPC
+    if let Some(target_npc) = game_world.npc_manager.get_npc(&target_name) {
+        // 檢查目標是否有足夠HP
+        if !target_npc.can_start_combat() && !in_combat {
+            output_manager.print(format!("{} 沒力氣跟你打", target_npc.name));
+            return Ok(());
+        }
+        
+        // 檢查距離
+        if target_npc.map != game_world.current_map_name || 
+           ((target_npc.x as i32 - me.x as i32).abs() + (target_npc.y as i32 - me.y as i32).abs()) > 1 {
+            output_manager.print(format!("{} 距離太遠", target_npc.name));
+            return Ok(());
+        }
+        
+        // 如果不在戰鬥中，開始戰鬥
+        if !in_combat {
+            game_world.combat_state = CombatState::InCombat {
+                participants: vec!["me".to_string(), target_name.clone()],
+                round: 1,
+            };
+            output_manager.print(format!("⚔️  戰鬥開始！你 vs {}", target_name));
+        }
+        
+        // 執行攻擊
+        execute_attack(skill_name, "me", &target_name, output_manager, game_world, me)?;
+        
+        // 戰鬥回合增加，減少所有參與者的技能冷卻
+        if let CombatState::InCombat { participants, round } = &mut game_world.combat_state {
+            *round += 1;
+            
+            // 減少玩家冷卻
+            me.reduce_skill_cooldowns();
+            
+            // 檢查並通知玩家技能準備好了
+            for (skill_name, skill) in &me.combat_skills {
+                if skill.current_cooldown == 0 {
+                    output_manager.print(format!("你的 {} 準備好了！", skill_name));
+                }
+            }
+            
+            // 減少NPC冷卻
+            for participant in participants.clone() {
+                if participant != "me" {
+                    if let Some(npc) = game_world.npc_manager.get_npc_mut(&participant) {
+                        npc.reduce_skill_cooldowns();
+                    }
+                }
+            }
+        }
+        
+    } else {
+        output_manager.print(format!("找不到 {target_name}"));
+    }
+    
+    Ok(())
+}
+
+/// 執行攻擊
+fn execute_attack(
+    skill_name: &str,
+    attacker_id: &str,
+    defender_id: &str,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &mut Person,
+) -> Result<(), Box<dyn std::error::Error>> {
+    // 獲取攻擊者
+    let (attacker_name, skill_dialogue, damage, cooldown_ready) = if attacker_id == "me" {
+        let cooldown = me.get_skill_cooldown(skill_name);
+        if cooldown > 0 {
+            output_manager.print(format!("你還沒準備好 {skill_name}"));
+            return Ok(());
+        }
+        
+        let dialogue = me.skill_dialogues.get(skill_name)
+            .cloned()
+            .unwrap_or_else(|| "攻擊！".to_string());
+        let damage = me.combat_skills.get(skill_name)
+            .map(|s| s.damage)
+            .unwrap_or(1);
+        
+        (me.name.clone(), dialogue, damage, true)
+    } else {
+        if let Some(npc) = game_world.npc_manager.get_npc(attacker_id) {
+            let cooldown = npc.get_skill_cooldown(skill_name);
+            if cooldown > 0 {
+                return Ok(()); // NPC冷卻中，跳過
+            }
+            
+            let dialogue = npc.skill_dialogues.get(skill_name)
+                .cloned()
+                .unwrap_or_else(|| "攻擊！".to_string());
+            let damage = npc.combat_skills.get(skill_name)
+                .map(|s| s.damage)
+                .unwrap_or(1);
+            
+            (npc.name.clone(), dialogue, damage, true)
+        } else {
+            return Ok(());
+        }
+    };
+    
+    if !cooldown_ready {
+        return Ok(());
+    }
+    
+    // 執行傷害
+    if defender_id == "me" {
+        me.check_hp(-damage);
+        output_manager.print(format!("💥 {} 說：「{}」造成 {} 點傷害！你剩餘 HP: {}/{}", 
+            attacker_name, skill_dialogue, damage, me.hp, me.max_hp));
+    } else if let Some(defender) = game_world.npc_manager.get_npc_mut(defender_id) {
+        defender.check_hp(-damage);
+        output_manager.print(format!("💥 {} 說：「{}」造成 {} 點傷害！{} 剩餘 HP: {}/{}", 
+            attacker_name, skill_dialogue, damage, defender.name, defender.hp, defender.max_hp));
+    }
+    
+    // 設置技能冷卻並增加熟練度
+    if attacker_id == "me" {
+        if let Some(_msg) = me.practice_skill(skill_name, true) {
+            // 在戰鬥中熟練度增加2倍
+        }
+    } else if let Some(npc) = game_world.npc_manager.get_npc_mut(attacker_id) {
+        let _ = npc.practice_skill(skill_name, true);
+    }
+    
+    // 檢查戰鬥是否結束
+    check_combat_end(output_manager, game_world, me)?;
+    
+    Ok(())
+}
+
+/// 檢查戰鬥是否結束
+fn check_combat_end(
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &mut Person,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use crate::world::CombatState;
+    
+    if let CombatState::InCombat { participants, round } = &game_world.combat_state {
+        let mut combat_ended = false;
+        let current_round = *round;
+        
+        // 檢查玩家HP
+        if me.hp <= me.max_hp / 2 {
+            combat_ended = true;
+            output_manager.print(format!("你的HP低於50%，戰鬥結束！"));
+        }
+        
+        // 檢查NPC HP
+        for participant in participants.iter() {
+            if participant != "me" {
+                if let Some(npc) = game_world.npc_manager.get_npc(participant) {
+                    if npc.hp <= npc.max_hp / 2 {
+                        combat_ended = true;
+                        output_manager.print(format!("{} 的HP低於50%，戰鬥結束！", npc.name));
+                    }
+                }
+            }
+        }
+        
+        if combat_ended {
+            // 顯示戰鬥結果
+            output_manager.print("".to_string());
+            output_manager.print("⚔️  戰鬥結束！".to_string());
+            output_manager.print(format!("你的 HP: {}/{}", me.hp, me.max_hp));
+            
+            for participant in participants.iter() {
+                if participant != "me" {
+                    if let Some(npc) = game_world.npc_manager.get_npc(participant) {
+                        output_manager.print(format!("{} 的 HP: {}/{}", npc.name, npc.hp, npc.max_hp));
+                    }
+                }
+            }
+            
+            // 給予戰鬥經驗
+            let exp = current_round * 2;
+            me.combat_exp += exp;
+            output_manager.print(format!("獲得 {} 點戰鬥經驗！", exp));
+            
+            for participant in participants.iter() {
+                if participant != "me" {
+                    if let Some(npc) = game_world.npc_manager.get_npc_mut(participant) {
+                        npc.combat_exp += exp;
+                    }
+                }
+            }
+            
+            // 結束戰鬥
+            game_world.combat_state = CombatState::None;
+        }
+    }
+    
+    Ok(())
+}
+
+/// 處理逃離戰鬥命令
+fn handle_escape(
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    _me: &Person,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use crate::world::CombatState;
+    
+    if matches!(game_world.combat_state, CombatState::None) {
+        output_manager.print("你不在戰鬥中".to_string());
+    } else {
+        game_world.combat_state = CombatState::None;
+        output_manager.print("你逃離了戰鬥！".to_string());
     }
     
     Ok(())

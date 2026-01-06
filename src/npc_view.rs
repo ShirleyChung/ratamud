@@ -90,6 +90,9 @@ pub struct NpcView {
     
     /// NPC 是否在隊伍中
     pub in_party: bool,
+    
+    /// NPC 是否在戰鬥中
+    pub in_combat: bool,
 }
 
 impl NpcView {
@@ -118,6 +121,7 @@ impl NpcView {
             },
             is_interacting: false,
             in_party: false,
+            in_combat: false,
         }
     }
 }

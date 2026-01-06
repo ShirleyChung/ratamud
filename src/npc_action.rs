@@ -68,6 +68,12 @@ pub enum NpcAction {
         target_id: String,
     },
     
+    /// 使用戰鬥技能
+    UseCombatSkill {
+        skill_name: String,
+        target_id: String,
+    },
+    
     /// 閒置（什麼都不做）
     Idle,
 }
@@ -87,6 +93,9 @@ impl NpcAction {
             },
             NpcAction::Trade { target_id } => format!("交易請求: {target_id}"),
             NpcAction::Attack { target_id } => format!("攻擊: {target_id}"),
+            NpcAction::UseCombatSkill { skill_name, target_id } => {
+                format!("使用技能: {skill_name} -> {target_id}")
+            },
             NpcAction::Idle => "閒置".to_string(),
         }
     }

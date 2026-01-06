@@ -18,6 +18,16 @@ pub enum InteractionState {
     Selling { npc_name: String },           // 出售物品選單
 }
 
+/// 戰鬥狀態
+#[derive(Debug, Clone, PartialEq)]
+pub enum CombatState {
+    None,                                    // 無戰鬥
+    InCombat {
+        participants: Vec<String>,           // 參與者列表 (包含 "me" 和 NPC IDs)
+        round: i32,                          // 當前回合數
+    },
+}
+
 // 世界時間結構體
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorldTime {
@@ -131,6 +141,7 @@ pub struct GameWorld {
     pub current_controlled_id: String,  // 當前操控的角色 ID (預設是 "me")
     pub original_player: Option<Person>,  // 原始玩家資料備份
     pub interaction_state: InteractionState,  // NPC 互動狀態
+    pub combat_state: CombatState,       // 戰鬥狀態
 }
 
 impl Default for GameWorld {
@@ -172,6 +183,7 @@ impl GameWorld {
             current_controlled_id: "me".to_string(),
             original_player: None,
             interaction_state: InteractionState::None,
+            combat_state: CombatState::None,
         }
     }
 
@@ -436,6 +448,14 @@ impl GameWorld {
                     .map(|(name, count)| (name.clone(), *count))
                     .collect();
                 
+                // 檢查 NPC 是否在戰鬥中
+                let in_combat = match &self.combat_state {
+                    CombatState::InCombat { participants, .. } => {
+                        participants.contains(&npc_id)
+                    },
+                    _ => false,
+                };
+                
                 // 建立 NpcView
                 let view = NpcView {
                     self_id: npc_id.clone(),
@@ -451,6 +471,7 @@ impl GameWorld {
                     terrain,
                     is_interacting: npc.is_interacting,
                     in_party: npc.party_leader.is_some(),
+                    in_combat,
                 };
                 
                 views.insert(npc_id, view);
@@ -576,6 +597,9 @@ impl GameWorld {
                 },
                 NpcAction::DropItem { item_name, quantity } => {
                     self.apply_npc_drop(&npc_id, item_name, quantity)
+                },
+                NpcAction::UseCombatSkill { skill_name, target_id } => {
+                    self.apply_npc_combat_skill(&npc_id, &skill_name, &target_id)
                 },
                 NpcAction::Idle => {
                     Vec::new()
@@ -747,6 +771,43 @@ impl GameWorld {
                     }
                 }
             }
+        }
+        
+        messages
+    }
+    
+    /// 套用 NPC 使用戰鬥技能
+    fn apply_npc_combat_skill(&mut self, npc_id: &str, skill_name: &str, target_id: &str) -> Vec<crate::message::Message> {
+        use crate::message::Message;
+        
+        let mut messages = Vec::new();
+        
+        // 檢查NPC是否存在並且冷卻完成
+        if let Some(npc) = self.npc_manager.get_npc(npc_id) {
+            let cooldown = npc.get_skill_cooldown(skill_name);
+            if cooldown > 0 {
+                // 技能還在冷卻中，跳過
+                return messages;
+            }
+            
+            let skill_dialogue = npc.skill_dialogues.get(skill_name)
+                .cloned()
+                .unwrap_or_else(|| "攻擊！".to_string());
+            let damage = npc.combat_skills.get(skill_name)
+                .map(|s| s.damage)
+                .unwrap_or(1);
+            let npc_name = npc.name.clone();
+            
+            // 這裡只記錄消息，實際的HP扣除和技能冷卻需要在主循環中處理
+            // 因為這裡只有不可變引用
+            messages.push(Message::CombatAction {
+                attacker_id: npc_id.to_string(),
+                attacker_name: npc_name,
+                skill_name: skill_name.to_string(),
+                skill_dialogue,
+                target_id: target_id.to_string(),
+                damage,
+            });
         }
         
         messages

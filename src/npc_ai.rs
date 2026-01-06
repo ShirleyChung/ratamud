@@ -14,6 +14,20 @@ impl NpcAiController {
             return Some(NpcAction::Idle);
         }
         
+        // 如果 NPC 在戰鬥中，使用戰鬥技能
+        if npc_view.in_combat {
+            // 隨機選擇戰鬥技能 (punch 或 kick)
+            let mut rng = rand::thread_rng();
+            let skills = ["punch", "kick"];
+            let skill_name = skills[rng.gen_range(0..skills.len())];
+            
+            // 目標是玩家 "me"
+            return Some(NpcAction::UseCombatSkill {
+                skill_name: skill_name.to_string(),
+                target_id: "me".to_string(),
+            });
+        }
+        
         // 如果 NPC 在隊伍中，不隨意移動
         if npc_view.in_party {
             return Some(NpcAction::Idle);

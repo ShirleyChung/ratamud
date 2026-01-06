@@ -21,6 +21,16 @@ pub enum Message {
         damage: i32,
     },
     
+    /// 戰鬥動作訊息（包含技能細節）
+    CombatAction {
+        attacker_id: String,
+        attacker_name: String,
+        skill_name: String,
+        skill_dialogue: String,
+        target_id: String,
+        damage: i32,
+    },
+    
     /// 物品撿起
     ItemPickup {
         entity: String,
@@ -59,6 +69,9 @@ impl Message {
             Message::System(text) => text.clone(),
             Message::Combat { attacker, target, damage } => {
                 format!("⚔️  {attacker} 攻擊 {target}，造成 {damage} 點傷害")
+            },
+            Message::CombatAction { attacker_name, skill_dialogue, damage, .. } => {
+                format!("💥 {} 說：「{}」造成 {} 點傷害！", attacker_name, skill_dialogue, damage)
             },
             Message::ItemPickup { entity, item, count } => {
                 format!("📦 {entity} 撿起了 {item} x{count}")

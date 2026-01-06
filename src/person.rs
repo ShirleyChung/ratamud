@@ -277,6 +277,22 @@ pub struct Person {
     pub build: i32,                  // 體格 (0-100)
     #[serde(default)]
     pub party_leader: Option<String>, // 組隊領隊名稱（None表示未組隊，Some("me")表示與玩家組隊）
+    #[serde(default)]
+    pub combat_skills: HashMap<String, CombatSkill>, // 戰鬥技能 (技能名 -> 技能資料)
+    #[serde(default)]
+    pub skill_dialogues: HashMap<String, String>, // 技能台詞 (技能名 -> 台詞)
+    #[serde(default)]
+    pub combat_exp: i32,             // 戰鬥經驗值
+}
+
+/// 戰鬥技能
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct CombatSkill {
+    pub name: String,        // 技能名稱
+    pub proficiency: i32,    // 熟練度
+    pub damage: i32,         // 傷害值
+    pub cooldown: i32,       // 冷卻時間（回合數）
+    pub current_cooldown: i32, // 當前冷卻剩餘時間
 }
 
 fn default_talk_eagerness() -> u8 {
@@ -321,7 +337,13 @@ impl Person {
             appearance: 50,
             build: 50,
             party_leader: None,
+            combat_skills: HashMap::new(),
+            skill_dialogues: HashMap::new(),
+            combat_exp: 0,
         };
+        
+        // 初始化基本戰鬥技能
+        person.init_combat_skills();
         
         // 設置預設的"被叫住"對話
         person.set_dialogue("被叫住".to_string(), format!("{name} 有什麼事嗎？"));
@@ -330,6 +352,79 @@ impl Person {
         person.update_description();
         
         person
+    }
+    
+    /// 初始化戰鬥技能
+    fn init_combat_skills(&mut self) {
+        // 初始化 punch 技能
+        self.combat_skills.insert("punch".to_string(), CombatSkill {
+            name: "punch".to_string(),
+            proficiency: 0,
+            damage: 2,
+            cooldown: 2,
+            current_cooldown: 0,
+        });
+        
+        // 初始化 kick 技能
+        self.combat_skills.insert("kick".to_string(), CombatSkill {
+            name: "kick".to_string(),
+            proficiency: 0,
+            damage: 3,
+            cooldown: 3,
+            current_cooldown: 0,
+        });
+        
+        // 設置預設技能台詞
+        if self.name == "me" {
+            self.skill_dialogues.insert("punch".to_string(), "吃我一拳".to_string());
+            self.skill_dialogues.insert("kick".to_string(), "看我的飛踢".to_string());
+        } else {
+            self.skill_dialogues.insert("punch".to_string(), "你搞什麼".to_string());
+            self.skill_dialogues.insert("kick".to_string(), "別惹我".to_string());
+        }
+    }
+    
+    /// 使用戰鬥技能（練習模式，不指定目標）
+    pub fn practice_skill(&mut self, skill_name: &str, in_combat: bool) -> Option<String> {
+        if let Some(skill) = self.combat_skills.get_mut(skill_name) {
+            // 檢查冷卻
+            if skill.current_cooldown > 0 {
+                return Some(format!("你還沒準備好{}", skill_name));
+            }
+            
+            // 增加熟練度
+            let proficiency_gain = if in_combat { 2 } else { 1 };
+            skill.proficiency += proficiency_gain;
+            
+            // 設置冷卻
+            skill.current_cooldown = skill.cooldown;
+            
+            Some(format!("你練習了 {} (熟練度 +{})", skill_name, proficiency_gain))
+        } else {
+            None
+        }
+    }
+    
+    /// 檢查是否可以發動戰鬥
+    pub fn can_start_combat(&self) -> bool {
+        self.hp >= self.max_hp / 2
+    }
+    
+    /// 減少技能冷卻
+    pub fn reduce_skill_cooldowns(&mut self) {
+        for skill in self.combat_skills.values_mut() {
+            if skill.current_cooldown > 0 {
+                skill.current_cooldown -= 1;
+            }
+        }
+    }
+    
+    /// 獲取技能冷卻狀態
+    pub fn get_skill_cooldown(&self, skill_name: &str) -> i32 {
+        self.combat_skills
+            .get(skill_name)
+            .map(|s| s.current_cooldown)
+            .unwrap_or(0)
     }
 
     /// 根據屬性自動生成描述
