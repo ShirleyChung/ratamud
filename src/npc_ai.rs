@@ -14,6 +14,11 @@ impl NpcAiController {
             return Some(NpcAction::Idle);
         }
         
+        // 如果 NPC 在隊伍中，不隨意移動
+        if npc_view.in_party {
+            return Some(NpcAction::Idle);
+        }
+        
         // 優先檢查生命值，需要使用食物（HP < max_hp / 2）
         if npc_view.self_hp < npc_view.self_max_hp / 2 {
             // 尋找食物

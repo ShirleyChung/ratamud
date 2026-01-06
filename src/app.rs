@@ -376,6 +376,8 @@ fn handle_command_result(
         CommandResult::ChangeRelationship(npc_name, delta) => handle_change_relationship(npc_name, delta, output_manager, game_world)?,
         CommandResult::Talk(npc_name, topic) => handle_talk(npc_name, topic, output_manager, game_world, me)?,
         CommandResult::Wait(npc_name) => handle_wait(npc_name, output_manager, game_world, me)?,
+        CommandResult::Party(npc_name) => handle_party(npc_name, output_manager, game_world, me)?,
+        CommandResult::Disband => handle_disband(output_manager, game_world, me)?,
         CommandResult::ListNpcs => handle_list_npcs(output_manager, game_world),
         CommandResult::CheckNpc(npc_name) => handle_check_npc(npc_name, output_manager, game_world),
         CommandResult::ToggleTypewriter => handle_toggle_typewriter(output_manager),
@@ -640,7 +642,14 @@ fn display_look(
             if !npcs_here.is_empty() {
                 output_manager.print("\n👥 此處的人物:".to_string());
                 for npc in npcs_here {
-                    output_manager.print(format!("  • {} - {}", npc.name, npc.description));
+                    let mut desc = format!("  • {} - {}", npc.name, npc.description);
+                    
+                    // 顯示組隊狀態
+                    if let Some(ref leader) = npc.party_leader {
+                        desc.push_str(&format!(" (已與\"{leader}\"組隊)"));
+                    }
+                    
+                    output_manager.print(desc);
                     
                     // 嘗試觸發 NPC 對話（"見面"場景，根據玩家屬性）
                     if let Some(greeting) = npc.try_talk("見面", me) {
@@ -849,6 +858,34 @@ pub fn update_minimap_display(
     }
 }
 
+/// 移動組隊的NPC跟隨玩家
+fn move_party_npcs(
+    player_new_x: usize,
+    player_new_y: usize,
+    game_world: &mut GameWorld,
+    output_manager: &mut OutputManager,
+) {
+    let npc_ids = game_world.npc_manager.get_all_npc_ids();
+    let current_map = game_world.current_map_name.clone();
+    
+    for npc_id in npc_ids {
+        if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_id) {
+            // 只移動與玩家組隊的NPC
+            if npc.party_leader == Some("me".to_string()) && npc.map == current_map {
+                // NPC 移動到玩家的新位置（同一位置）
+                npc.x = player_new_x;
+                npc.y = player_new_y;
+                
+                // 保存 NPC 位置
+                let person_dir = format!("{}/persons", game_world.world_dir);
+                let _ = npc.save(&person_dir, &npc_id);
+                
+                output_manager.print(format!("{} 跟隨你移動", npc.name));
+            }
+        }
+    }
+}
+
 /// 處理移動命令
 fn handle_movement(
     dx: i32,
@@ -878,6 +915,9 @@ fn handle_movement(
                         _ => "?",
                     };
                     output_manager.set_status(format!("往 {direction} 移動"));
+                    
+                    // 移動組隊的NPC跟隨到新位置
+                    move_party_npcs(new_x, new_y, game_world, output_manager);
                     
                     // 移動後執行look
                     display_look(None, output_manager, game_world, me);
@@ -2423,6 +2463,71 @@ fn handle_wait(
         try_stop_npc(npc, output_manager);
     } else {
         output_manager.set_status(format!("找不到 {npc_name}"));
+    }
+    
+    Ok(())
+}
+
+/// 處理組隊命令
+fn handle_party(
+    npc_name: String,
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &Person,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_name) {
+        // 檢查是否在同一地圖
+        if npc.map != game_world.current_map_name {
+            output_manager.print(format!("{} 不在這個地圖", npc.name));
+            return Ok(());
+        }
+        
+        // 檢查距離
+        let distance = ((npc.x as i32 - me.x as i32).abs() + (npc.y as i32 - me.y as i32).abs()) as usize;
+        if distance > 1 {
+            output_manager.print(format!("{} 距離太遠，無法組隊", npc.name));
+            return Ok(());
+        }
+        
+        // 檢查是否已經組隊
+        if npc.party_leader.is_some() {
+            output_manager.print(format!("{} 已經在隊伍中了", npc.name));
+            return Ok(());
+        }
+        
+        // 組隊成功
+        npc.party_leader = Some("me".to_string());
+        output_manager.print(format!("{} 加入了你的隊伍", npc.name));
+    } else {
+        output_manager.set_status(format!("找不到 {npc_name}"));
+    }
+    
+    Ok(())
+}
+
+/// 處理解散隊伍命令
+fn handle_disband(
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    _me: &Person,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let mut disbanded_count = 0;
+    let npc_ids = game_world.npc_manager.get_all_npc_ids();
+    
+    for npc_id in npc_ids {
+        if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_id) {
+            if npc.party_leader == Some("me".to_string()) {
+                npc.party_leader = None;
+                disbanded_count += 1;
+                output_manager.print(format!("{} 離開了隊伍", npc.name));
+            }
+        }
+    }
+    
+    if disbanded_count == 0 {
+        output_manager.print("當前沒有隊員".to_string());
+    } else {
+        output_manager.print(format!("已解散隊伍，共 {disbanded_count} 名隊員離隊"));
     }
     
     Ok(())

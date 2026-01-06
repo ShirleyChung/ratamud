@@ -275,6 +275,8 @@ pub struct Person {
     pub appearance: i32,             // 顏值 (0-100)
     #[serde(default = "default_build")]
     pub build: i32,                  // 體格 (0-100)
+    #[serde(default)]
+    pub party_leader: Option<String>, // 組隊領隊名稱（None表示未組隊，Some("me")表示與玩家組隊）
 }
 
 fn default_talk_eagerness() -> u8 {
@@ -318,6 +320,7 @@ impl Person {
             gender: "".to_string(),
             appearance: 50,
             build: 50,
+            party_leader: None,
         };
         
         // 設置預設的"被叫住"對話

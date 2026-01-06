@@ -836,6 +836,19 @@ impl InputHandler {
                     CommandResult::Wait(npc_name)
                 }
             },
+            "party" => {
+                // party <npc> 命令，邀請 NPC 組隊
+                if parts.len() < 2 {
+                    CommandResult::Error("Usage: party <npc>".to_string())
+                } else {
+                    let npc_name = parts[1].to_string();
+                    CommandResult::Party(npc_name)
+                }
+            },
+            "disband" => {
+                // disband 命令，解散隊伍
+                CommandResult::Disband
+            },
             "check" | "inspect" | "examine" => {
                 // check <npc> 命令，查看 NPC 的詳細資訊
                 if parts.len() < 2 {
@@ -954,6 +967,8 @@ pub enum CommandResult {
     ChangeRelationship(String, i32), // 改變 NPC 好感度 (NPC, 變化量)
     Talk(String, String),            // 與 NPC 對話 (NPC名稱/ID, 話題)
     Wait(String),                    // 叫住 NPC (NPC名稱/ID)
+    Party(String),                   // 邀請 NPC 組隊 (NPC名稱/ID)
+    Disband,                         // 解散隊伍
     ListNpcs,                        // 列出所有 NPC
     CheckNpc(String),                // 查看 NPC 詳細資訊 (NPC名稱/ID)
     ToggleTypewriter,                // 切換打字機效果
@@ -1007,6 +1022,8 @@ impl CommandResult {
             CommandResult::Sell(..) => Some(("sell <npc> <item> [數量]", "出售物品", "💰 交易")),
             CommandResult::Give(..) => Some(("give <npc> <item> [數量]", "給予NPC物品", "👥 NPC互動")),
             CommandResult::Wait(..) => Some(("wait <npc>", "叫住NPC（基於好感度）", "👥 NPC互動")),
+            CommandResult::Party(..) => Some(("party <npc>", "邀請NPC組隊", "👥 NPC互動")),
+            CommandResult::Disband => Some(("disband", "解散隊伍", "👥 NPC互動")),
             CommandResult::ListNpcs => Some(("npcs", "列出所有NPC", "👥 NPC互動")),
             _ => None,
         }

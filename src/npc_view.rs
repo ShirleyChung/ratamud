@@ -87,6 +87,9 @@ pub struct NpcView {
     
     /// NPC 是否正在互動中
     pub is_interacting: bool,
+    
+    /// NPC 是否在隊伍中
+    pub in_party: bool,
 }
 
 impl NpcView {
@@ -114,6 +117,7 @@ impl NpcView {
                 description: "未知區域".to_string(),
             },
             is_interacting: false,
+            in_party: false,
         }
     }
 }

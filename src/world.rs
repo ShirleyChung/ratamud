@@ -450,6 +450,7 @@ impl GameWorld {
                     visible_items,
                     terrain,
                     is_interacting: npc.is_interacting,
+                    in_party: npc.party_leader.is_some(),
                 };
                 
                 views.insert(npc_id, view);
