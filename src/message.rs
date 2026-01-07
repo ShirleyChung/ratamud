@@ -71,7 +71,7 @@ impl Message {
                 format!("⚔️  {attacker} 攻擊 {target}，造成 {damage} 點傷害")
             },
             Message::CombatAction { attacker_name, skill_dialogue, damage, .. } => {
-                format!("💥 {} 說：「{}」造成 {} 點傷害！", attacker_name, skill_dialogue, damage)
+                format!("💥 {attacker_name} 說：「{skill_dialogue}」造成 {damage} 點傷害！")
             },
             Message::ItemPickup { entity, item, count } => {
                 format!("📦 {entity} 撿起了 {item} x{count}")

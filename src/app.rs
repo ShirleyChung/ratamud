@@ -86,6 +86,8 @@ pub fn run_main_loop(
     let mut should_exit = false;
     let mut last_event_check = Instant::now();
     let event_check_interval = Duration::from_millis(100);  // 每0.1秒檢查事件
+    let mut last_combat_round = Instant::now();
+    let combat_round_interval = Duration::from_secs(3);  // 每3秒執行一次戰鬥回合
     
     // === 新架構：創建 channel ===
     let (npc_view_tx, npc_view_rx) = mpsc::channel();
@@ -172,6 +174,17 @@ pub fn run_main_loop(
         if now.duration_since(last_event_check) >= event_check_interval {
             check_and_execute_events(&mut game_world, &mut me, &mut output_manager);
             last_event_check = now;
+        }
+        
+        // --- 3.5. 自動戰鬥回合 ---
+        // 如果在戰鬥中，每3秒自動執行一次戰鬥回合
+        use crate::world::CombatState;
+        if !matches!(game_world.combat_state, CombatState::None) {
+            let now = Instant::now();
+            if now.duration_since(last_combat_round) >= combat_round_interval {
+                let _ = execute_combat_round(&mut output_manager, &mut game_world, &mut me);
+                last_combat_round = now;
+            }
         }
         
         // --- 4. 發送 NPC Views 到 AI 執行緒 ---
@@ -2650,7 +2663,7 @@ fn handle_combat_skill(
     
     // 檢查玩家是否有足夠HP發動戰鬥
     if !me.can_start_combat() && !in_combat {
-        output_manager.print(format!("你沒力氣戰鬥"));
+        output_manager.print("你沒力氣戰鬥".to_string());
         return Ok(());
     }
     
@@ -2675,35 +2688,14 @@ fn handle_combat_skill(
                 participants: vec!["me".to_string(), target_name.clone()],
                 round: 1,
             };
-            output_manager.print(format!("⚔️  戰鬥開始！你 vs {}", target_name));
+            output_manager.print(format!("⚔️  戰鬥開始！你 vs {target_name}"));
         }
         
-        // 執行攻擊
+        // 執行玩家攻擊
         execute_attack(skill_name, "me", &target_name, output_manager, game_world, me)?;
         
-        // 戰鬥回合增加，減少所有參與者的技能冷卻
-        if let CombatState::InCombat { participants, round } = &mut game_world.combat_state {
-            *round += 1;
-            
-            // 減少玩家冷卻
-            me.reduce_skill_cooldowns();
-            
-            // 檢查並通知玩家技能準備好了
-            for (skill_name, skill) in &me.combat_skills {
-                if skill.current_cooldown == 0 {
-                    output_manager.print(format!("你的 {} 準備好了！", skill_name));
-                }
-            }
-            
-            // 減少NPC冷卻
-            for participant in participants.clone() {
-                if participant != "me" {
-                    if let Some(npc) = game_world.npc_manager.get_npc_mut(&participant) {
-                        npc.reduce_skill_cooldowns();
-                    }
-                }
-            }
-        }
+        // 執行戰鬥回合（NPC行動）
+        execute_combat_round(output_manager, game_world, me)?;
         
     } else {
         output_manager.print(format!("找不到 {target_name}"));
@@ -2729,32 +2721,26 @@ fn execute_attack(
             return Ok(());
         }
         
-        let dialogue = me.skill_dialogues.get(skill_name)
-            .cloned()
-            .unwrap_or_else(|| "攻擊！".to_string());
+        let dialogue = me.get_skill_dialogue(skill_name);
         let damage = me.combat_skills.get(skill_name)
             .map(|s| s.damage)
             .unwrap_or(1);
         
         (me.name.clone(), dialogue, damage, true)
-    } else {
-        if let Some(npc) = game_world.npc_manager.get_npc(attacker_id) {
-            let cooldown = npc.get_skill_cooldown(skill_name);
-            if cooldown > 0 {
-                return Ok(()); // NPC冷卻中，跳過
-            }
-            
-            let dialogue = npc.skill_dialogues.get(skill_name)
-                .cloned()
-                .unwrap_or_else(|| "攻擊！".to_string());
-            let damage = npc.combat_skills.get(skill_name)
-                .map(|s| s.damage)
-                .unwrap_or(1);
-            
-            (npc.name.clone(), dialogue, damage, true)
-        } else {
-            return Ok(());
+    } else if let Some(npc) = game_world.npc_manager.get_npc(attacker_id) {
+        let cooldown = npc.get_skill_cooldown(skill_name);
+        if cooldown > 0 {
+            return Ok(()); // NPC冷卻中，跳過
         }
+        
+        let dialogue = npc.get_skill_dialogue(skill_name);
+        let damage = npc.combat_skills.get(skill_name)
+            .map(|s| s.damage)
+            .unwrap_or(1);
+        
+        (npc.name.clone(), dialogue, damage, true)
+    } else {
+        return Ok(());
     };
     
     if !cooldown_ready {
@@ -2802,7 +2788,7 @@ fn check_combat_end(
         // 檢查玩家HP
         if me.hp <= me.max_hp / 2 {
             combat_ended = true;
-            output_manager.print(format!("你的HP低於50%，戰鬥結束！"));
+            output_manager.print("你的HP低於50%，戰鬥結束！".to_string());
         }
         
         // 檢查NPC HP
@@ -2834,7 +2820,7 @@ fn check_combat_end(
             // 給予戰鬥經驗
             let exp = current_round * 2;
             me.combat_exp += exp;
-            output_manager.print(format!("獲得 {} 點戰鬥經驗！", exp));
+            output_manager.print(format!("獲得 {exp} 點戰鬥經驗！"));
             
             for participant in participants.iter() {
                 if participant != "me" {
@@ -2852,17 +2838,89 @@ fn check_combat_end(
     Ok(())
 }
 
+/// 執行戰鬥回合（NPC行動和回合結算）
+fn execute_combat_round(
+    output_manager: &mut OutputManager,
+    game_world: &mut GameWorld,
+    me: &mut Person,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use crate::world::CombatState;
+    
+    // 取得參與者列表
+    let participants = if let CombatState::InCombat { participants, .. } = &game_world.combat_state {
+        participants.clone()
+    } else {
+        return Ok(());
+    };
+    
+    // NPC 行動（隨機決定是否行動）
+    for participant in &participants {
+        if participant == "me" {
+            continue;
+        }
+        
+        // 每個NPC有50%機率執行戰鬥指令
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        if rng.gen_bool(0.5) {
+            // 隨機選擇戰鬥技能
+            let skills = ["punch", "kick"];
+            let skill_name = skills[rng.gen_range(0..skills.len())];
+            
+            // 執行NPC攻擊玩家
+            execute_attack(skill_name, participant, "me", output_manager, game_world, me)?;
+        }
+    }
+    
+    // 回合結算：回合數增加，減少技能冷卻
+    if let CombatState::InCombat { participants, round } = &mut game_world.combat_state {
+        *round += 1;
+        
+        // 減少玩家冷卻
+        me.reduce_skill_cooldowns();
+        
+        // 減少NPC冷卻
+        for participant in participants.clone() {
+            if participant != "me" {
+                if let Some(npc) = game_world.npc_manager.get_npc_mut(&participant) {
+                    npc.reduce_skill_cooldowns();
+                }
+            }
+        }
+    }
+    
+    // 檢查戰鬥是否結束
+    check_combat_end(output_manager, game_world, me)?;
+    
+    Ok(())
+}
+
 /// 處理逃離戰鬥命令
 fn handle_escape(
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
-    _me: &Person,
+    me: &mut Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use crate::world::CombatState;
     
     if matches!(game_world.combat_state, CombatState::None) {
         output_manager.print("你不在戰鬥中".to_string());
     } else {
+        // 執行結算（給予經驗值）
+        if let CombatState::InCombat { participants, round } = &game_world.combat_state {
+            let exp = round / 2; // 逃跑只給一半經驗
+            me.combat_exp += exp;
+            output_manager.print(format!("逃跑獲得 {exp} 點戰鬥經驗"));
+            
+            for participant in participants.iter() {
+                if participant != "me" {
+                    if let Some(npc) = game_world.npc_manager.get_npc_mut(participant) {
+                        npc.combat_exp += exp;
+                    }
+                }
+            }
+        }
+        
         game_world.combat_state = CombatState::None;
         output_manager.print("你逃離了戰鬥！".to_string());
     }

@@ -790,9 +790,7 @@ impl GameWorld {
                 return messages;
             }
             
-            let skill_dialogue = npc.skill_dialogues.get(skill_name)
-                .cloned()
-                .unwrap_or_else(|| "攻擊！".to_string());
+            let skill_dialogue = npc.get_skill_dialogue(skill_name);
             let damage = npc.combat_skills.get(skill_name)
                 .map(|s| s.damage)
                 .unwrap_or(1);

@@ -218,6 +218,9 @@ impl NpcManager {
                         
                         // 嘗試載入 NPC
                         if let Ok(mut npc) = Person::load(person_dir, file_stem) {
+                            // 確保戰鬥技能已初始化（舊存檔修復）
+                            npc.ensure_combat_skills();
+                            
                             // 確保 NPC 有預設的 10000 金幣（me 除外）
                             if file_stem != "me" && (!npc.items.contains_key("金幣") || npc.items.get("金幣").copied().unwrap_or(0) == 0) {
                                 npc.items.insert("金幣".to_string(), 10_000);
@@ -262,8 +265,16 @@ impl NpcManager {
     /// 返回 me 的 clone
     fn ensure_me(&mut self, person_dir: &str) -> Result<Person, Box<dyn std::error::Error>> {
         if let Some(me) = self.get_me() {
-            // me 已存在，直接返回
-            Ok(me.clone())
+            // me 已存在，確保戰鬥技能已初始化（舊存檔修復）
+            let mut me_clone = me.clone();
+            me_clone.ensure_combat_skills();
+            
+            // 更新 npc_manager 中的 me
+            if let Some(stored_me) = self.npcs.get_mut("me") {
+                stored_me.ensure_combat_skills();
+            }
+            
+            Ok(me_clone)
         } else {
             // 創建預設的 me
             let mut new_me = Person::new(

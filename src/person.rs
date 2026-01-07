@@ -280,8 +280,6 @@ pub struct Person {
     #[serde(default)]
     pub combat_skills: HashMap<String, CombatSkill>, // 戰鬥技能 (技能名 -> 技能資料)
     #[serde(default)]
-    pub skill_dialogues: HashMap<String, String>, // 技能台詞 (技能名 -> 台詞)
-    #[serde(default)]
     pub combat_exp: i32,             // 戰鬥經驗值
 }
 
@@ -338,7 +336,6 @@ impl Person {
             build: 50,
             party_leader: None,
             combat_skills: HashMap::new(),
-            skill_dialogues: HashMap::new(),
             combat_exp: 0,
         };
         
@@ -374,32 +371,41 @@ impl Person {
             current_cooldown: 0,
         });
         
-        // 設置預設技能台詞
+        // 設置預設技能台詞（使用一般對話系統）
         if self.name == "me" {
-            self.skill_dialogues.insert("punch".to_string(), "吃我一拳".to_string());
-            self.skill_dialogues.insert("kick".to_string(), "看我的飛踢".to_string());
+            self.set_dialogue("punch".to_string(), "拳".to_string());
+            self.set_dialogue("kick".to_string(), "踢".to_string());
         } else {
-            self.skill_dialogues.insert("punch".to_string(), "你搞什麼".to_string());
-            self.skill_dialogues.insert("kick".to_string(), "別惹我".to_string());
+            self.set_dialogue("punch".to_string(), "punch".to_string());
+            self.set_dialogue("kick".to_string(), "kick".to_string());
+        }
+    }
+    
+    /// 確保戰鬥技能已初始化（用於舊存檔載入後的修復）
+    pub fn ensure_combat_skills(&mut self) {
+        if self.combat_skills.is_empty() {
+            self.init_combat_skills();
         }
     }
     
     /// 使用戰鬥技能（練習模式，不指定目標）
     pub fn practice_skill(&mut self, skill_name: &str, in_combat: bool) -> Option<String> {
         if let Some(skill) = self.combat_skills.get_mut(skill_name) {
-            // 檢查冷卻
-            if skill.current_cooldown > 0 {
-                return Some(format!("你還沒準備好{}", skill_name));
+            // 只在戰鬥中檢查冷卻
+            if in_combat && skill.current_cooldown > 0 {
+                return Some(format!("你還沒準備好{skill_name}"));
             }
             
             // 增加熟練度
             let proficiency_gain = if in_combat { 2 } else { 1 };
             skill.proficiency += proficiency_gain;
             
-            // 設置冷卻
-            skill.current_cooldown = skill.cooldown;
+            // 只在戰鬥中設置冷卻
+            if in_combat {
+                skill.current_cooldown = skill.cooldown;
+            }
             
-            Some(format!("你練習了 {} (熟練度 +{})", skill_name, proficiency_gain))
+            Some(format!("你練習了 {skill_name} (熟練度 +{proficiency_gain})"))
         } else {
             None
         }
@@ -425,6 +431,21 @@ impl Person {
             .get(skill_name)
             .map(|s| s.current_cooldown)
             .unwrap_or(0)
+    }
+    
+    /// 獲取技能台詞（從一般對話系統，隨機選擇）
+    pub fn get_skill_dialogue(&self, skill_name: &str) -> String {
+        // 從對話系統中獲取技能台詞（隨機選擇一個）
+        if let Some(dialogue_options) = self.dialogues.get(skill_name) {
+            if !dialogue_options.is_empty() {
+                use rand::Rng;
+                let mut rng = rand::thread_rng();
+                let index = rng.gen_range(0..dialogue_options.len());
+                return dialogue_options[index].text.clone();
+            }
+        }
+        // 預設台詞
+        "攻擊！".to_string()
     }
 
     /// 根據屬性自動生成描述
