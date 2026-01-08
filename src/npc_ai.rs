@@ -60,10 +60,10 @@ impl NpcAiController {
             // 10% 機率隨機移動
             let directions = [Direction::Up, Direction::Down, Direction::Left, Direction::Right];
             let direction = directions[rng.gen_range(0..directions.len())].clone();
-            return Some(NpcAction::Move(direction));
+            Some(NpcAction::Move(direction))
         } else {
             // 50% 機率閒置
-            return Some(NpcAction::Idle);
+            Some(NpcAction::Idle)
         }
     }
 }
