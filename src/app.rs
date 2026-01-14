@@ -48,10 +48,12 @@ fn create_npc_thread(
     npc_event_tx: mpsc::Sender<crate::game_event::GameEvent>,
 ) -> thread::JoinHandle<()> {
     thread::spawn(move || {
+        let ai_controller = crate::npc_ai::NpcAiController::new();
+        
         while let Ok(npc_views) = npc_view_rx.recv() {
             // 為每個 NPC 決定行為
             for (npc_id, view) in npc_views {
-                if let Some(action) = crate::npc_ai::NpcAiController::decide_action(&view) {
+                if let Some(action) = ai_controller.decide_action(&view) {
                     // 發送行為事件回主執行緒
                     let event = crate::game_event::GameEvent::NpcActions {
                         npc_id,

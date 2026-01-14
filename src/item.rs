@@ -70,6 +70,7 @@ pub struct Item {
     #[serde(default)]
     pub age: u64,    // 物品存在時間（以秒計算）
     pub stories: Vec<String>,       // 物品的故事
+    pub weight: u32,      // 物品重量
 }
 
 // 物品實例（每個實例都有唯一的流水號）
@@ -117,6 +118,7 @@ impl Item {
             value,
             age: 0,
             stories: Vec::new(),
+            weight: 1,
         }
     }
 

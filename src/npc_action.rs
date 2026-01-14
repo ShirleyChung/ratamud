@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use crate::npc_view::NpcView;
 
 /// 方向
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -98,5 +99,170 @@ impl NpcAction {
             },
             NpcAction::Idle => "閒置".to_string(),
         }
+    }
+}
+
+/// NPC AI 策略特徵
+pub trait NpcAiStrategy: Send + Sync {
+    /// 根據 NpcView 決定 NPC 的行為
+    /// 返回 None 表示此策略不處理，讓下一個策略處理
+    fn decide_action(&self, npc_view: &NpcView) -> Option<NpcAction>;
+    
+    /// 策略的優先級（數字越小優先級越高）
+    fn priority(&self) -> i32 {
+        100
+    }
+}
+
+/// 互動中策略
+pub struct InteractingStrategy;
+
+impl NpcAiStrategy for InteractingStrategy {
+    fn decide_action(&self, npc_view: &NpcView) -> Option<NpcAction> {
+        if npc_view.is_interacting {
+            Some(NpcAction::Idle)
+        } else {
+            None
+        }
+    }
+    
+    fn priority(&self) -> i32 {
+        10
+    }
+}
+
+/// 戰鬥策略
+pub struct CombatStrategy;
+
+impl NpcAiStrategy for CombatStrategy {
+    fn decide_action(&self, npc_view: &NpcView) -> Option<NpcAction> {
+        if !npc_view.in_combat {
+            return None;
+        }
+        
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        let skills = ["punch", "kick"];
+        let skill_name = skills[rng.gen_range(0..skills.len())];
+        
+        Some(NpcAction::UseCombatSkill {
+            skill_name: skill_name.to_string(),
+            target_id: "me".to_string(),
+        })
+    }
+    
+    fn priority(&self) -> i32 {
+        20
+    }
+}
+
+/// 隊伍策略
+pub struct PartyStrategy;
+
+impl NpcAiStrategy for PartyStrategy {
+    fn decide_action(&self, npc_view: &NpcView) -> Option<NpcAction> {
+        if npc_view.in_party {
+            Some(NpcAction::Idle)
+        } else {
+            None
+        }
+    }
+    
+    fn priority(&self) -> i32 {
+        30
+    }
+}
+
+/// 治療策略
+pub struct HealingStrategy;
+
+impl NpcAiStrategy for HealingStrategy {
+    fn decide_action(&self, npc_view: &NpcView) -> Option<NpcAction> {
+        if npc_view.self_hp >= npc_view.self_max_hp / 2 {
+            return None;
+        }
+        
+        let food_items = ["蘋果", "乾肉", "麵包"];
+        
+        for food in &food_items {
+            if npc_view.self_items.iter().any(|(name, count)| name == food && *count > 0) {
+                return Some(NpcAction::UseItem(food.to_string()));
+            }
+        }
+        
+        None
+    }
+    
+    fn priority(&self) -> i32 {
+        40
+    }
+}
+
+/// 隨機行為策略
+pub struct RandomBehaviorStrategy;
+
+impl NpcAiStrategy for RandomBehaviorStrategy {
+    fn decide_action(&self, _npc_view: &NpcView) -> Option<NpcAction> {
+        use rand::Rng;
+        
+        let mut rng = rand::thread_rng();
+        let roll = rng.gen_range(0..100);
+        
+        if roll < 20 && !_npc_view.visible_items.is_empty() {
+            let item = &_npc_view.visible_items[0];
+            Some(NpcAction::PickupItem {
+                item_name: item.item_name.clone(),
+                quantity: 1,
+            })
+        } else if roll < 30 {
+            let directions = [Direction::Up, Direction::Down, Direction::Left, Direction::Right];
+            let direction = directions[rng.gen_range(0..directions.len())].clone();
+            Some(NpcAction::Move(direction))
+        } else {
+            Some(NpcAction::Idle)
+        }
+    }
+    
+    fn priority(&self) -> i32 {
+        1000
+    }
+}
+
+/// AI 策略組合器
+pub struct NpcAiStrategyComposer {
+    strategies: Vec<Box<dyn NpcAiStrategy>>,
+}
+
+impl NpcAiStrategyComposer {
+    pub fn new() -> Self {
+        Self {
+            strategies: Vec::new(),
+        }
+    }
+    
+    pub fn add_strategy(mut self, strategy: Box<dyn NpcAiStrategy>) -> Self {
+        self.strategies.push(strategy);
+        self.strategies.sort_by_key(|s| s.priority());
+        self
+    }
+    
+    pub fn decide_action(&self, npc_view: &NpcView) -> Option<NpcAction> {
+        for strategy in &self.strategies {
+            if let Some(action) = strategy.decide_action(npc_view) {
+                return Some(action);
+            }
+        }
+        None
+    }
+}
+
+impl Default for NpcAiStrategyComposer {
+    fn default() -> Self {
+        Self::new()
+            .add_strategy(Box::new(InteractingStrategy))
+            .add_strategy(Box::new(CombatStrategy))
+            .add_strategy(Box::new(PartyStrategy))
+            .add_strategy(Box::new(HealingStrategy))
+            .add_strategy(Box::new(RandomBehaviorStrategy))
     }
 }
