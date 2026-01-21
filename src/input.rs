@@ -1,13 +1,15 @@
 use crossterm::event::{KeyCode, KeyEvent, KeyEventKind};
 use crate::app::AppContext; // Add AppContext import
 use crate::ui::Menu;
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 
 // 處理用戶輸入的結構體
 pub struct InputHandler {
     pub input: String,      // 當前輸入緩衝區
     pub buffer: Vec<String>, // 儲存所有已提交的文本
     pub last_command: Option<String>, // 儲存上一次的命令
+    pub command_history: VecDeque<String>, // 命令歷史記錄隊列
+    pub max_history: usize, // 最大歷史記錄數量
 }
 
 impl Default for InputHandler {
@@ -23,23 +25,90 @@ impl InputHandler {
             input: String::new(),
             buffer: Vec::new(),
             last_command: None,
+            command_history: VecDeque::new(),
+            max_history: 100,
         }
     }
 
-    // Process key events, modifying AppContext and returning CommandResult if one is generated
+    // 將按鍵事件轉換為指令字串（主輸入處理）
     pub fn handle_input_events(&mut self, key: KeyEvent, context: &mut AppContext) -> Option<CommandResult> {
         // 優先處理互動選單（交易、對話等）
         if context.interaction_menu.is_some() {
+            // 互動選單使用按鍵導航
             return self.handle_interaction_menu(key, context);
         }
         
         // If menu is open, handle menu input first
         if context.menu.is_some() {
+            // 一般選單使用按鍵導航
             return self.handle_context_menu(key, context);
         }
 
-        // Handle normal key events
-        self.handle_normal_keyevent(key, context)
+        // 處理特殊按鍵（F1, PageUp/Down, Shift+方向鍵等）
+        if let Some(result) = self.handle_normal_keyevent(key, context) {
+            return Some(result);
+        }
+
+        // 正常狀態：將按鍵轉換為指令字串
+        if let Some(command_str) = self.key_to_command_string(key, context) {
+            return self.process_command_string(command_str);
+        }
+        
+        None
+    }
+    
+    // 將按鍵轉換為指令字串
+    fn key_to_command_string(&mut self, key: KeyEvent, context: &mut AppContext) -> Option<String> {
+        if key.kind != KeyEventKind::Press {
+            return None;
+        }
+        
+        match key.code {
+            KeyCode::Up => Some("up".to_string()),
+            KeyCode::Down => Some("down".to_string()),
+            KeyCode::Left => Some("left".to_string()),
+            KeyCode::Right => Some("right".to_string()),
+            KeyCode::Esc => {
+                // 處理 Esc 鍵開關選單
+                if context.menu.is_none() {
+                    let mut new_menu = Menu::new(
+                        "遊戲選單".to_string(),
+                        vec![
+                            "繼續遊戲".to_string(),
+                            "儲存遊戲".to_string(),
+                            "載入遊戲".to_string(),
+                            "設定".to_string(),
+                            "離開遊戲".to_string(),
+                        ],
+                    );
+                    new_menu.activate();
+                    *context.menu = Some(new_menu);
+                    context.output_manager.print("選單開啟".to_string());
+                } else {
+                    *context.menu = None;
+                    context.output_manager.print("選單關閉".to_string());
+                }
+                None
+            }
+            KeyCode::Char(c) => {
+                self.input.push(c);
+                None
+            }
+            KeyCode::Backspace => {
+                self.input.pop();
+                None
+            }
+            KeyCode::Enter => {
+                if !self.input.is_empty() {
+                    let cmd = self.input.clone();
+                    self.input.clear();
+                    Some(cmd)
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
     }
 
     fn handle_interaction_menu(&mut self, key: KeyEvent, context: &mut AppContext) -> Option<CommandResult> {
@@ -199,27 +268,6 @@ impl InputHandler {
         }
 
         match key.code {
-            KeyCode::Esc => {
-                if context.menu.is_none() {
-                    let mut new_menu = Menu::new(
-                        "遊戲選單".to_string(),
-                        vec![
-                            "繼續遊戲".to_string(),
-                            "儲存遊戲".to_string(),
-                            "載入遊戲".to_string(),
-                            "設定".to_string(),
-                            "離開遊戲".to_string(),
-                        ],
-                    );
-                    new_menu.activate();
-                    *context.menu = Some(new_menu);
-                    context.output_manager.print("選單開啟".to_string());
-                } else {
-                    *context.menu = None;
-                    context.output_manager.print("選單關閉".to_string());
-                }
-                None
-            },
             KeyCode::F(1) => {
                 context.output_manager.toggle_status_panel();
                 None
@@ -230,7 +278,8 @@ impl InputHandler {
                     context.output_manager.set_status("大地圖已關閉".to_string());
                     None
                 } else {
-                    self.handle_key_event(key)
+                    // 'q' 字符會被轉為指令字串
+                    None
                 }
             },
             KeyCode::Up | KeyCode::Down | KeyCode::Left | KeyCode::Right => {
@@ -260,7 +309,8 @@ impl InputHandler {
                     }
                     None
                 } else {
-                    self.handle_key_event(key)
+                    // 方向鍵會被轉為指令字串（在 key_to_command_string 處理）
+                    None
                 }
             },
             KeyCode::PageUp => {
@@ -273,60 +323,65 @@ impl InputHandler {
                 context.output_manager.set_status("向下捲動訊息".to_string());
                 None
             },
-            _ => {
-                self.handle_key_event(key)
-            }
+            _ => None,
         }
     }
 
 
-    // 處理鍵盤事件 (這是一個內部解析器，僅將鍵盤事件轉換為 CommandResult)
-    pub fn handle_key_event(&mut self, key: KeyEvent) -> Option<CommandResult> {
-        // ✅ Windows 相容：只處理 Press 事件，忽略 Repeat 和 Release
-        // 這樣既支援中文輸入，又避免 Windows 的重複字符問題
-        match key.kind {
-            KeyEventKind::Press => {
-                // 只處理按下事件
+    // 處理指令字串（新核心方法）
+    pub fn process_command_string(&mut self, command_str: String) -> Option<CommandResult> {
+        // 處理特殊指令
+        let result = match command_str.as_str() {
+            "up" => CommandResult::Move(0, -1),
+            "down" => CommandResult::Move(0, 1),
+            "left" => CommandResult::Move(-1, 0),
+            "right" => CommandResult::Move(1, 0),
+            _ => {
+                // 一般文字指令
+                self.parse_input(command_str.clone())
             }
-            KeyEventKind::Repeat | KeyEventKind::Release => {
-                // 忽略重複和釋放事件
-                return None;
+        };
+        
+        // 保存指令到歷史記錄
+        if command_str != "re" && command_str != "repeat" {
+            if !matches!(result, CommandResult::Error(_)) {
+                self.last_command = Some(command_str.clone());
+                self.add_to_history(command_str);
             }
-        }
-
-        match key.code {
-            KeyCode::Char(c) => {
-                self.input.push(c);
-            }
-
-            KeyCode::Backspace => {
-                self.input.pop();
-            }
-
-            KeyCode::Enter => {
-                if !self.input.is_empty() {
-                    let result = self.parse_input(self.input.clone());
-                    // 只儲存成功的命令（非錯誤、非重複命令）
-                    if self.input != "re" && self.input != "repeat" {
-                        // 檢查結果是否為錯誤
-                        if !matches!(result, CommandResult::Error(_)) {
-                            self.last_command = Some(self.input.clone());
-                        }
-                    }
-                    self.input.clear();
-                    return Some(result);
-                }
-            }
-
-            KeyCode::Up => return Some(CommandResult::Move(0, -1)),
-            KeyCode::Down => return Some(CommandResult::Move(0, 1)),
-            KeyCode::Left => return Some(CommandResult::Move(-1, 0)),
-            KeyCode::Right => return Some(CommandResult::Move(1, 0)),
-
-            _ => {}
         }
         
-        None
+        Some(result)
+    }
+    
+    // 添加指令到歷史記錄
+    fn add_to_history(&mut self, command: String) {
+        // 如果超過最大數量，移除最舊的
+        if self.command_history.len() >= self.max_history {
+            self.command_history.pop_front();
+        }
+        self.command_history.push_back(command);
+    }
+    
+    // 獲取指令歷史記錄
+    #[allow(dead_code)]
+    pub fn get_history(&self) -> &VecDeque<String> {
+        &self.command_history
+    }
+    
+    // 獲取最近的 N 條指令
+    #[allow(dead_code)]
+    pub fn get_recent_commands(&self, count: usize) -> Vec<String> {
+        self.command_history
+            .iter()
+            .rev()
+            .take(count)
+            .cloned()
+            .collect()
+    }
+    
+    // 獲取歷史記錄數量
+    pub fn history_count(&self) -> usize {
+        self.command_history.len()
     }
 
     // 取得目前輸入的文本
@@ -340,9 +395,8 @@ impl InputHandler {
         self.input.clear();
     }
 
-    // 解析輸入內容，所有輸入都視為命令
+    // 解析輸入內容（使用字串輸入）
     fn parse_input(&mut self, input: String) -> CommandResult {
-        // 所有輸入都當作命令處理
         self.handle_command(input)
     }
 
@@ -397,6 +451,16 @@ impl InputHandler {
                     return self.handle_command(last_cmd.clone());
                 }
                 CommandResult::Error("沒有可重複的命令".to_string())
+            },
+            "history" | "hist" => {
+                // 顯示指令歷史記錄
+                // history [n] - 顯示最近 n 條指令（預設 10）
+                let count = if parts.len() > 1 {
+                    parts[1].parse::<usize>().unwrap_or(10).min(50)
+                } else {
+                    10
+                };
+                CommandResult::ShowHistory(count)
             },
             "exit" | "quit" => CommandResult::Exit,
             "help" => CommandResult::Help,
@@ -957,6 +1021,7 @@ pub enum CommandResult {
     ShowLog,                         // 打開日誌視窗
     HideLog,                         // 關閉日誌視窗
     ShowMap,                         // 打開大地圖顯示
+    ShowHistory(usize),              // 顯示指令歷史記錄 (顯示數量)
     Look(Option<String>),            // 查看當前位置或查看 NPC (可選：NPC 名稱/ID)
     Move(i32, i32),                  // 移動 (dx, dy)，顯示方向
     Get(Option<String>, u32),        // 撿起物品 (可選：物品名稱, 數量)
@@ -1015,6 +1080,7 @@ impl CommandResult {
             CommandResult::Exit => Some(("exit / quit", "退出遊戲", "🎮 遊戲控制")),
             CommandResult::Help => Some(("help", "顯示此幫助訊息", "🎮 遊戲控制")),
             CommandResult::Clear => Some(("clear", "清除訊息輸出", "🛠️  其他")),
+            CommandResult::ShowHistory(..) => Some(("history / hist [<數量>]", "顯示指令歷史記錄", "ℹ️  資訊查詢")),
             CommandResult::Look(..) => Some(("look / l [<npc>]", "查看位置或NPC", "🎮 遊戲控制")),
             CommandResult::Move(..) => Some(("↑↓←→ / up/down/left/right (u/d/r)", "移動角色", "🎮 遊戲控制")),
             CommandResult::Conquer(..) => Some(("conq / conquer <方向>", "征服方向使其可行走", "🎮 遊戲控制")),
@@ -1081,6 +1147,7 @@ impl CommandResult {
             CommandResult::HideLog,
             CommandResult::ShowMap,
             CommandResult::ShowWorld,
+            CommandResult::ShowHistory(10),
             CommandResult::Clear,
             CommandResult::Destroy(String::new()),
             CommandResult::Create(String::new(), String::new(), None),

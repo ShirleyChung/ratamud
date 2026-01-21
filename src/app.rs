@@ -150,10 +150,10 @@ pub fn run_main_loop(
             if let Some(command_result) = input_handler.handle_input_events(key, &mut context) {
                 // Now, handle the CommandResult here in app.rs
                 if let CommandResult::Exit = command_result {
-                    handle_command_result(command_result, &mut output_manager, &mut game_world, &mut me, &mut interaction_menu)?;
+                    handle_command_result(command_result, &mut output_manager, &mut game_world, &mut me, &mut interaction_menu, &input_handler)?;
                     should_exit = true; // Set should_exit to trigger loop exit
                 } else {
-                    handle_command_result(command_result, &mut output_manager, &mut game_world, &mut me, &mut interaction_menu)?;
+                    handle_command_result(command_result, &mut output_manager, &mut game_world, &mut me, &mut interaction_menu, &input_handler)?;
                 }
             }
         }
@@ -349,6 +349,7 @@ fn handle_command_result(
     game_world: &mut GameWorld,
     me: &mut Person,
     interaction_menu: &mut Option<Menu>,  // 新增：互動選單
+    input_handler: &InputHandler,  // 新增：用於存取歷史記錄
 ) -> Result<(), Box<dyn std::error::Error>> {
     output_manager.close_status_panel();
     
@@ -372,6 +373,7 @@ fn handle_command_result(
         CommandResult::Output(text) => handle_output(text, output_manager),
         CommandResult::Error(err) => handle_error(err, output_manager),
         CommandResult::Clear => handle_clear(output_manager),
+        CommandResult::ShowHistory(count) => handle_show_history(count, output_manager, input_handler),
         CommandResult::AddToSide(msg) => handle_add_to_side(msg, output_manager),
         CommandResult::ShowWorld => handle_show_world(output_manager, game_world),
         CommandResult::ShowMinimap => handle_show_minimap(output_manager, game_world, me),
@@ -486,6 +488,30 @@ fn handle_exit(
     
     output_manager.print("遊戲狀態已保存".to_string());
     Ok(())
+}
+
+/// 處理顯示歷史記錄
+fn handle_show_history(
+    count: usize,
+    output_manager: &mut OutputManager,
+    input_handler: &InputHandler,
+) {
+    let history = input_handler.get_recent_commands(count);
+    
+    if history.is_empty() {
+        output_manager.print("還沒有執行過任何指令".to_string());
+    } else {
+        output_manager.print("".to_string());
+        output_manager.print(format!("═══ 最近 {} 條指令 ═══", history.len()));
+        output_manager.print("".to_string());
+        
+        for (i, cmd) in history.iter().enumerate() {
+            output_manager.print(format!("  {}. {}", history.len() - i, cmd));
+        }
+        
+        output_manager.print("".to_string());
+        output_manager.set_status(format!("顯示了 {} 條歷史記錄", history.len()));
+    }
 }
 
 /// 處理幫助命令
