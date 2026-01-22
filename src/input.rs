@@ -343,11 +343,10 @@ impl InputHandler {
         };
         
         // 保存指令到歷史記錄
-        if command_str != "re" && command_str != "repeat" {
-            if !matches!(result, CommandResult::Error(_)) {
-                self.last_command = Some(command_str.clone());
-                self.add_to_history(command_str);
-            }
+        if command_str != "re" && command_str != "repeat"
+            && !matches!(result, CommandResult::Error(_)) {
+            self.last_command = Some(command_str.clone());
+            self.add_to_history(command_str);
         }
         
         Some(result)
@@ -380,6 +379,7 @@ impl InputHandler {
     }
     
     // 獲取歷史記錄數量
+    #[allow(dead_code)]
     pub fn history_count(&self) -> usize {
         self.command_history.len()
     }
