@@ -6,29 +6,32 @@ use std::os::raw::{c_char, c_int};
 use std::ffi::CString;
 use std::sync::Mutex;
 
-/// 輸出回調函數類型
-/// 參數: message (C字串)
-/// 用於將遊戲輸出傳遞給外部（如 iOS/Android UI）
-pub type OutputCallback = extern "C" fn(*const c_char);
+/// 輸出回調函數類型 (新版：帶類型標記)
+/// 參數: msg_type (類型標記: MAIN/LOG/STATUS/SIDE), content (內容)
+/// 用於將遊戲輸出傳遞給外部（如 iOS/Android UI 或文件）
+pub type OutputCallback = extern "C" fn(*const c_char, *const c_char);
 
 /// 全局回調函數存儲
 static OUTPUT_CALLBACK: Mutex<Option<OutputCallback>> = Mutex::new(None);
 
 /// 註冊輸出回調
 /// 當遊戲有新輸出時，會調用此回調
+/// 
+/// 回調函數簽名: fn(msg_type: *const c_char, content: *const c_char)
+/// msg_type 可能的值: "MAIN", "LOG", "STATUS", "SIDE"
 #[no_mangle]
 pub extern "C" fn ratamud_register_output_callback(callback: OutputCallback) {
     let mut cb = OUTPUT_CALLBACK.lock().unwrap();
     *cb = Some(callback);
 }
 
-/// 內部函數：觸發輸出回調
+/// 內部函數：觸發輸出回調（帶類型標記）
 #[allow(dead_code)]
-pub(crate) fn trigger_output_callback(message: &str) {
+pub(crate) fn trigger_output_callback(msg_type: &str, content: &str) {
     let cb = OUTPUT_CALLBACK.lock().unwrap();
     if let Some(callback) = *cb {
-        if let Ok(c_string) = CString::new(message) {
-            callback(c_string.as_ptr());
+        if let (Ok(type_c), Ok(content_c)) = (CString::new(msg_type), CString::new(content)) {
+            callback(type_c.as_ptr(), content_c.as_ptr());
         }
     }
 }
@@ -103,5 +106,23 @@ pub extern "C" fn ratamud_input_command(command: *const c_char) -> c_int {
 #[no_mangle]
 pub extern "C" fn ratamud_start_game() {
     // Start the game logic here
+}
+
+/// 測試輸出回調功能
+/// 會生成各種類型的測試輸出
+#[no_mangle]
+pub extern "C" fn ratamud_test_output_callback() {
+    use crate::output::OutputManager;
+    
+    let mut output = OutputManager::new();
+    
+    // 測試各種類型的輸出
+    output.print("歡迎來到 RataMUD！".to_string());
+    output.print("你站在一個廣場中央。".to_string());
+    output.log("遊戲初始化完成".to_string());
+    output.log("載入地圖: town_square".to_string());
+    output.set_status("保存成功".to_string());
+    output.set_side_content("NPC: 商人\n等級: 10\n生命: 100/100".to_string());
+    output.print("一隻野豬向你衝來！".to_string());
 }
 

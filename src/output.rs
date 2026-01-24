@@ -12,6 +12,9 @@ struct TypewriterState {
     char_delay: Duration,       // 每個字符的延遲
 }
 
+// 輸出回調函數類型：接收類型標記和消息內容
+pub type OutputCallback = Box<dyn Fn(&str, &str) + Send>;
+
 // 管理輸出訊息和滾動位置的結構體
 pub struct OutputManager {
     messages: Vec<String>,      // 儲存所有輸出訊息
@@ -33,6 +36,7 @@ pub struct OutputManager {
     map_offset_y: usize,        // 大地圖顯示的偏移量 Y
     typewriter: Option<TypewriterState>, // 打字機效果狀態
     pub typewriter_enabled: bool,   // 是否啟用打字機效果
+    output_callback: Option<OutputCallback>, // 輸出回調（用於 lib 模式）
 }
 
 impl Default for OutputManager {
@@ -64,20 +68,41 @@ impl OutputManager {
             map_offset_y: 0,
             typewriter: None,
             typewriter_enabled: true,  // 預設開啟打字機效果
+            output_callback: None,
         }
+    }
+
+    // 設置輸出回調函數（用於 lib 模式）
+    #[allow(dead_code)]
+    pub fn set_output_callback<F>(&mut self, callback: F)
+    where
+        F: Fn(&str, &str) + Send + 'static,
+    {
+        self.output_callback = Some(Box::new(callback));
+    }
+
+    // 觸發輸出回調
+    #[allow(dead_code)]
+    fn trigger_callback(&self, msg_type: &str, content: &str) {
+        // 先调用 Rust 内部回调
+        if let Some(ref callback) = self.output_callback {
+            callback(msg_type, content);
+        }
+        
+        // 同时调用 FFI 回调（用于 C/C++/iOS/Android）
+        crate::ffi::trigger_output_callback(msg_type, content);
     }
 
     // 添加訊息並將滾動位置移到最後（僅儲存純文本）
     pub fn print(&mut self, message: String) {
+        // 觸發輸出回調
+        self.trigger_callback("MAIN", &message);
+        
         message.split('\n').for_each(|line| {
             self.messages.push(line.to_string());
         });
         // 將 scroll 設為一個很大的值，render_output 會自動限制它
         self.scroll = usize::MAX;
-        
-        // 🔔 觸發輸出回調，通知外部平台
-        // crate::ffi::trigger_output_callback(&message);
-        // If you want to call an output callback, define it in a module named ffi, or remove this line if not needed.
         
         // 如果啟用打字機效果，啟動對最新訊息的打字效果
         if self.typewriter_enabled && !message.is_empty() {
@@ -111,6 +136,9 @@ impl OutputManager {
 
     // 設定狀態列訊息（5秒後自動清除）
     pub fn set_status(&mut self, status: String) {
+        // 觸發輸出回調
+        self.trigger_callback("STATUS", &status);
+        
         self.status = status;
         self.status_time = Some(Instant::now());
     }
@@ -296,6 +324,9 @@ impl OutputManager {
 
     // 設置側邊面板的內容
     pub fn set_side_content(&mut self, content: String) {
+        // 觸發輸出回調
+        self.trigger_callback("SIDE", &content);
+        
         self.side_content = content;
     }
 
@@ -344,6 +375,10 @@ impl OutputManager {
     // 添加系統日誌訊息
     pub fn log(&mut self, message: String) {
         use chrono::Local;
+        
+        // 觸發輸出回調
+        self.trigger_callback("LOG", &message);
+        
         message.split('\n').for_each(|line| {
             let timestamp = Local::now().format("%H:%M:%S").to_string();
             let log_entry = format!("[{timestamp}] {line}");

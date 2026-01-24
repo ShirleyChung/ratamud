@@ -19,6 +19,7 @@ mod event;
 mod event_scheduler;
 mod event_executor;
 mod event_loader;
+mod ffi;
 
 // 新架構模組
 mod npc_view;

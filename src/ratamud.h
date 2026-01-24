@@ -14,8 +14,10 @@ typedef struct GameWorld GameWorld;
 
 // ============= 回調函數類型定義 =============
 
-/// 輸出回調函數類型
-typedef void (*OutputCallback)(const char* message);
+/// 輸出回調函數類型（帶類型標記）
+/// msg_type: 輸出類型 ("MAIN", "LOG", "STATUS", "SIDE")
+/// content: 輸出內容
+typedef void (*OutputCallback)(const char* msg_type, const char* content);
 
 /// 狀態回調函數類型
 typedef void (*StateCallback)(const char* state_json);
@@ -34,6 +36,9 @@ void ratamud_register_event_callback(EventCallback callback);
 int ratamud_input_command(const char* command);
 
 void ratamud_start_game(void);
+
+/// 測試輸出回調功能（會生成各種類型的測試輸出）
+void ratamud_test_output_callback(void);
 
 #ifdef __cplusplus
 }
