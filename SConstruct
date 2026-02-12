@@ -118,6 +118,17 @@ def rust_builder(target, source, env):
     shutil.copy2(src, dst)
     
     print(f"{env['COLORS']['green']}✓ Rust library built: {dst}{env['COLORS']['end']}")
+    
+    # 複製 worlds 資料夾到 dist
+    worlds_src = 'worlds'
+    worlds_dst = os.path.join(env['DIST_DIR'], 'worlds')
+    
+    if os.path.exists(worlds_src):
+        if os.path.exists(worlds_dst):
+            shutil.rmtree(worlds_dst)
+        shutil.copytree(worlds_src, worlds_dst)
+        print(f"{env['COLORS']['green']}✓ Worlds folder copied to: {worlds_dst}{env['COLORS']['end']}")
+    
     return 0
 
 # 註冊 Rust 構建器

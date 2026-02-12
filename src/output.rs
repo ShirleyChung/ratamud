@@ -89,8 +89,15 @@ impl OutputManager {
             callback(msg_type, content);
         }
         
-        // 同时调用 FFI 回调（用于 C/C++/iOS/Android）
-        crate::ffi::trigger_output_callback(msg_type, content);
+        // 同时调用核心输出系统
+        let zone = match msg_type {
+            "MAIN" => crate::core_output::OutputZone::Main,
+            "LOG" => crate::core_output::OutputZone::Log,
+            "STATUS" => crate::core_output::OutputZone::Status,
+            "SIDE" => crate::core_output::OutputZone::Side,
+            _ => crate::core_output::OutputZone::Main,
+        };
+        crate::core_output::trigger_output(zone, content);
     }
 
     // 添加訊息並將滾動位置移到最後（僅儲存純文本）

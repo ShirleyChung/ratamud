@@ -1,6 +1,23 @@
 use crate::event::{EventAction, GameEvent};
 use crate::world::GameWorld;
-use crate::output::OutputManager;
+
+/// Output trait for event executor (works with both UI and non-UI modes)
+pub trait EventOutput {
+    fn print(&mut self, message: String);
+}
+
+#[cfg(feature = "terminal-ui")]
+impl EventOutput for crate::output::OutputManager {
+    fn print(&mut self, message: String) {
+        self.print(message);
+    }
+}
+
+impl EventOutput for crate::core_output::CoreOutputManager {
+    fn print(&mut self, message: String) {
+        self.add_message(message);
+    }
+}
 
 /// 事件執行器
 pub struct EventExecutor;
@@ -8,16 +25,16 @@ pub struct EventExecutor;
 impl EventExecutor {
     /// 執行事件的所有動作
     /// me: 當前玩家（用於某些動作如傳送）
-    pub fn execute_event(
+    pub fn execute_event<O: EventOutput>(
         event: &GameEvent,
         game_world: &mut GameWorld,
         me: &mut crate::person::Person,
-        output_manager: &mut OutputManager,
+        output: &mut O,
     ) -> Result<(), String> {
-        output_manager.print(format!("🎭 事件觸發: {}", event.name));
+        output.print(format!("🎭 事件觸發: {}", event.name));
         
         for action in &event.actions {
-            if let Err(e) = Self::execute_action(action, game_world, me, output_manager) {
+            if let Err(e) = Self::execute_action(action, game_world, me, output) {
                 return Err(format!("執行動作失敗: {e}"));
             }
         }
@@ -26,49 +43,49 @@ impl EventExecutor {
     }
     
     /// 執行單個動作
-    fn execute_action(
+    fn execute_action<O: EventOutput>(
         action: &EventAction,
         game_world: &mut GameWorld,
         me: &mut crate::person::Person,
-        output_manager: &mut OutputManager,
+        output: &mut O,
     ) -> Result<(), String> {
         match action {
             EventAction::SpawnNpc { npc_id, position, dialogue } => {
-                Self::spawn_npc(npc_id, position, dialogue.as_deref(), game_world, output_manager)
+                Self::spawn_npc(npc_id, position, dialogue.as_deref(), game_world, output)
             }
             EventAction::RemoveNpc { npc_id } => {
-                Self::remove_npc(npc_id, output_manager)
+                Self::remove_npc(npc_id, output)
             }
             EventAction::Message { text } => {
-                Self::show_message(text, output_manager)
+                Self::show_message(text, output)
             }
             EventAction::Dialogue { npc_id, text } => {
-                Self::show_dialogue(npc_id, text, output_manager)
+                Self::show_dialogue(npc_id, text, output)
             }
             EventAction::AddItem { item, position } => {
-                Self::add_item(item, position, game_world, output_manager)
+                Self::add_item(item, position, game_world, output)
             }
             EventAction::RemoveItem { item, position } => {
-                Self::remove_item(item, position, game_world, output_manager)
+                Self::remove_item(item, position, game_world, output)
             }
             EventAction::Teleport { map, position } => {
-                Self::teleport_player(map, position, game_world, me, output_manager)
+                Self::teleport_player(map, position, game_world, me, output)
             }
             EventAction::SetMapProperty { map, property, value } => {
-                Self::set_map_property(map, property, value, game_world, output_manager)
+                Self::set_map_property(map, property, value, game_world, output)
             }
             EventAction::RandomAction { actions } => {
-                Self::execute_random_action(actions, game_world, me, output_manager)
+                Self::execute_random_action(actions, game_world, me, output)
             }
         }
     }
     
-    fn spawn_npc(
+    fn spawn_npc<O: EventOutput>(
         npc_id: &str,
         position: &crate::event::Position,
         dialogue: Option<&str>,
         game_world: &GameWorld,
-        output_manager: &mut OutputManager,
+        output: &mut O,
     ) -> Result<(), String> {
         let current_map = game_world.get_current_map()
             .ok_or("無法獲取當前地圖")?;
@@ -76,44 +93,44 @@ impl EventExecutor {
         let resolved_pos = position.resolve(current_map)
             .ok_or("無法解析位置")?;
         
-        output_manager.print(format!(
+        output.print(format!(
             "👤 NPC {} 出現在 ({}, {})",
             npc_id, resolved_pos[0], resolved_pos[1]
         ));
         
         if let Some(text) = dialogue {
-            output_manager.print(format!("💬 {npc_id}: \"{text}\""));
+            output.print(format!("💬 {npc_id}: \"{text}\""));
         }
         
         // TODO: 實際生成 NPC 到遊戲世界
         Ok(())
     }
     
-    fn remove_npc(npc_id: &str, output_manager: &mut OutputManager) -> Result<(), String> {
-        output_manager.print(format!("👤 NPC {npc_id} 離開了"));
+    fn remove_npc<O: EventOutput>(npc_id: &str, output: &mut O) -> Result<(), String> {
+        output.print(format!("👤 NPC {npc_id} 離開了"));
         // TODO: 從遊戲世界移除 NPC
         Ok(())
     }
     
-    fn show_message(text: &str, output_manager: &mut OutputManager) -> Result<(), String> {
-        output_manager.print(format!("📢 {text}"));
+    fn show_message<O: EventOutput>(text: &str, output: &mut O) -> Result<(), String> {
+        output.print(format!("📢 {text}"));
         Ok(())
     }
     
-    fn show_dialogue(
+    fn show_dialogue<O: EventOutput>(
         npc_id: &str,
         text: &str,
-        output_manager: &mut OutputManager,
+        output: &mut O,
     ) -> Result<(), String> {
-        output_manager.print(format!("💬 {npc_id}: \"{text}\""));
+        output.print(format!("💬 {npc_id}: \"{text}\""));
         Ok(())
     }
     
-    fn add_item(
+    fn add_item<O: EventOutput>(
         item: &str,
         position: &crate::event::Position,
         game_world: &mut GameWorld,
-        output_manager: &mut OutputManager,
+        output: &mut O,
     ) -> Result<(), String> {
         let current_map = game_world.get_current_map()
             .ok_or("無法獲取當前地圖")?;
@@ -124,7 +141,7 @@ impl EventExecutor {
         if let Some(current_map) = game_world.get_current_map_mut() {
             if let Some(point) = current_map.get_point_mut(resolved_pos[0], resolved_pos[1]) {
                 point.add_object(item.to_string());
-                output_manager.print(format!(
+                output.print(format!(
                     "🎁 {} 出現在 ({}, {})",
                     item, resolved_pos[0], resolved_pos[1]
                 ));
@@ -134,11 +151,11 @@ impl EventExecutor {
         Err(format!("無法在位置 ({}, {}) 添加物品", resolved_pos[0], resolved_pos[1]))
     }
     
-    fn remove_item(
+    fn remove_item<O: EventOutput>(
         item: &str,
         position: &crate::event::Position,
         game_world: &mut GameWorld,
-        output_manager: &mut OutputManager,
+        output: &mut O,
     ) -> Result<(), String> {
         let current_map = game_world.get_current_map()
             .ok_or("無法獲取當前地圖")?;
@@ -149,7 +166,7 @@ impl EventExecutor {
         if let Some(current_map) = game_world.get_current_map_mut() {
             if let Some(point) = current_map.get_point_mut(resolved_pos[0], resolved_pos[1]) {
                 if point.remove_object(item) {
-                    output_manager.print(format!(
+                    output.print(format!(
                         "🗑️  {} 從 ({}, {}) 消失了",
                         item, resolved_pos[0], resolved_pos[1]
                     ));
@@ -160,12 +177,12 @@ impl EventExecutor {
         Err(format!("無法在位置 ({}, {}) 移除物品 {}", resolved_pos[0], resolved_pos[1], item))
     }
     
-    fn teleport_player(
+    fn teleport_player<O: EventOutput>(
         map: &str,
         position: &crate::event::Position,
         game_world: &mut GameWorld,
         me: &mut crate::person::Person,
-        output_manager: &mut OutputManager,
+        output: &mut O,
     ) -> Result<(), String> {
         if game_world.change_map(map) {
             let current_map = game_world.get_current_map()
@@ -175,7 +192,7 @@ impl EventExecutor {
                 .ok_or("無法解析目標位置")?;
             
             me.move_to(resolved_pos[0], resolved_pos[1]);
-            output_manager.print(format!(
+            output.print(format!(
                 "✨ 你被傳送到 {} ({}, {})",
                 map, resolved_pos[0], resolved_pos[1]
             ));
@@ -185,16 +202,16 @@ impl EventExecutor {
         }
     }
 
-    fn set_map_property(
+    fn set_map_property<O: EventOutput>(
         map_name: &str,
         property: &str,
         value: &str,
         game_world: &mut GameWorld,
-        output_manager: &mut OutputManager,
+        output: &mut O,
     ) -> Result<(), String> {
         if let Some(map) = game_world.maps.get_mut(map_name) {
             map.set_property(property.to_string(), value.to_string());
-            output_manager.print(format!(
+            output.print(format!(
                 "🗺️  {map_name}現在{property}是{value}",
             ));
             Ok(())
@@ -203,11 +220,11 @@ impl EventExecutor {
         }
     }
 
-    fn execute_random_action(
+    fn execute_random_action<O: EventOutput>(
         weighted_actions: &[crate::event::WeightedAction],
         game_world: &mut GameWorld,
         me: &mut crate::person::Person,
-        output_manager: &mut OutputManager,
+        output: &mut O,
     ) -> Result<(), String> {
         if weighted_actions.is_empty() {
             return Err("沒有可執行的隨機動作".to_string());
@@ -229,15 +246,16 @@ impl EventExecutor {
         for weighted_action in weighted_actions {
             random_value -= weighted_action.weight;
             if random_value <= 0.0 {
-                return Self::execute_action(&weighted_action.action, game_world, me, output_manager);
+                return Self::execute_action(&weighted_action.action, game_world, me, output);
             }
         }
 
         // 如果沒有選中任何動作（理論上不應該發生），執行最後一個
         if let Some(last) = weighted_actions.last() {
-            Self::execute_action(&last.action, game_world, me, output_manager)
+            Self::execute_action(&last.action, game_world, me, output)
         } else {
             Err("無法選擇隨機動作".to_string())
         }
     }
 }
+

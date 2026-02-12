@@ -1,15 +1,15 @@
 use crate::npc_action::NpcAction;
-use crossterm::event::KeyEvent;
 use serde::{Deserialize, Serialize};
 
 /// 輸入事件
 #[derive(Clone, Debug)]
 pub enum InputEvent {
-    /// 鍵盤按鍵
-    KeyPress(KeyEvent),
-    
     /// 命令字串
     Command(String),
+    
+    /// 終端 UI 鍵盤按鍵（僅在啟用 terminal-ui 功能時可用）
+    #[cfg(feature = "terminal-ui")]
+    KeyPress(crossterm::event::KeyEvent),
 }
 
 /// 遊戲事件（跨執行緒通訊）
@@ -63,6 +63,7 @@ impl From<&GameEvent> for Option<SerializableGameEvent> {
             GameEvent::Input(InputEvent::Command(cmd)) => {
                 Some(SerializableGameEvent::Command(cmd.clone()))
             },
+            #[cfg(feature = "terminal-ui")]
             GameEvent::Input(InputEvent::KeyPress(_)) => None,
         }
     }
