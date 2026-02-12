@@ -15,6 +15,8 @@ mod event;
 mod event_scheduler;
 mod event_executor;
 mod event_loader;
+mod command_handler;  // Command parsing (shared by terminal-ui and FFI)
+mod command_executor; // Command execution (shared by all modes)
 mod ffi;
 mod core_output;
 

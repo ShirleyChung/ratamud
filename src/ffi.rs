@@ -2,8 +2,14 @@
 
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
+use std::sync::Mutex;
+use once_cell::sync::Lazy;
 
-use crate::core_output::{self, OutputZone};
+use crate::core_output;
+use crate::world::GameWorld;
+
+/// 全局遊戲世界實例（FFI 和其他非 UI 模式共用）
+static GAME_WORLD: Lazy<Mutex<Option<GameWorld>>> = Lazy::new(|| Mutex::new(None));
 
 /// 輸出回調函數類型 (C FFI)
 /// 參數: msg_type (類型標記: MAIN/LOG/STATUS/SIDE), content (內容)
@@ -32,6 +38,93 @@ pub extern "C" fn ratamud_clear_output_callback() {
     core_output::clear_output_callback();
 }
 
+/// 初始化遊戲世界（無 UI 模式）
+/// 返回 0=成功, -1=失敗
+#[no_mangle]
+pub extern "C" fn ratamud_init_game() -> c_int {
+    use crate::core_output::OutputZone;
+    use crate::event_loader;
+    
+    // 初始化 Person 描述資料
+    crate::person::init_person_descriptions();
+    
+    // 創建遊戲世界
+    let mut game_world = GameWorld::new();
+    
+    // 載入世界元數據和時間
+    let _ = game_world.load_metadata();
+    let _ = game_world.load_time();
+    
+    // 輸出當前時間
+    core_output::trigger_output(OutputZone::Status, &game_world.format_time());
+    
+    // 載入地圖
+    match game_world.initialize_maps() {
+        Ok((map_count, logs)) => {
+            for log in logs {
+                core_output::trigger_output(OutputZone::Log, &log);
+            }
+            core_output::trigger_output(OutputZone::Log, &format!("已加載 {} 個地圖", map_count));
+        }
+        Err(e) => {
+            core_output::trigger_output(OutputZone::Log, &format!("⚠️  載入地圖失敗: {}", e));
+        }
+    }
+    
+    // 初始化 NPC Manager
+    let person_dir = format!("{}/persons", game_world.world_dir);
+    let me = match game_world.npc_manager.initialize(&person_dir) {
+        Ok((count, me)) => {
+            core_output::trigger_output(OutputZone::Log, &format!("已載入 {} 個角色", count));
+            for npc in game_world.npc_manager.get_all_npcs() {
+                core_output::trigger_output(OutputZone::Log, 
+                    &format!("  - {} 在位置 ({}, {})", npc.name, npc.x, npc.y));
+            }
+            me
+        }
+        Err(e) => {
+            core_output::trigger_output(OutputZone::Status, &format!("❌ 初始化角色系統失敗: {}", e));
+            return -1;
+        }
+    };
+    
+    // 設定 original_player
+    game_world.original_player = Some(me.clone());
+    
+    // 載入任務
+    let quest_dir = format!("{}/quests", game_world.world_dir);
+    if let Ok(quest_count) = game_world.quest_manager.load_from_directory(&quest_dir) {
+        core_output::trigger_output(OutputZone::Log, &format!("已載入 {} 個任務", quest_count));
+    }
+    
+    // 載入事件腳本
+    let events_dir = format!("{}/events", game_world.world_dir);
+    if let Ok((count, _event_list)) = event_loader::EventLoader::load_from_directory(&mut game_world.event_manager, &events_dir) {
+        if count > 0 {
+            core_output::trigger_output(OutputZone::Log, &game_world.event_manager.show_total_loaded_events());
+        }
+    }
+    
+    // 顯示歡迎訊息
+    core_output::trigger_output(OutputZone::Main, &format!("✨ 歡迎來到 {} ✨", game_world.metadata.name));
+    core_output::trigger_output(OutputZone::Main, &game_world.metadata.description);
+    core_output::trigger_output(OutputZone::Main, "💡 輸入 'help' 查看可用指令");
+    
+    // 顯示當前位置資訊
+    if let Some(map) = game_world.get_current_map() {
+        core_output::trigger_output(OutputZone::Main, &format!("📍 當前區域: {}", map.name));
+        core_output::trigger_output(OutputZone::Main, &map.description);
+    }
+    
+    // 儲存到全局狀態
+    if let Ok(mut world) = GAME_WORLD.lock() {
+        *world = Some(game_world);
+        0 // 成功
+    } else {
+        -1 // 鎖定失敗
+    }
+}
+
 /// 處理命令（無 UI 模式）
 #[no_mangle]
 pub extern "C" fn ratamud_input_command(command: *const c_char) -> c_int {
@@ -45,10 +138,29 @@ pub extern "C" fn ratamud_input_command(command: *const c_char) -> c_int {
         Err(_) => return -1,
     };
 
-    // Process command using core game logic
-    core_output::trigger_output(OutputZone::Log, &format!("Command received: {}", cmd));
+    // 從全局狀態獲取遊戲世界
+    let mut world_guard = match GAME_WORLD.lock() {
+        Ok(guard) => guard,
+        Err(_) => return -1,
+    };
     
-    0
+    let game_world = match world_guard.as_mut() {
+        Some(world) => world,
+        None => {
+            use crate::core_output::OutputZone;
+            core_output::trigger_output(OutputZone::Status, "遊戲尚未初始化，請先調用 ratamud_init_game()");
+            return -1;
+        }
+    };
+    
+    // 執行命令
+    let should_continue = game_world.execute_command(cmd);
+    
+    if should_continue {
+        1 // 繼續
+    } else {
+        0 // 退出
+    }
 }
 
 /// 測試輸出回調功能（無 UI 模式）

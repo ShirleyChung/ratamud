@@ -27,6 +27,7 @@ typedef void (*EventCallback)(const char* event_type, const char* event_data);
 
 // ============= 回調註冊函數 =============
 void ratamud_register_output_callback(OutputCallback callback);
+void ratamud_clear_output_callback(void);
 void ratamud_register_state_callback(StateCallback callback);
 void ratamud_register_event_callback(EventCallback callback);
 

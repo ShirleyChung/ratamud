@@ -131,9 +131,167 @@ def rust_builder(target, source, env):
     
     return 0
 
+# iOS Framework 構建器
+def ios_framework_builder(target, source, env):
+    """構建 iOS Frameworks (真機和模擬器)"""
+    import subprocess
+    import shutil
+    
+    project_name = "ratamud"
+    framework_name = "RataMUD"
+    
+    print(f"{env['COLORS']['cyan']}Building iOS Frameworks...{env['COLORS']['end']}")
+    
+    # 確保 iOS targets 已安裝
+    print(f"{env['COLORS']['yellow']}Checking iOS targets...{env['COLORS']['end']}")
+    for target_triple in ['aarch64-apple-ios', 'aarch64-apple-ios-sim', 'x86_64-apple-ios']:
+        subprocess.run(['rustup', 'target', 'add', target_triple], 
+                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    
+    # 建立輸出目錄
+    os.makedirs('frameworks/ios', exist_ok=True)
+    os.makedirs('frameworks/ios-simulator', exist_ok=True)
+    
+    # iOS 真機 (ARM64) - 無 UI 模式
+    print(f"{env['COLORS']['green']}Building for iOS Device (ARM64)...{env['COLORS']['end']}")
+    result = subprocess.run([
+        env['CARGO'], 'build', '--release', 
+        '--target', 'aarch64-apple-ios', 
+        '--lib', '--no-default-features'
+    ])
+    if result.returncode != 0:
+        print(f"{env['COLORS']['red']}iOS device build failed!{env['COLORS']['end']}")
+        return result.returncode
+    
+    # iOS 模擬器 (Apple Silicon)
+    print(f"{env['COLORS']['green']}Building for iOS Simulator (ARM64)...{env['COLORS']['end']}")
+    result = subprocess.run([
+        env['CARGO'], 'build', '--release',
+        '--target', 'aarch64-apple-ios-sim',
+        '--lib', '--no-default-features'
+    ])
+    if result.returncode != 0:
+        print(f"{env['COLORS']['red']}iOS Simulator ARM64 build failed!{env['COLORS']['end']}")
+        return result.returncode
+    
+    # iOS 模擬器 (Intel)
+    print(f"{env['COLORS']['green']}Building for iOS Simulator (x86_64)...{env['COLORS']['end']}")
+    result = subprocess.run([
+        env['CARGO'], 'build', '--release',
+        '--target', 'x86_64-apple-ios',
+        '--lib', '--no-default-features'
+    ])
+    if result.returncode != 0:
+        print(f"{env['COLORS']['red']}iOS Simulator x86_64 build failed!{env['COLORS']['end']}")
+        return result.returncode
+    
+    # 建立模擬器 Universal Binary
+    print(f"{env['COLORS']['cyan']}Creating Simulator Universal Binary...{env['COLORS']['end']}")
+    result = subprocess.run([
+        'lipo', '-create',
+        f'target/aarch64-apple-ios-sim/release/lib{project_name}.a',
+        f'target/x86_64-apple-ios/release/lib{project_name}.a',
+        '-output', f'frameworks/ios-simulator/lib{project_name}.a'
+    ])
+    if result.returncode != 0:
+        print(f"{env['COLORS']['red']}lipo failed!{env['COLORS']['end']}")
+        return result.returncode
+    
+    # 建立 iOS Framework 結構 (真機)
+    ios_framework = f"frameworks/{framework_name}-iOS.framework"
+    if os.path.exists(ios_framework):
+        shutil.rmtree(ios_framework)
+    os.makedirs(f"{ios_framework}/Headers")
+    
+    shutil.copy2(f'target/aarch64-apple-ios/release/lib{project_name}.a', 
+                 f'{ios_framework}/{framework_name}')
+    shutil.copy2('src/ratamud.h', f'{ios_framework}/Headers/')
+    
+    # 建立 Info.plist
+    with open(f'{ios_framework}/Info.plist', 'w') as f:
+        f.write('''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>''' + framework_name + '''</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.ratamud.framework.ios</string>
+    <key>CFBundleName</key>
+    <string>''' + framework_name + '''</string>
+    <key>CFBundlePackageType</key>
+    <string>FMWK</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.1.0</string>
+    <key>MinimumOSVersion</key>
+    <string>13.0</string>
+</dict>
+</plist>
+''')
+    
+    print(f"{env['COLORS']['green']}✓ iOS Framework: {ios_framework}{env['COLORS']['end']}")
+    
+    # 建立 iOS 模擬器 Framework
+    ios_sim_framework = f"frameworks/{framework_name}-iOS-Simulator.framework"
+    if os.path.exists(ios_sim_framework):
+        shutil.rmtree(ios_sim_framework)
+    os.makedirs(f"{ios_sim_framework}/Headers")
+    
+    shutil.copy2(f'frameworks/ios-simulator/lib{project_name}.a',
+                 f'{ios_sim_framework}/{framework_name}')
+    shutil.copy2('src/ratamud.h', f'{ios_sim_framework}/Headers/')
+    
+    with open(f'{ios_sim_framework}/Info.plist', 'w') as f:
+        f.write('''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>''' + framework_name + '''</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.ratamud.framework.ios-simulator</string>
+    <key>CFBundleName</key>
+    <string>''' + framework_name + '''</string>
+    <key>CFBundlePackageType</key>
+    <string>FMWK</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.1.0</string>
+    <key>MinimumOSVersion</key>
+    <string>13.0</string>
+</dict>
+</plist>
+''')
+    
+    print(f"{env['COLORS']['green']}✓ iOS Simulator Framework: {ios_sim_framework}{env['COLORS']['end']}")
+    
+    # 建立 XCFramework
+    print(f"{env['COLORS']['cyan']}Creating XCFramework...{env['COLORS']['end']}")
+    xcframework = f"frameworks/{framework_name}.xcframework"
+    if os.path.exists(xcframework):
+        shutil.rmtree(xcframework)
+    
+    result = subprocess.run([
+        'xcodebuild', '-create-xcframework',
+        '-framework', ios_framework,
+        '-framework', ios_sim_framework,
+        '-output', xcframework
+    ])
+    
+    if result.returncode == 0:
+        print(f"{env['COLORS']['green']}✓ XCFramework: {xcframework}{env['COLORS']['end']}")
+    
+    print(f"{env['COLORS']['cyan']}🎉 All iOS frameworks built successfully!{env['COLORS']['end']}")
+    
+    return 0
+
 # 註冊 Rust 構建器
 rust_bld = Builder(action=rust_builder)
 env.Append(BUILDERS={'RustLib': rust_bld})
+
+# 註冊 iOS Framework 構建器 (僅 macOS)
+if system == 'Darwin':
+    ios_bld = Builder(action=ios_framework_builder)
+    env.Append(BUILDERS={'IOSFramework': ios_bld})
 
 # 導出環境變數給 SConscript
 Export('env')
@@ -144,6 +302,12 @@ SConscript('dist/SConscript', exports='env')
 # 別名（由 SConscript 設置）
 Alias('examples', [f'dist/example', f'dist/test'])
 Alias('all', ['lib', 'examples'])
+
+# macOS Framework 別名
+if env.get('LIB_EXT') == 'dylib':
+    Alias('all-framework', ['framework', 'example-framework'])
+    Alias('ios-frameworks', 'frameworks/RataMUD.xcframework/Info.plist')
+    Alias('all-ios', 'ios-frameworks')
 
 # 清理目標
 if GetOption('clean'):
@@ -167,9 +331,23 @@ Help(f"""
   scons [目標] [選項]
 
 {colors['green']}目標:{colors['end']}
-  all       - 構建所有（預設）
-  lib       - 僅構建 Rust 函式庫
-  examples  - 僅構建 C/C++ 範例
+  all                - 構建所有（預設：lib + dylib 範例）
+  lib                - 僅構建 Rust 動態函式庫
+  examples           - 僅構建 C/C++ 範例（dylib 版本）
+  
+  {colors['yellow']}macOS Framework 目標:{colors['end']}
+  framework          - 構建 macOS Framework
+  example-framework  - 構建 Framework 版本的 C 範例
+  all-framework      - 構建 Framework + Framework 範例
+  
+  {colors['yellow']}iOS Framework 目標:{colors['end']}
+  ios-frameworks     - 構建 iOS Frameworks (真機 + 模擬器 + XCFramework)
+  all-ios            - 同 ios-frameworks
+  
+  {colors['yellow']}運行目標:{colors['end']}
+  run-c              - 運行 C 範例（dylib）
+  run-framework      - 運行 C 範例（Framework）
+  run-cpp            - 運行 C++ 測試
   
 {colors['green']}選項:{colors['end']}
   mode=release|debug  - 構建模式（預設: release）
@@ -177,14 +355,41 @@ Help(f"""
   -j N                - 使用 N 個並行任務
 
 {colors['green']}範例:{colors['end']}
+  {colors['cyan']}# 基本使用（dylib）{colors['end']}
   scons                    # 構建所有（release 模式）
   scons mode=debug         # 構建所有（debug 模式）
-  scons lib                # 僅構建函式庫
-  scons examples           # 僅構建範例
+  scons run-c              # 構建並運行 C 範例
+  
+  {colors['cyan']}# macOS Framework{colors['end']}
+  scons framework          # 僅構建 macOS Framework
+  scons example-framework  # 構建 Framework 版本範例
+  scons run-framework      # 運行 Framework 版本
+  scons all-framework      # 構建所有 Framework 相關
+  
+  {colors['cyan']}# iOS Frameworks{colors['end']}
+  scons ios-frameworks     # 構建 iOS Frameworks (真機 + 模擬器 + XCFramework)
+  scons all-ios            # 同上
+  
+  {colors['cyan']}# 其他{colors['end']}
   scons -c                 # 清理
   scons -j 4               # 使用 4 個並行任務構建
 
 {colors['green']}文件:{colors['end']}
   SConstruct          - 主構建文件
   dist/SConscript     - 範例程序構建文件
+  
+{colors['green']}輸出:{colors['end']}
+  dist/libratamud.dylib                   - Rust 動態函式庫
+  dist/example                            - C 範例（dylib）
+  dist/example-framework                  - C 範例（Framework）
+  frameworks/RataMUD.framework/           - macOS Framework
+  frameworks/RataMUDiOS.framework/        - iOS Framework (真機)
+  frameworks/RataMUDiOSSimulator.framework/  - iOS Framework (模擬器)
+  frameworks/RataMUD.xcframework/         - XCFramework (真機 + 模擬器)
+
+{colors['green']}關於 iOS Frameworks:{colors['end']}
+  - iOS frameworks 使用 --no-default-features 編譯（無 TUI）
+  - ❌ ratatui 和 crossterm 不支援 iOS（已排除）
+  - ✅ 僅包含核心遊戲邏輯和 FFI 接口
+  - 適合整合到 iOS/Swift 應用程式中
 """)

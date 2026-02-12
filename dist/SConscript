@@ -13,13 +13,23 @@ dist_dir = local_env['DIST_DIR']
 if not os.path.exists(dist_dir):
     os.makedirs(dist_dir)
 
-# 設定編譯選項
+# 設定編譯選項（dylib 版本）
 local_env.Append(CPPPATH=['#/dist'])
 local_env.Append(LIBPATH=['#/' + dist_dir])
 local_env.Append(LIBS=['ratamud'])
 
 if local_env['RPATH']:
     local_env.Append(LINKFLAGS=[local_env['RPATH']])
+
+# Framework 環境（macOS）
+framework_env = None
+if env.get('LIB_EXT') == 'dylib':
+    framework_env = env.Clone()
+    framework_dir = '#/frameworks'
+    framework_env.Append(CPPPATH=[framework_dir + '/RataMUD.framework/Headers'])
+    framework_env.Append(FRAMEWORKS=['RataMUD', 'CoreFoundation'])
+    framework_env.Append(FRAMEWORKPATH=[framework_dir])
+    framework_env.Append(LINKFLAGS=[f'-Wl,-rpath,{Dir(framework_dir).abspath}'])
 
 # ===== Rust 函式庫 =====
 lib_name = f"libratamud.{local_env['LIB_EXT']}"
@@ -65,7 +75,253 @@ rust_lib = local_env.Command(
 
 local_env.Alias('lib', rust_lib)
 
-# ===== C 範例 =====
+# ===== macOS Framework =====
+if env.get('LIB_EXT') == 'dylib':
+    def build_framework(target, source, env):
+        cwd = Dir('#').abspath
+        framework_dir = os.path.join(cwd, 'frameworks', 'RataMUD.framework')
+        
+        # 檢查是否已存在
+        if os.path.exists(os.path.join(framework_dir, 'RataMUD')):
+            print(f"{env['COLORS']['green']}✓ Framework already exists, skipping build{env['COLORS']['end']}\n")
+            return None
+        
+        # 手動建立 macOS Framework (不包含 iOS)
+        print(f"\n{env['COLORS']['cyan']}[FRAMEWORK] Building macOS Framework...{env['COLORS']['end']}")
+        
+        # 1. 編譯 Rust 靜態庫
+        import platform
+        arch = platform.machine()
+        if arch == 'arm64':
+            target_triple = 'aarch64-apple-darwin'
+        else:
+            target_triple = 'x86_64-apple-darwin'
+        
+        cmd = [env['CARGO'], 'build', '--release', '--target', target_triple, '--lib']
+        result = subprocess.run(cmd, cwd=cwd)
+        
+        if result.returncode != 0:
+            print(f"{env['COLORS']['red']}Rust build failed{env['COLORS']['end']}")
+            return result.returncode
+        
+        # 2. 創建 Framework 結構
+        import shutil
+        
+        os.makedirs(f'{framework_dir}/Versions/A/Headers', exist_ok=True)
+        os.makedirs(f'{framework_dir}/Versions/A/Resources', exist_ok=True)
+        
+        # 複製靜態庫
+        lib_src = os.path.join(cwd, f'target/{target_triple}/release/libratamud.a')
+        lib_dst = f'{framework_dir}/Versions/A/RataMUD'
+        shutil.copy2(lib_src, lib_dst)
+        
+        # 複製頭文件
+        header_src = os.path.join(cwd, 'src/ratamud.h')
+        header_dst = f'{framework_dir}/Versions/A/Headers/ratamud.h'
+        shutil.copy2(header_src, header_dst)
+        
+        # 創建 Info.plist
+        info_plist = f'''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>RataMUD</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.ratamud.framework</string>
+    <key>CFBundleName</key>
+    <string>RataMUD</string>
+    <key>CFBundlePackageType</key>
+    <string>FMWK</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.1.0</string>
+</dict>
+</plist>'''
+        
+        with open(f'{framework_dir}/Versions/A/Resources/Info.plist', 'w') as f:
+            f.write(info_plist)
+        
+        # 創建符號鏈接
+        os.chdir(framework_dir)
+        for link_name, target_name in [
+            ('Headers', 'Versions/A/Headers'),
+            ('Resources', 'Versions/A/Resources'),
+            ('RataMUD', 'Versions/A/RataMUD'),
+            ('Versions/Current', 'A')
+        ]:
+            if os.path.exists(link_name):
+                os.remove(link_name)
+            os.symlink(target_name, link_name)
+        
+        os.chdir(cwd)
+        
+        print(f"{env['COLORS']['green']}✓ macOS Framework built: {framework_dir}{env['COLORS']['end']}\n")
+        return None
+    
+    framework_marker = File('#/frameworks/RataMUD.framework/RataMUD')
+    framework = local_env.Command(
+        framework_marker,
+        rust_sources + [cargo_toml],
+        build_framework
+    )
+    
+    local_env.Alias('framework', framework)
+    
+    # ===== iOS Frameworks =====
+    def build_ios_frameworks(target, source, env):
+        cwd = Dir('#').abspath
+        
+        print(f"\n{env['COLORS']['cyan']}[iOS] Building iOS Frameworks...{env['COLORS']['end']}")
+        
+        # 確保 iOS targets 已安裝
+        for target_triple in ['aarch64-apple-ios', 'aarch64-apple-ios-sim', 'x86_64-apple-ios']:
+            subprocess.run(['rustup', 'target', 'add', target_triple], 
+                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        # iOS 真機
+        print(f"{env['COLORS']['green']}Building for iOS Device (ARM64)...{env['COLORS']['end']}")
+        result = subprocess.run([
+            env['CARGO'], 'build', '--release', 
+            '--target', 'aarch64-apple-ios', 
+            '--lib', '--no-default-features'
+        ], cwd=cwd)
+        if result.returncode != 0:
+            return result.returncode
+        
+        # iOS 模擬器 (ARM64)
+        print(f"{env['COLORS']['green']}Building for iOS Simulator (ARM64)...{env['COLORS']['end']}")
+        result = subprocess.run([
+            env['CARGO'], 'build', '--release',
+            '--target', 'aarch64-apple-ios-sim',
+            '--lib', '--no-default-features'
+        ], cwd=cwd)
+        if result.returncode != 0:
+            return result.returncode
+        
+        # iOS 模擬器 (x86_64)
+        print(f"{env['COLORS']['green']}Building for iOS Simulator (x86_64)...{env['COLORS']['end']}")
+        result = subprocess.run([
+            env['CARGO'], 'build', '--release',
+            '--target', 'x86_64-apple-ios',
+            '--lib', '--no-default-features'
+        ], cwd=cwd)
+        if result.returncode != 0:
+            return result.returncode
+        
+        # 建立目錄
+        import shutil
+        os.makedirs('frameworks/ios-simulator', exist_ok=True)
+        
+        # 建立模擬器 Universal Binary
+        print(f"{env['COLORS']['cyan']}Creating Simulator Universal Binary...{env['COLORS']['end']}")
+        result = subprocess.run([
+            'lipo', '-create',
+            'target/aarch64-apple-ios-sim/release/libratamud.a',
+            'target/x86_64-apple-ios/release/libratamud.a',
+            '-output', 'frameworks/ios-simulator/libratamud.a'
+        ], cwd=cwd)
+        if result.returncode != 0:
+            return result.returncode
+        
+        # 建立 iOS Framework (真機)
+        ios_fw = os.path.join(cwd, 'frameworks/RataMUDiOS.framework')
+        if os.path.exists(ios_fw):
+            shutil.rmtree(ios_fw)
+        os.makedirs(f'{ios_fw}/Headers')
+        
+        shutil.copy2(
+            'target/aarch64-apple-ios/release/libratamud.a',
+            f'{ios_fw}/RataMUDiOS'
+        )
+        shutil.copy2('src/ratamud.h', f'{ios_fw}/Headers/')
+        
+        with open(f'{ios_fw}/Info.plist', 'w') as f:
+            f.write('''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>RataMUDiOS</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.ratamud.framework.ios</string>
+    <key>CFBundleName</key>
+    <string>RataMUDiOS</string>
+    <key>CFBundlePackageType</key>
+    <string>FMWK</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.1.0</string>
+    <key>MinimumOSVersion</key>
+    <string>13.0</string>
+</dict>
+</plist>
+''')
+        
+        print(f"{env['COLORS']['green']}✓ iOS Framework: {ios_fw}{env['COLORS']['end']}")
+        
+        # 建立 iOS 模擬器 Framework
+        ios_sim_fw = os.path.join(cwd, 'frameworks/RataMUDiOSSimulator.framework')
+        if os.path.exists(ios_sim_fw):
+            shutil.rmtree(ios_sim_fw)
+        os.makedirs(f'{ios_sim_fw}/Headers')
+        
+        shutil.copy2(
+            'frameworks/ios-simulator/libratamud.a',
+            f'{ios_sim_fw}/RataMUDiOSSimulator'
+        )
+        shutil.copy2('src/ratamud.h', f'{ios_sim_fw}/Headers/')
+        
+        with open(f'{ios_sim_fw}/Info.plist', 'w') as f:
+            f.write('''<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleExecutable</key>
+    <string>RataMUDiOSSimulator</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.ratamud.framework.ios-simulator</string>
+    <key>CFBundleName</key>
+    <string>RataMUDiOSSimulator</string>
+    <key>CFBundlePackageType</key>
+    <string>FMWK</string>
+    <key>CFBundleShortVersionString</key>
+    <string>0.1.0</string>
+    <key>MinimumOSVersion</key>
+    <string>13.0</string>
+</dict>
+</plist>
+''')
+        
+        print(f"{env['COLORS']['green']}✓ iOS Simulator Framework: {ios_sim_fw}{env['COLORS']['end']}")
+        
+        # 建立 XCFramework
+        print(f"{env['COLORS']['cyan']}Creating XCFramework...{env['COLORS']['end']}")
+        xcframework = os.path.join(cwd, 'frameworks/RataMUD.xcframework')
+        if os.path.exists(xcframework):
+            shutil.rmtree(xcframework)
+        
+        result = subprocess.run([
+            'xcodebuild', '-create-xcframework',
+            '-framework', ios_fw,
+            '-framework', ios_sim_fw,
+            '-output', xcframework
+        ], cwd=cwd)
+        
+        if result.returncode == 0:
+            print(f"{env['COLORS']['green']}✓ XCFramework: {xcframework}{env['COLORS']['end']}")
+        
+        print(f"{env['COLORS']['cyan']}🎉 All iOS frameworks built successfully!{env['COLORS']['end']}\n")
+        return None
+    
+    ios_fw_marker = File('#/frameworks/RataMUD.xcframework/Info.plist')
+    ios_frameworks = local_env.Command(
+        ios_fw_marker,
+        rust_sources + [cargo_toml],
+        build_ios_frameworks
+    )
+    
+    local_env.Alias('ios-frameworks', ios_frameworks)
+
+# ===== C 範例 (dylib) =====
 c_src = '#/dist/example.c'
 if os.path.exists(Dir('#').abspath + '/dist/example.c'):
     c_example = local_env.Program(
@@ -75,6 +331,21 @@ if os.path.exists(Dir('#').abspath + '/dist/example.c'):
     Depends(c_example, rust_lib)
     local_env.Alias('c-example', c_example)
     local_env.Alias('examples', c_example)
+
+# ===== C 範例 (Framework) =====
+if framework_env and os.path.exists(Dir('#').abspath + '/dist/example.c'):
+    # 使用不同的中間文件名避免衝突
+    fw_obj = framework_env.Object(
+        target='#/dist/example-fw.o',
+        source=c_src
+    )
+    c_example_fw = framework_env.Program(
+        target='#/dist/example-framework',
+        source=fw_obj
+    )
+    Depends(c_example_fw, framework)
+    local_env.Alias('c-example-framework', c_example_fw)
+    local_env.Alias('example-framework', c_example_fw)
 
 # ===== C++ 測試 =====
 cpp_src = '#/dist/test.cpp'
@@ -94,12 +365,15 @@ def run_program_action(target, source, env, program_name):
     print(f"{env['COLORS']['green']}Running: {program_name}{env['COLORS']['end']}")
     print(f"{env['COLORS']['cyan']}{'='*60}{env['COLORS']['end']}\n")
     
+    # 從專案根目錄執行以訪問 worlds 目錄
+    cwd = Dir('#').abspath
     test_env = os.environ.copy()
     if env['RPATH']:
         lib_var = 'DYLD_LIBRARY_PATH' if env['LIB_EXT'] == 'dylib' else 'LD_LIBRARY_PATH'
-        test_env[lib_var] = env['DIST_DIR'] + ':' + test_env.get(lib_var, '')
+        dist_path = os.path.join(cwd, env['DIST_DIR'])
+        test_env[lib_var] = dist_path + ':' + test_env.get(lib_var, '')
     
-    result = subprocess.run([program], env=test_env)
+    result = subprocess.run([program], env=test_env, cwd=cwd)
     
     if result.returncode != 0:
         print(f"\n{env['COLORS']['red']}✗ {program_name} failed{env['COLORS']['end']}")
@@ -110,7 +384,7 @@ def run_program_action(target, source, env, program_name):
 
 if os.path.exists(Dir('#').abspath + '/dist/example.c'):
     def run_c_action(target, source, env):
-        return run_program_action(target, source, env, 'C Example')
+        return run_program_action(target, source, env, 'C Example (dylib)')
     
     run_c = local_env.Command(
         'run-c-example',
@@ -119,6 +393,19 @@ if os.path.exists(Dir('#').abspath + '/dist/example.c'):
     )
     local_env.Alias('run-c', run_c)
     local_env.AlwaysBuild(run_c)
+    
+    # Framework 版本運行
+    if framework_env:
+        def run_c_fw_action(target, source, env):
+            return run_program_action(target, source, env, 'C Example (Framework)')
+        
+        run_c_fw = local_env.Command(
+            'run-c-example-framework',
+            '#/dist/example-framework',
+            run_c_fw_action
+        )
+        local_env.Alias('run-framework', run_c_fw)
+        local_env.AlwaysBuild(run_c_fw)
 
 if os.path.exists(Dir('#').abspath + '/dist/test.cpp'):
     def run_cpp_action(target, source, env):

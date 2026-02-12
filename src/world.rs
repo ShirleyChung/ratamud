@@ -817,3 +817,11 @@ impl GameWorld {
         Vec::new()
     }
 }
+
+impl GameWorld {
+    /// 執行命令（無 UI 模式）
+    /// 返回 true=繼續, false=退出
+    pub fn execute_command(&mut self, command: &str) -> bool {
+        crate::command_executor::execute_command(self, command)
+    }
+}
