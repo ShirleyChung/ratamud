@@ -28,89 +28,121 @@ impl TradeSystem {
     /// item_name: 物品名稱
     /// quantity: 數量
     /// price: 購買價格
+    /// 玩家從 NPC 購買物品
+    /// 
+    /// # 參數
+    /// * `world` - 遊戲世界
+    /// * `npc_id` - NPC ID
+    /// * `item_name` - 物品名稱
+    /// * `quantity` - 數量
+    /// * `price` - 價格
     pub fn buy_from_npc(
         world: &mut GameWorld,
-        me: &mut Person,
         npc_id: &str,
         item_name: &str,
         quantity: u32,
         price: u32,
     ) -> TradeResult {
-        let npc_option = world.npc_manager.get_npc_mut(npc_id);
-
-        if npc_option.is_none() {
-            return TradeResult::Failed("找不到指定的商人".to_string());
-        }
-        let npc = npc_option.unwrap();
+        // 先檢查 NPC 是否存在並獲取物品數量
+        let (npc_has, npc_name) = {
+            let Some(npc) = world.npc_manager.get_npc(npc_id) else {
+                return TradeResult::Failed("找不到指定的商人".to_string());
+            };
+            (npc.items.get(item_name).copied().unwrap_or(0), npc.name.clone())
+        };
 
         // 檢查 NPC 是否有足夠的物品
-        let npc_has = npc.items.get(item_name).copied().unwrap_or(0);
         if npc_has < quantity {
             return TradeResult::Failed(format!(
-                "{} 沒有足夠的 {}（只有 {}）",
-                npc.name, item_name, npc_has
+                "{npc_name} 沒有足夠的 {item_name}（只有 {npc_has}）"
             ));
         }
         
         // 檢查玩家是否有足夠的金幣
-        let player_gold = me.items.get("金幣").copied().unwrap_or(0);
+        let player_gold = {
+            let Some(me) = world.npc_manager.get_npc("me") else {
+                return TradeResult::Failed("無法取得玩家資訊".to_string());
+            };
+            me.items.get("金幣").copied().unwrap_or(0)
+        };
+        
         if player_gold < price {
             return TradeResult::Failed(format!(
                 "你沒有足夠的金幣（需要 {price}，只有 {player_gold}）"
             ));
         }
         
-        // 執行交易
-        // 1. 玩家扣除金幣
-        let player_gold_entry = me.items.entry("金幣".to_string()).or_insert(0);
-        *player_gold_entry -= price;
-        if *player_gold_entry == 0 {
-            me.items.remove("金幣");
+        // 執行交易 - 修改玩家
+        {
+            let Some(me) = world.npc_manager.get_npc_mut("me") else {
+                return TradeResult::Failed("無法取得玩家資訊".to_string());
+            };
+            
+            // 1. 玩家扣除金幣
+            let player_gold_entry = me.items.entry("金幣".to_string()).or_insert(0);
+            *player_gold_entry -= price;
+            if *player_gold_entry == 0 {
+                me.items.remove("金幣");
+            }
+            
+            // 2. 玩家獲得物品
+            *me.items.entry(item_name.to_string()).or_insert(0) += quantity;
         }
         
-        // 2. NPC 獲得金幣
-        *npc.items.entry("金幣".to_string()).or_insert(0) += price;
-        
-        // 3. NPC 扣除物品
-        let npc_item_entry = npc.items.get_mut(item_name).unwrap();
-        *npc_item_entry -= quantity;
-        if *npc_item_entry == 0 {
-            npc.items.remove(item_name);
+        // 執行交易 - 修改 NPC
+        {
+            let Some(npc) = world.npc_manager.get_npc_mut(npc_id) else {
+                return TradeResult::Failed("無法取得商人資訊".to_string());
+            };
+            
+            // 3. NPC 獲得金幣
+            *npc.items.entry("金幣".to_string()).or_insert(0) += price;
+            
+            // 4. NPC 扣除物品
+            if let Some(npc_item_entry) = npc.items.get_mut(item_name) {
+                *npc_item_entry -= quantity;
+                if *npc_item_entry == 0 {
+                    npc.items.remove(item_name);
+                }
+            }
         }
-        
-        // 4. 玩家獲得物品
-        *me.items.entry(item_name.to_string()).or_insert(0) += quantity;
         
         TradeResult::Success(format!(
-            "你花費 {} 金幣從 {} 購買了 {} x{}",
-            price, npc.name, item_name, quantity
+            "你花費 {price} 金幣從 {npc_name} 購買了 {item_name} x{quantity}"
         ))
     }
     
     /// 玩家向 NPC 出售物品
-    /// world: 遊戲世界
-    /// me: 當前玩家
-    /// npc_id: NPC ID
-    /// item_name: 物品名稱
-    /// quantity: 數量
-    /// price: 出售價格（金幣數量）
+    /// 
+    /// # 參數
+    /// * `world` - 遊戲世界
+    /// * `npc_id` - NPC ID
+    /// * `item_name` - 物品名稱
+    /// * `quantity` - 數量
+    /// * `price` - 出售價格（金幣數量）
     pub fn sell_to_npc(
         world: &mut GameWorld,
-        me: &mut Person,
         npc_id: &str,
         item_name: &str,
         quantity: u32,
         price: u32,
     ) -> TradeResult {
-        let npc_option = world.npc_manager.get_npc_mut(npc_id);
-
-        if npc_option.is_none() {
-            return TradeResult::Failed("找不到指定的商人".to_string());
-        }
-        let npc = npc_option.unwrap();
+        // 先檢查 NPC 是否存在並獲取金幣數量
+        let (npc_gold, npc_name) = {
+            let Some(npc) = world.npc_manager.get_npc(npc_id) else {
+                return TradeResult::Failed("找不到指定的商人".to_string());
+            };
+            (npc.items.get("金幣").copied().unwrap_or(0), npc.name.clone())
+        };
 
         // 檢查玩家是否有足夠的物品
-        let player_has = me.items.get(item_name).copied().unwrap_or(0);
+        let player_has = {
+            let Some(me) = world.npc_manager.get_npc("me") else {
+                return TradeResult::Failed("無法取得玩家資訊".to_string());
+            };
+            me.items.get(item_name).copied().unwrap_or(0)
+        };
+        
         if player_has < quantity {
             return TradeResult::Failed(format!(
                 "你沒有足夠的 {item_name}（只有 {player_has}）"
@@ -118,38 +150,50 @@ impl TradeSystem {
         }
         
         // 檢查 NPC 是否有足夠的金幣
-        let npc_gold = npc.items.get("金幣").copied().unwrap_or(0);
         if npc_gold < price {
             return TradeResult::Failed(format!(
-                "{} 沒有足夠的金幣購買（需要 {}，只有 {}）",
-                npc.name, price, npc_gold
+                "{npc_name} 沒有足夠的金幣購買（需要 {price}，只有 {npc_gold}）"
             ));
         }
         
-        // 執行交易
-        // 1. NPC 扣除金幣
-        let npc_gold_entry = npc.items.get_mut("金幣").unwrap();
-        *npc_gold_entry -= price;
-        if *npc_gold_entry == 0 {
-            npc.items.remove("金幣");
+        // 執行交易 - 修改玩家
+        {
+            let Some(me) = world.npc_manager.get_npc_mut("me") else {
+                return TradeResult::Failed("無法取得玩家資訊".to_string());
+            };
+            
+            // 1. 玩家獲得金幣
+            *me.items.entry("金幣".to_string()).or_insert(0) += price;
+            
+            // 2. 玩家扣除物品
+            if let Some(player_item_entry) = me.items.get_mut(item_name) {
+                *player_item_entry -= quantity;
+                if *player_item_entry == 0 {
+                    me.items.remove(item_name);
+                }
+            }
         }
         
-        // 2. 玩家獲得金幣
-        *me.items.entry("金幣".to_string()).or_insert(0) += price;
-        
-        // 3. 玩家扣除物品
-        let player_item_entry = me.items.get_mut(item_name).unwrap();
-        *player_item_entry -= quantity;
-        if *player_item_entry == 0 {
-            me.items.remove(item_name);
+        // 執行交易 - 修改 NPC
+        {
+            let Some(npc) = world.npc_manager.get_npc_mut(npc_id) else {
+                return TradeResult::Failed("無法取得商人資訊".to_string());
+            };
+            
+            // 3. NPC 扣除金幣
+            if let Some(npc_gold_entry) = npc.items.get_mut("金幣") {
+                *npc_gold_entry -= price;
+                if *npc_gold_entry == 0 {
+                    npc.items.remove("金幣");
+                }
+            }
+            
+            // 4. NPC 獲得物品
+            *npc.items.entry(item_name.to_string()).or_insert(0) += quantity;
         }
-        
-        // 4. NPC 獲得物品
-        *npc.items.entry(item_name.to_string()).or_insert(0) += quantity;
         
         TradeResult::Success(format!(
-            "你以 {} 金幣向 {} 出售了 {} x{}",
-            price, npc.name, item_name, quantity
+            "你以 {price} 金幣向 {npc_name} 出售了 {item_name} x{quantity}"
         ))
     }
     

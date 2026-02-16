@@ -257,22 +257,20 @@ pub mod terminal_ui_ffi {
         
         // 初始化 NPC Manager（載入所有角色並確保 me 存在）
         let person_dir = format!("{}/persons", game_world.world_dir);
-        let me = match game_world.npc_manager.initialize(&person_dir) {
+        match game_world.npc_manager.initialize(&person_dir) {
             Ok((count, me)) => {
                 output_manager.log(format!("已載入 {count} 個角色"));
                 for npc in game_world.npc_manager.get_all_npcs() {
                     output_manager.log(format!("  - {} 在位置 ({}, {})", npc.name, npc.x, npc.y));
                 }
-                me
+                // 設定 game_world.original_player
+                game_world.original_player = Some(me);
             }
             Err(e) => {
                 eprintln!("初始化角色系統失敗: {e}");
                 return -1;
             }
-        };
-        
-        // 設定 game_world.original_player
-        game_world.original_player = Some(me.clone());
+        }
         
         // 載入任務
         load_quest_internal(&mut game_world, &mut output_manager);
@@ -286,7 +284,7 @@ pub mod terminal_ui_ffi {
 
         // 如果小地圖已開啟，初始化其內容
         if output_manager.is_minimap_open() {
-            app::update_minimap_display(&mut output_manager, &game_world, &me);
+            app::update_minimap_display(&mut output_manager, &game_world);
         }
 
         // 建立crossterm輸入事件執行緒
@@ -315,7 +313,7 @@ pub mod terminal_ui_ffi {
             }
         };
         // 運行主迴圈 ==>
-        if app::run_main_loop(terminal, input_handler, output_manager, game_world, me, rx).is_err() {
+        if app::run_main_loop(terminal, input_handler, output_manager, game_world, rx).is_err() {
             let _ = disable_raw_mode();
             let _ = execute!(io::stdout(), LeaveAlternateScreen);
             return -1;

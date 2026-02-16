@@ -73,51 +73,13 @@ fn create_npc_thread(
     })
 }
 
-/// 獲取當前控制的角色（不可變引用）
-/// 
-/// 從 NpcManager 中獲取當前玩家控制的角色
-/// 
-/// # 參數
-/// * `game_world` - 遊戲世界引用
-/// 
-/// # 返回
-/// * `Option<&Person>` - 當前控制的角色，如果不存在則返回 None
-fn get_current_controlled(game_world: &GameWorld) -> Option<&Person> {
-    game_world.npc_manager.get_npc(&game_world.current_controlled_id)
-}
-
-/// 獲取當前控制的角色（可變引用）
-/// 
-/// 從 NpcManager 中獲取當前玩家控制的角色的可變引用
-/// 用於需要修改角色狀態的場景
-/// 
-/// # 參數
-/// * `game_world` - 遊戲世界可變引用
-/// 
-/// # 返回
-/// * `Option<&mut Person>` - 當前控制的角色可變引用，如果不存在則返回 None
-fn get_current_controlled_mut(game_world: &mut GameWorld) -> Option<&mut Person> {
-    let id = game_world.current_controlled_id.clone();
-    game_world.npc_manager.get_npc_mut(&id)
-}
-
-/// 同步本地 me 到 NpcManager
-/// 
-
 /// 應用程式主迴圈 - 將 main.rs 中的事件迴圈邏輯提取到此
-/// 主遊戲循環
-/// 
-/// # Arguments
-/// * `terminal` - 終端介面
-/// * `input_handler` - 輸入處理器
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界（包含 NpcManager）
-/// * `rx` - 按鍵事件接收通道
 pub fn run_main_loop(
     mut terminal: Terminal<CrosstermBackend<io::Stdout>>,
     mut input_handler: InputHandler,
     mut output_manager: OutputManager,
     mut game_world: GameWorld,
+    mut me: Person,
     rx: mpsc::Receiver<crossterm::event::KeyEvent>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // 初始化 Menu 狀態
@@ -151,11 +113,9 @@ pub fn run_main_loop(
                 } = &msg {
                     // 執行傷害和技能冷卻
                     if target_id == "me" {
-                        if let Some(me) = game_world.npc_manager.get_npc_mut("me") {
-                            me.check_hp(-damage);
-                            output_manager.print(format!("{} 你剩餘 HP: {}/{}", 
-                                msg.to_display_text(), me.hp, me.max_hp));
-                        }
+                        me.check_hp(-damage);
+                        output_manager.print(format!("{} 你剩餘 HP: {}/{}", 
+                            msg.to_display_text(), me.hp, me.max_hp));
                     }
                     
                     // 設置NPC技能冷卻
@@ -164,7 +124,7 @@ pub fn run_main_loop(
                     }
                     
                     // 檢查戰鬥是否結束
-                    let _ = check_combat_end(&mut output_manager, &mut game_world);
+                    let _ = check_combat_end(&mut output_manager, &mut game_world, &mut me);
                 } else if msg.is_log() {
                     output_manager.log(msg.to_display_text());
                 } else {
@@ -174,7 +134,7 @@ pub fn run_main_loop(
         }
         
         // --- 1.5 檢測距離變化（靠近/離開通知）---
-        check_and_handle_proximity(&mut output_manager, &mut game_world, false);
+        check_and_handle_proximity(&mut output_manager, &mut game_world, &me, false);
         
         // --- 2. Input Handling ---
         // Process all pending input events from the channel non-blockingly
@@ -190,10 +150,10 @@ pub fn run_main_loop(
             if let Some(command_result) = input_handler.handle_input_events(key, &mut context) {
                 // Now, handle the CommandResult here in app.rs
                 if let CommandResult::Exit = command_result {
-                    handle_command_result(command_result, &mut output_manager, &mut game_world, &mut interaction_menu, &input_handler)?;
+                    handle_command_result(command_result, &mut output_manager, &mut game_world, &mut me, &mut interaction_menu, &input_handler)?;
                     should_exit = true; // Set should_exit to trigger loop exit
                 } else {
-                    handle_command_result(command_result, &mut output_manager, &mut game_world, &mut interaction_menu, &input_handler)?;
+                    handle_command_result(command_result, &mut output_manager, &mut game_world, &mut me, &mut interaction_menu, &input_handler)?;
                 }
             }
         }
@@ -201,23 +161,20 @@ pub fn run_main_loop(
         // --- 3. Game State Update ---
         
         if output_manager.is_minimap_open() {
-            update_minimap_display(&mut output_manager, &game_world);
+            update_minimap_display(&mut output_manager, &game_world, &me);
         }
         
         output_manager.update_status();
         output_manager.update_typewriter();
         game_world.update_time();
         
-        // 更新玩家的時間狀態
         use crate::time_updatable::TimeUpdatable;
         let time_info = game_world.get_time_info();
-        if let Some(me) = game_world.npc_manager.get_npc_mut("me") {
-            me.on_time_update(&time_info);
-        }
+        me.on_time_update(&time_info);
         
         let now = Instant::now();
         if now.duration_since(last_event_check) >= event_check_interval {
-            check_and_execute_events(&mut game_world, &mut output_manager);
+            check_and_execute_events(&mut game_world, &mut me, &mut output_manager);
             last_event_check = now;
         }
         
@@ -227,19 +184,19 @@ pub fn run_main_loop(
         if !matches!(game_world.combat_state, CombatState::None) {
             let now = Instant::now();
             if now.duration_since(last_combat_round) >= combat_round_interval {
-                let _ = execute_combat_round(&mut output_manager, &mut game_world);
+                let _ = execute_combat_round(&mut output_manager, &mut game_world, &mut me);
                 last_combat_round = now;
             }
         }
         
         // --- 4. 發送 NPC Views 到 AI 執行緒 ---
-        let npc_views = game_world.build_npc_views();
+        let npc_views = game_world.build_npc_views(&me);
         let _ = npc_view_tx.send(npc_views); // 忽略錯誤（AI 執行緒可能已關閉）
         
         // --- 5. Drawing ---
         
         terminal.draw(|f| {
-            draw_ui(f, &mut output_manager, &game_world, &input_handler, &menu, &interaction_menu);
+            draw_ui(f, &mut output_manager, &game_world, &input_handler, &me, &menu, &interaction_menu);
         })?;
 
         if should_exit {
@@ -266,20 +223,13 @@ pub fn run_main_loop(
     Ok(())
 }
 
-/// 繪製整個 UI 介面
-/// 
-/// # Arguments
-/// * `f` - Ratatui 框架
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
-/// * `input_handler` - 輸入處理器
-/// * `menu` - 主選單
-/// * `interaction_menu` - 互動選單
+/// Helper function to draw the entire UI
 fn draw_ui(
     f: &mut ratatui::Frame,
     output_manager: &mut OutputManager,
     game_world: &GameWorld,
     input_handler: &InputHandler,
+    me: &Person,
     menu: &Option<Menu>,
     interaction_menu: &Option<Menu>,  // 新增：互動選單
 ) {
@@ -345,18 +295,15 @@ fn draw_ui(
 
     if output_manager.is_map_open() {
         if let Some(current_map) = game_world.get_current_map() {
-            // 從 NpcManager 獲取當前控制角色的位置
-            if let Some(me) = game_world.npc_manager.get_npc(&game_world.current_controlled_id) {
-                let map_width = (size.width as f32 * 0.8) as u16;
-                let map_height = (size.height as f32 * 0.8) as u16;
-                let map_x = (size.width.saturating_sub(map_width)) / 2;
-                let map_y = (size.height.saturating_sub(map_height)) / 2;
-                let map_area = Rect { x: map_x, y: map_y, width: map_width, height: map_height };
-                let map_widget = output_manager.render_big_map(map_area, current_map, me.x, me.y, &game_world.npc_manager, &game_world.current_map_name);
-                let safe_area = clamp_rect(map_area, size.width, size.height);
-                f.render_widget(Clear, safe_area);
-                f.render_widget(map_widget, safe_area);
-            }
+            let map_width = (size.width as f32 * 0.8) as u16;
+            let map_height = (size.height as f32 * 0.8) as u16;
+            let map_x = (size.width.saturating_sub(map_width)) / 2;
+            let map_y = (size.height.saturating_sub(map_height)) / 2;
+            let map_area = Rect { x: map_x, y: map_y, width: map_width, height: map_height };
+            let map_widget = output_manager.render_big_map(map_area, current_map, me.x, me.y, &game_world.npc_manager, &game_world.current_map_name);
+            let safe_area = clamp_rect(map_area, size.width, size.height);
+            f.render_widget(Clear, safe_area);
+            f.render_widget(map_widget, safe_area);
         }
     }
 
@@ -396,37 +343,21 @@ fn draw_ui(
 
 
 /// 處理命令結果 - 主分派函式
-/// 處理命令結果
-/// 
-/// 根據命令結果執行相應的處理函數
-/// 從 NpcManager 獲取當前控制角色
-/// 
-/// # 參數
-/// * `result` - 命令結果
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
-/// * `interaction_menu` - 交互選單
-/// * `input_handler` - 輸入處理器
 fn handle_command_result(
     result: CommandResult,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
-    interaction_menu: &mut Option<Menu>,
-    input_handler: &InputHandler,
+    me: &mut Person,
+    interaction_menu: &mut Option<Menu>,  // 新增：互動選單
+    input_handler: &InputHandler,  // 新增：用於存取歷史記錄
 ) -> Result<(), Box<dyn std::error::Error>> {
     output_manager.close_status_panel();
     
     // 檢查是否在睡眠狀態，如果是則只允許 dream 和 wakeup 命令
-    let is_sleeping = {
-        game_world.npc_manager.get_npc("me")
-            .map(|me| me.is_sleeping)
-            .unwrap_or(false)
-    };
-    
-    if is_sleeping {
+    if me.is_sleeping {
         match result {
             CommandResult::Dream(content) => handle_dream(content, output_manager),
-            CommandResult::WakeUp => handle_wakeup(output_manager, game_world),
+            CommandResult::WakeUp => handle_wakeup(output_manager, me),
             _ => {
                 output_manager.print("你正在睡覺，只能使用 dream 或 wakeup 指令！".to_string());
             }
@@ -434,13 +365,10 @@ fn handle_command_result(
         return Ok(())
     }
 
-    // 每執行一個命令消耗 1 MP
-    if let Some(me) = game_world.npc_manager.get_npc_mut("me") {
-        me.check_mp(-1);
-    }
+    me.check_mp(-1); // 每執行一個命令消耗 1 MP
     
     match result {
-        CommandResult::Exit => handle_exit(output_manager, game_world)?,
+        CommandResult::Exit => handle_exit(output_manager, game_world, me)?,
         CommandResult::Help => handle_help(output_manager),
         CommandResult::Output(text) => handle_output(text, output_manager),
         CommandResult::Error(err) => handle_error(err, output_manager),
@@ -448,58 +376,50 @@ fn handle_command_result(
         CommandResult::ShowHistory(count) => handle_show_history(count, output_manager, input_handler),
         CommandResult::AddToSide(msg) => handle_add_to_side(msg, output_manager),
         CommandResult::ShowWorld => handle_show_world(output_manager, game_world),
-        CommandResult::ShowMinimap => handle_show_minimap(output_manager, game_world),
+        CommandResult::ShowMinimap => handle_show_minimap(output_manager, game_world, me),
         CommandResult::HideMinimap => handle_hide_minimap(output_manager),
         CommandResult::ShowLog => handle_show_log(output_manager),
         CommandResult::HideLog => handle_hide_log(output_manager),
-        CommandResult::ShowMap => handle_show_map(output_manager, game_world),
-        CommandResult::Look(target) => display_look(target, output_manager, game_world),
-        CommandResult::Move(dx, dy) => handle_movement(dx, dy, output_manager, game_world)?,
-        CommandResult::Get(item_name, quantity) => handle_get(item_name, quantity, output_manager, game_world),
-        CommandResult::Drop(item_name, quantity) => handle_drop(item_name, quantity, output_manager, game_world),
-        CommandResult::Eat(food_name) => handle_eat(food_name, output_manager, game_world),
-        CommandResult::UseItem(item_name) => {
-            if let Some(me) = get_current_controlled_mut(game_world) {
-                handle_use_item(item_name, output_manager, me);
-            }
-        },
-        CommandResult::UseItemOn(item_name, target_name) => handle_use_item_on(item_name, target_name, output_manager, game_world),
-        CommandResult::Sleep => handle_sleep(output_manager, game_world),
+        CommandResult::ShowMap => handle_show_map(output_manager, me),
+        CommandResult::Look(target) => display_look(target, output_manager, game_world, me),
+        CommandResult::Move(dx, dy) => handle_movement(dx, dy, output_manager, game_world, me)?,
+        CommandResult::Get(item_name, quantity) => handle_get(item_name, quantity, output_manager, game_world, me),
+        CommandResult::Drop(item_name, quantity) => handle_drop(item_name, quantity, output_manager, game_world, me),
+        CommandResult::Eat(food_name) => handle_eat(food_name, output_manager, me),
+        CommandResult::UseItem(item_name) => handle_use_item(item_name, output_manager, me),
+        CommandResult::UseItemOn(item_name, target_name) => handle_use_item_on(item_name, target_name, output_manager, game_world, me),
+        CommandResult::Sleep => handle_sleep(output_manager, me),
         CommandResult::Dream(_) => {
             output_manager.print("你需要先睡覺才能做夢！使用 sleep 指令進入睡眠。".to_string());
         },
         CommandResult::WakeUp => {
             output_manager.print("你還沒睡覺呢！".to_string());
         },
-        CommandResult::Summon(npc_name) => handle_summon(npc_name, output_manager, game_world),
-        CommandResult::Conquer(direction) => handle_conquer(direction, output_manager, game_world)?,
-        CommandResult::FlyTo(target) => handle_flyto(target, output_manager, game_world)?,
-        CommandResult::NameHere(name) => handle_namehere(name, output_manager, game_world)?,
-        CommandResult::Name(target, name) => handle_name(target, name, output_manager, game_world)?,
-        CommandResult::Destroy(target) => handle_destroy(target, output_manager, game_world)?,
-        CommandResult::Create(obj_type, item_type, name) => handle_create(obj_type, item_type, name, output_manager, game_world)?,
-        CommandResult::Set(target, attribute, value) => handle_set(target, attribute, value, output_manager, game_world)?,
-        CommandResult::SwitchControl(npc_name) => {
-            // TODO: handle_switch_control 需要完全重构以适应新架构
-            // 目前暂时禁用此功能
-            output_manager.set_status(format!("切換控制功能正在重構中，暫時無法使用：{npc_name}"));
-        },
-        CommandResult::Trade(npc_name) => handle_trade(npc_name, output_manager, game_world, interaction_menu)?,
-        CommandResult::Buy(npc_name, item, quantity) => handle_buy(npc_name, item, quantity, output_manager, game_world, interaction_menu)?,
-        CommandResult::Sell(npc_name, item, quantity) => handle_sell(npc_name, item, quantity, output_manager, game_world, interaction_menu)?,
-        CommandResult::Give(npc_name, item, quantity) => handle_give(npc_name, item, quantity, output_manager, game_world)?,
+        CommandResult::Summon(npc_name) => handle_summon(npc_name, output_manager, game_world, me),
+        CommandResult::Conquer(direction) => handle_conquer(direction, output_manager, game_world, me)?,
+        CommandResult::FlyTo(target) => handle_flyto(target, output_manager, game_world, me)?,
+        CommandResult::NameHere(name) => handle_namehere(name, output_manager, game_world, me)?,
+        CommandResult::Name(target, name) => handle_name(target, name, output_manager, game_world, me)?,
+        CommandResult::Destroy(target) => handle_destroy(target, output_manager, game_world, me)?,
+        CommandResult::Create(obj_type, item_type, name) => handle_create(obj_type, item_type, name, output_manager, game_world, me)?,
+        CommandResult::Set(target, attribute, value) => handle_set(target, attribute, value, output_manager, game_world, me)?,
+        CommandResult::SwitchControl(npc_name) => handle_switch_control(npc_name, output_manager, game_world, me)?,
+        CommandResult::Trade(npc_name) => handle_trade(npc_name, output_manager, game_world, me, interaction_menu)?,
+        CommandResult::Buy(npc_name, item, quantity) => handle_buy(npc_name, item, quantity, output_manager, game_world, me, interaction_menu)?,
+        CommandResult::Sell(npc_name, item, quantity) => handle_sell(npc_name, item, quantity, output_manager, game_world, me, interaction_menu)?,
+        CommandResult::Give(npc_name, item, quantity) => handle_give(npc_name, item, quantity, output_manager, game_world, me)?,
         CommandResult::SetDialogue(npc_name, topic, dialogue) => handle_set_dialogue(npc_name, topic, dialogue, output_manager, game_world)?,
         CommandResult::SetDialogueWithConditions(npc_name, topic, dialogue, conditions) => handle_set_dialogue_with_conditions(npc_name, topic, dialogue, conditions, output_manager, game_world)?,
         CommandResult::SetEagerness(npc_name, eagerness) => handle_set_eagerness(npc_name, eagerness, output_manager, game_world)?,
         CommandResult::SetRelationship(npc_name, relationship) => handle_set_relationship(npc_name, relationship, output_manager, game_world)?,
         CommandResult::ChangeRelationship(npc_name, delta) => handle_change_relationship(npc_name, delta, output_manager, game_world)?,
-        CommandResult::Talk(npc_name, topic) => handle_talk(npc_name, topic, output_manager, game_world)?,
-        CommandResult::Wait(npc_name) => handle_wait(npc_name, output_manager, game_world)?,
-        CommandResult::Party(npc_name) => handle_party(npc_name, output_manager, game_world)?,
-                CommandResult::Disband => handle_disband(output_manager, game_world)?,
-        CommandResult::Punch(target) => handle_punch(target, output_manager, game_world)?,
-        CommandResult::Kick(target) => handle_kick(target, output_manager, game_world)?,
-        CommandResult::Escape => handle_escape(output_manager, game_world)?,
+        CommandResult::Talk(npc_name, topic) => handle_talk(npc_name, topic, output_manager, game_world, me)?,
+        CommandResult::Wait(npc_name) => handle_wait(npc_name, output_manager, game_world, me)?,
+        CommandResult::Party(npc_name) => handle_party(npc_name, output_manager, game_world, me)?,
+        CommandResult::Disband => handle_disband(output_manager, game_world, me)?,
+        CommandResult::Punch(target) => handle_punch(target, output_manager, game_world, me)?,
+        CommandResult::Kick(target) => handle_kick(target, output_manager, game_world, me)?,
+        CommandResult::Escape => handle_escape(output_manager, game_world, me)?,
         CommandResult::ListNpcs => handle_list_npcs(output_manager, game_world),
         CommandResult::CheckNpc(npc_name) => handle_check_npc(npc_name, output_manager, game_world),
         CommandResult::ToggleTypewriter => handle_toggle_typewriter(output_manager),
@@ -510,33 +430,26 @@ fn handle_command_result(
         CommandResult::QuestCompleted => handle_quest_completed(output_manager, game_world),
         CommandResult::QuestInfo(quest_id) => handle_quest_info(quest_id, output_manager, game_world),
         CommandResult::QuestStart(quest_id) => handle_quest_start(quest_id, output_manager, game_world)?,
-        CommandResult::QuestComplete(quest_id) => handle_quest_complete(quest_id, output_manager, game_world)?,
+        CommandResult::QuestComplete(quest_id) => handle_quest_complete(quest_id, output_manager, game_world, me)?,
         CommandResult::QuestAbandon(quest_id) => handle_quest_abandon(quest_id, output_manager, game_world)?,
     }
     
     // 玩家指令執行後，檢測靠近/離開（玩家主動行動）
-    check_and_handle_proximity(output_manager, game_world, true);
+    check_and_handle_proximity(output_manager, game_world, me, true);
     
     // 所有命令執行後，如果小地圖已打開，更新小地圖資料
     if output_manager.is_minimap_open() {
-        update_minimap_display(output_manager, game_world);
+        update_minimap_display(output_manager, game_world, me);
     }
     
     Ok(())
 }
 
 /// 處理退出命令
-/// 處理退出遊戲
-/// 
-/// 保存遊戲世界、NPC 狀態和遊戲設置
-/// 所有數據已經在 NpcManager 中，無需額外同步
-/// 
-/// # 參數
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 fn handle_exit(
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // 保存世界元數據和時間
     game_world.save_metadata()?;
@@ -545,8 +458,25 @@ fn handle_exit(
     let person_dir = format!("{}/persons", game_world.world_dir);
     std::fs::create_dir_all(&person_dir)?;
     
-    // 保存所有 NPC 的狀態（包含當前控制的角色）
-    // 注意：所有數據已經在 NpcManager 中，因為我們統一了數據訪問路徑
+    // 同步當前 me 到 npc_manager（避免 npc_manager 中的舊資料覆蓋）
+    if game_world.current_controlled_id == "me" {
+        // 控制 me：更新 npc_manager 中的 me
+        let aliases = vec![me.name.clone()];
+        game_world.npc_manager.add_npc("me".to_string(), me.clone(), aliases);
+    } else {
+        // 控制其他 NPC：將當前 NPC 狀態同步回 npc_manager
+        let id = game_world.current_controlled_id.clone();
+        let aliases = vec![me.name.clone()];
+        game_world.npc_manager.add_npc(id, me.clone(), aliases);
+        
+        // 並更新原始玩家到 npc_manager
+        if let Some(original_player) = &game_world.original_player {
+            let aliases = vec![original_player.name.clone()];
+            game_world.npc_manager.add_npc("me".to_string(), original_player.clone(), aliases);
+        }
+    }
+    
+    // 保存所有 NPC 的狀態（已包含更新後的 me）
     game_world.npc_manager.save_all(&person_dir)?;
     
     // 保存遊戲設置
@@ -653,68 +583,38 @@ fn handle_show_world(output_manager: &mut OutputManager, game_world: &GameWorld)
 }
 
 /// 處理顯示小地圖
-/// 
-/// 打開小地圖並更新顯示內容
-/// 從 NpcManager 獲取當前控制角色的位置
-/// 
-/// # 參數
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 fn handle_show_minimap(
     output_manager: &mut OutputManager,
     game_world: &GameWorld,
+    me: &Person,
 ) {
     output_manager.show_minimap();
-    update_minimap_display(output_manager, game_world);
+    update_minimap_display(output_manager, game_world, me);
     output_manager.set_status(String::new());
 }
 
 /// 處理隱藏小地圖
-/// 
-/// 關閉小地圖顯示
-/// 
-/// # 參數
-/// * `output_manager` - 輸出管理器
 fn handle_hide_minimap(output_manager: &mut OutputManager) {
     output_manager.hide_minimap();
     output_manager.set_status(String::new());
 }
 
 /// 處理顯示日誌視窗
-/// 
-/// 打開日誌視窗以顯示系統日誌
-/// 
-/// # 參數
-/// * `output_manager` - 輸出管理器
 fn handle_show_log(output_manager: &mut OutputManager) {
     output_manager.show_log_window();
     output_manager.set_status("日誌視窗已開啟".to_string());
 }
 
 /// 處理隱藏日誌視窗
-/// 
-/// 關閉日誌視窗
-/// 
-/// # 參數
-/// * `output_manager` - 輸出管理器
 fn handle_hide_log(output_manager: &mut OutputManager) {
     output_manager.hide_log();
     output_manager.set_status("日誌視窗已關閉".to_string());
 }
 
 /// 處理顯示大地圖
-/// 
-/// 打開大地圖並定位到當前角色位置
-/// 從 NpcManager 獲取當前控制角色的坐標
-/// 
-/// # 參數
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
-fn handle_show_map(output_manager: &mut OutputManager, game_world: &GameWorld) {
-    if let Some(me) = get_current_controlled(game_world) {
-        output_manager.show_map(me.x, me.y);
-        output_manager.set_status("大地圖已開啟 (↑↓←→移動, q退出)".to_string());
-    }
+fn handle_show_map(output_manager: &mut OutputManager, me: &Person) {
+    output_manager.show_map(me.x, me.y);
+    output_manager.set_status("大地圖已開啟 (↑↓←→移動, q退出)".to_string());
 }
 
 /// 處理關閉狀態面板
@@ -726,198 +626,123 @@ fn handle_close_status(output_manager: &mut OutputManager) {
 }
 
 /// 顯示 look 命令的結果
-/// 
-/// 查看 NPC 詳細信息或當前位置環境
-/// 從 NpcManager 獲取當前控制角色的位置
-/// 
-/// # 參數
-/// * `target` - 可選的 NPC 名稱
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 fn display_look(
     target: Option<String>,
     output_manager: &mut OutputManager,
     game_world: &GameWorld,
+    me: &Person,
 ) {
-    // 獲取當前角色
-    let Some(me) = get_current_controlled(game_world) else {
-        output_manager.print("無法取得當前角色資訊".to_string());
-        return;
-    };
-    
     // 如果有指定目標，則查看 NPC
     if let Some(target_name) = target {
-        display_look_npc(&target_name, output_manager, game_world);
+        if let Some(npc) = game_world.npc_manager.get_npc(&target_name) {
+            // 顯示 NPC 資訊
+            output_manager.print("".to_string());
+            output_manager.print(format!("👤 {}", npc.name));
+            output_manager.print("═".repeat(40));
+            output_manager.print(format!("📝 {}", npc.description));
+            output_manager.print(format!("📍 位置: ({}, {})", npc.x, npc.y));
+            output_manager.print(format!("💫 狀態: {}", npc.status));
+            
+            if !npc.abilities.is_empty() {
+                output_manager.print("\n✨ 能力:".to_string());
+                for ability in &npc.abilities {
+                    output_manager.print(format!("  • {ability}"));
+                }
+            }
+            
+            if !npc.items.is_empty() {
+                output_manager.print("\n🎒 攜帶物品:".to_string());
+                for (item, count) in &npc.items {
+                    let display_name = item_registry::get_item_display_name(item);
+                    output_manager.print(format!("  • {display_name} x{count}"));
+                }
+            }
+            
+            output_manager.print("".to_string());
+        } else {
+            output_manager.set_status(format!("找不到 NPC: {target_name}"));
+        }
         return;
     }
     
     // 否則查看當前位置
-    display_look_location(me, output_manager, game_world);
-}
-
-/// 顯示 NPC 詳細信息
-/// 
-/// # 參數
-/// * `npc_name` - NPC 名稱
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
-fn display_look_npc(
-    npc_name: &str,
-    output_manager: &mut OutputManager,
-    game_world: &GameWorld,
-) {
-    if let Some(npc) = game_world.npc_manager.get_npc(npc_name) {
-        output_manager.print("".to_string());
-        output_manager.print(format!("👤 {}", npc.name));
-        output_manager.print("═".repeat(40));
-        output_manager.print(format!("📝 {}", npc.description));
-        output_manager.print(format!("📍 位置: ({}, {})", npc.x, npc.y));
-        output_manager.print(format!("💫 狀態: {}", npc.status));
-        
-        if !npc.abilities.is_empty() {
-            output_manager.print("\n✨ 能力:".to_string());
-            for ability in &npc.abilities {
-                output_manager.print(format!("  • {ability}"));
+    if let Some(current_map) = game_world.get_current_map() {
+        // 顯示當前位置信息
+        if let Some(point) = current_map.get_point(me.x, me.y) {
+            output_manager.print( format!("【當前位置: ({}, {})】\n【{}】", me.x, me.y, point.description) );
+            
+            // 顯示地點名稱（如果有）
+            if !point.name.is_empty() {
+                output_manager.print(format!("此處是【{}】", point.name));
             }
-        }
-        
-        if !npc.items.is_empty() {
-            output_manager.print("\n🎒 攜帶物品:".to_string());
-            for (item, count) in &npc.items {
-                let display_name = item_registry::get_item_display_name(item);
-                output_manager.print(format!("  • {display_name} x{count}"));
+            
+            // 顯示當前位置的 items
+            if !point.objects.is_empty() {
+                output_manager.print("\n🎁 此處物品:".to_string());
+                for (obj, count) in &point.objects {
+                    let display_name = item_registry::get_item_display_name(obj);
+                    
+                    // 顯示物品年齡信息
+                    if let Some(ages) = point.object_ages.get(obj) {
+                        if !ages.is_empty() {
+                            let avg_age = ages.iter().sum::<u64>() / ages.len() as u64;
+                            let days = avg_age / 86400;
+                            let hours = (avg_age % 86400) / 3600;
+                            output_manager.print(format!("  • {display_name} x{count} (平均存在: {days}天{hours}時)"));
+                        } else {
+                            output_manager.print(format!("  • {display_name} x{count}"));
+                        }
+                    } else {
+                        output_manager.print(format!("  • {display_name} x{count}"));
+                    }
+                }
             }
-        }
-        
-        output_manager.print("".to_string());
-    } else {
-        output_manager.set_status(format!("找不到 NPC: {npc_name}"));
-    }
-}
-
-/// 顯示當前位置環境信息
-/// 
-/// # 參數
-/// * `me` - 當前角色
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
-fn display_look_location(
-    me: &Person,
-    output_manager: &mut OutputManager,
-    game_world: &GameWorld,
-) {
-    let Some(current_map) = game_world.get_current_map() else {
-        return;
-    };
-    
-    let Some(point) = current_map.get_point(me.x, me.y) else {
-        return;
-    };
-    
-    // 顯示位置描述
-    output_manager.print(format!(
-        "【當前位置: ({}, {})】\n【{}】",
-        me.x, me.y, point.description
-    ));
-    
-    // 顯示地點名稱
-    if !point.name.is_empty() {
-        output_manager.print(format!("此處是【{}】", point.name));
-    }
-    
-    // 顯示物品
-    display_location_items(point, output_manager);
-    
-    // 顯示 NPC
-    display_location_npcs(me, game_world, output_manager);
-    
-    output_manager.print("".to_string());
-}
-
-/// 顯示位置的物品列表
-fn display_location_items(
-    point: &crate::map::Point,
-    output_manager: &mut OutputManager,
-) {
-    if point.objects.is_empty() {
-        return;
-    }
-    
-    output_manager.print("\n🎁 此處物品:".to_string());
-    for (obj, count) in &point.objects {
-        let display_name = item_registry::get_item_display_name(obj);
-        
-        if let Some(ages) = point.object_ages.get(obj) {
-            if !ages.is_empty() {
-                let avg_age = ages.iter().sum::<u64>() / ages.len() as u64;
-                let days = avg_age / 86400;
-                let hours = (avg_age % 86400) / 3600;
-                output_manager.print(format!(
-                    "  • {display_name} x{count} (平均存在: {days}天{hours}時)"
-                ));
-            } else {
-                output_manager.print(format!("  • {display_name} x{count}"));
+            
+            // 顯示當前位置的 NPC（排除當前控制的角色）
+            let npcs_here = game_world.npc_manager.get_npcs_at_in_map_excluding(
+                &game_world.current_map_name, 
+                me.x, 
+                me.y,
+                &game_world.current_controlled_id
+            );
+            if !npcs_here.is_empty() {
+                output_manager.print("\n👥 此處的人物:".to_string());
+                for npc in npcs_here {
+                    let mut desc = format!("  • {} - {}", npc.name, npc.description);
+                    
+                    // 顯示組隊狀態
+                    if let Some(ref leader) = npc.party_leader {
+                        desc.push_str(&format!(" (已與\"{leader}\"組隊)"));
+                    }
+                    
+                    output_manager.print(desc);
+                    
+                    // 嘗試觸發 NPC 對話（"見面"場景，根據玩家屬性）
+                    if let Some(greeting) = npc.try_talk("見面", me) {
+                        output_manager.print(format!("💬 {} 說：「{}」", npc.name, greeting));
+                    }
+                }
             }
-        } else {
-            output_manager.print(format!("  • {display_name} x{count}"));
-        }
-    }
-}
-
-/// 顯示位置的 NPC 列表
-fn display_location_npcs(
-    me: &Person,
-    game_world: &GameWorld,
-    output_manager: &mut OutputManager,
-) {
-    let npcs_here = game_world.npc_manager.get_npcs_at_in_map_excluding(
-        &game_world.current_map_name,
-        me.x,
-        me.y,
-        &game_world.current_controlled_id,
-    );
-    
-    if npcs_here.is_empty() {
-        return;
-    }
-    
-    output_manager.print("\n👥 此處的人物:".to_string());
-    for npc in npcs_here {
-        let mut desc = format!("  • {} - {}", npc.name, npc.description);
-        
-        if let Some(ref leader) = npc.party_leader {
-            desc.push_str(&format!(" (已與\"{leader}\"組隊)"));
-        }
-        
-        output_manager.print(desc);
-        
-        // 觸發見面對話
-        if let Some(greeting) = npc.try_talk("見面", me) {
-            output_manager.print(format!("💬 {} 說：「{}」", npc.name, greeting));
+            
+            output_manager.print("".to_string());          
         }
     }
 }
 
 /// 檢測並處理靠近/離開通知
-/// 檢查並處理靠近/離開事件
-/// 
-/// 更新 NPC 靠近狀態並觸發見面對話
-/// 從 NpcManager 獲取當前控制角色
-/// 
-/// # 參數
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
-/// * `player_initiated` - 是否為玩家主動行動
 fn check_and_handle_proximity(
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &Person,
     player_initiated: bool,  // true = 玩家主動行動, false = NPC AI 移動
 ) {
     let current_controlled_id = &game_world.current_controlled_id;
-    let (current_x, current_y, current_map) = if let Some(controlled) = game_world.npc_manager.get_npc(current_controlled_id) {
-        (controlled.x, controlled.y, controlled.map.clone())
+    let (current_x, current_y, current_map) = if current_controlled_id == "me" {
+        (me.x, me.y, me.map.clone())
+    } else if let Some(npc) = game_world.npc_manager.get_npc(current_controlled_id) {
+        (npc.x, npc.y, npc.map.clone())
     } else {
-        return;
+        (me.x, me.y, me.map.clone())
     };
     
     let proximity_notifications = game_world.npc_manager.update_proximity(
@@ -928,9 +753,6 @@ fn check_and_handle_proximity(
         player_initiated,
     );
     
-    // 獲取當前控制角色用於對話判斷
-    let controlled_person = game_world.npc_manager.get_npc(current_controlled_id);
-    
     for (npc_id, message, should_greet) in proximity_notifications {
         output_manager.print(message);
         
@@ -938,10 +760,8 @@ fn check_and_handle_proximity(
         if should_greet {
             if let Some(npc) = game_world.npc_manager.get_npc(&npc_id) {
                 // 檢查是否有"見面"對話
-                if let Some(controlled) = controlled_person {
-                    if let Some(greeting) = npc.get_weighted_dialogue("見面", controlled) {
-                        output_manager.print(format!("{} 說：「{}」", npc.name, greeting));
-                    }
+                if let Some(greeting) = npc.get_weighted_dialogue("見面", me) {
+                    output_manager.print(format!("{} 說：「{}」", npc.name, greeting));
                 }
             }
         }
@@ -949,22 +769,11 @@ fn check_and_handle_proximity(
 }
 
 /// 更新小地圖顯示
-/// 更新小地圖顯示
-/// 
-/// 根據當前控制角色位置更新小地圖
-/// 從 NpcManager 獲取當前控制角色
-/// 
-/// # 參數
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 pub fn update_minimap_display(
     output_manager: &mut OutputManager,
     game_world: &GameWorld,
+    me: &Person,
 ) {
-    let Some(me) = get_current_controlled(game_world) else {
-        return;
-    };
-    
     if let Some(current_map) = game_world.get_current_map() {
         let mut minimap_data: Vec<Line<'static>> = vec![Line::from(format!("【位置: ({}, {})", me.x, me.y))];
         
@@ -1144,22 +953,12 @@ fn move_party_npcs(
 }
 
 /// 處理移動命令
-/// 處理移動命令
-/// 
-/// 移動當前控制角色到新位置
-/// 從 NpcManager 獲取並修改當前控制角色
-/// 檢查邊界、可走性和戰鬥狀態
-/// 
-/// # 參數
-/// * `dx` - X 方向偏移
-/// * `dy` - Y 方向偏移
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 fn handle_movement(
     dx: i32,
     dy: i32,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &mut Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use crate::world::CombatState;
     
@@ -1169,218 +968,129 @@ fn handle_movement(
         return Ok(());
     }
     
-    // 獲取當前位置並計算新位置
-    let (current_x, current_y) = {
-        let Some(me) = get_current_controlled(game_world) else {
-            output_manager.print("無法取得當前角色資訊".to_string());
-            return Ok(());
-        };
-        (me.x, me.y)
-    };
-    
-    let new_x = (current_x as i32 + dx) as usize;
-    let new_y = (current_y as i32 + dy) as usize;
+    let new_x = (me.x as i32 + dx) as usize;
+    let new_y = (me.y as i32 + dy) as usize;
     
     // 檢查邊界和可走性
-    if !can_move_to(new_x, new_y, game_world, output_manager) {
-        return Ok(());
+    if let Some(current_map) = game_world.get_current_map() {
+        if new_x < current_map.width && new_y < current_map.height {
+            // 檢查目標點是否可移動
+            if let Some(point) = current_map.get_point(new_x, new_y) {
+                if point.walkable {
+                    me.move_to(new_x, new_y);
+                    // 保存 Me 的新位置
+                    let person_dir = format!("{}/persons", game_world.world_dir);
+                    let _ = me.save(&person_dir, "me");
+                    let direction = match (dx, dy) {
+                        (1, 0) => "右",
+                        (-1, 0) => "左",
+                        (0, -1) => "上",
+                        (0, 1) => "下",
+                        _ => "?",
+                    };
+                    output_manager.set_status(format!("往 {direction} 移動"));
+                    
+                    // 移動組隊的NPC跟隨到新位置
+                    move_party_npcs(new_x, new_y, game_world, output_manager);
+                    
+                    // 移動後執行look
+                    display_look(None, output_manager, game_world, me);
+                } else {
+                    output_manager.set_status("前方是牆壁，無法通過".to_string());
+                }
+            }
+        } else {
+            output_manager.set_status("超出地圖範圍".to_string());
+        }
     }
-    
-    // 執行移動
-    let person_dir = format!("{}/persons", game_world.world_dir);
-    if let Some(me) = get_current_controlled_mut(game_world) {
-        me.move_to(new_x, new_y);
-        
-        // 保存新位置
-        let _ = me.save(&person_dir, "me");
-    }
-    
-    // 顯示移動方向
-    let direction = match (dx, dy) {
-        (1, 0) => "右",
-        (-1, 0) => "左",
-        (0, -1) => "上",
-        (0, 1) => "下",
-        _ => "?",
-    };
-    output_manager.set_status(format!("往 {direction} 移動"));
-    
-    // 移動組隊的 NPC 跟隨
-    move_party_npcs(new_x, new_y, game_world, output_manager);
-    
-    // 移動後執行 look
-    display_look(None, output_manager, game_world);
-    
     Ok(())
 }
 
-/// 檢查是否可以移動到指定位置
-/// 
-/// # 參數
-/// * `x` - 目標 X 坐標
-/// * `y` - 目標 Y 坐標
-/// * `game_world` - 遊戲世界
-/// * `output_manager` - 輸出管理器
-fn can_move_to(
-    x: usize,
-    y: usize,
-    game_world: &GameWorld,
-    output_manager: &mut OutputManager,
-) -> bool {
-    let Some(current_map) = game_world.get_current_map() else {
-        return false;
-    };
-    
-    // 檢查邊界
-    if x >= current_map.width || y >= current_map.height {
-        output_manager.set_status("超出地圖範圍".to_string());
-        return false;
-    }
-    
-    // 檢查可走性
-    if let Some(point) = current_map.get_point(x, y) {
-        if !point.walkable {
-            output_manager.set_status("前方是牆壁，無法通過".to_string());
-            return false;
-        }
-        true
-    } else {
-        false
-    }
-}
-
 /// 處理 get 命令 - 撿起當前位置的物品
-/// 
-/// 從當前位置撿起指定物品或所有物品
-/// 從 NpcManager 獲取當前控制角色的位置和物品
-/// 
-/// # 參數
-/// * `item_name` - 物品名稱（None 表示撿起所有）
-/// * `quantity` - 要撿起的數量
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 fn handle_get(
     item_name: Option<String>,
     quantity: u32,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &mut Person,
 ) {
-    // 先獲取角色位置
-    let (x, y) = {
-        let Some(me) = get_current_controlled(game_world) else {
-            output_manager.print("無法取得當前角色資訊".to_string());
-            return;
-        };
-        (me.x, me.y)
-    };
+    let mut should_save_map = false;
     
-    // 收集要撿起的物品（先從地圖移除，記錄下來）
-    let items_to_pickup: Vec<(String, u32)> = if let Some(current_map) = game_world.get_current_map_mut() {
-        if let Some(point) = current_map.get_point_mut(x, y) {
+    if let Some(current_map) = game_world.get_current_map_mut() {
+        if let Some(point) = current_map.get_point_mut(me.x, me.y) {
             if point.objects.is_empty() {
                 output_manager.print("此處沒有物品。".to_string());
-                Vec::new()
-            } else {
-                match item_name {
-                    None => {
-                        // 沒有指定物品名稱，撿起所有物品
-                        let all_items: Vec<(String, u32)> = point.objects.clone().into_iter().collect();
-                        point.objects.clear();
-                        all_items
+                return;
+            }
+            
+            match item_name {
+                None => {
+                    // 沒有指定物品名稱，撿起所有物品
+                    let mut total_items = 0;
+                    for (obj_name, count) in point.objects.clone() {
+                        me.add_items(obj_name.clone(), count);
+                        let display_name = item_registry::get_item_display_name(&obj_name);
+                        output_manager.print(format!("✓ 撿起了: {display_name} x{count}"));
+                        total_items += count;
                     }
-                    Some(name) => {
-                        // 解析物品名稱（支援英文和中文）
-                        let resolved_name = item_registry::resolve_item_name(&name);
-                        let available = point.get_object_count(&resolved_name);
-                        
-                        if available == 0 {
-                            output_manager.print(format!("找不到 \"{name}\"."));
-                            Vec::new()
+                    point.objects.clear();
+                    output_manager.set_status(format!("撿起了 {total_items} 個物品"));
+                    should_save_map = true;
+                }
+                Some(name) => {
+                    // 解析物品名稱（支援英文和中文）
+                    let resolved_name = item_registry::resolve_item_name(&name);
+                    let available = point.get_object_count(&resolved_name);
+                    
+                    if available == 0 {
+                        output_manager.print(format!("找不到 \"{name}\"."));
+                        return;
+                    }
+                    
+                    // 取較小值：要求數量 vs 實際數量
+                    let actual_quantity = quantity.min(available);
+                    let removed = point.remove_objects(&resolved_name, actual_quantity);
+                    
+                    if removed > 0 {
+                        me.add_items(resolved_name.clone(), removed);
+                        let display_name = item_registry::get_item_display_name(&resolved_name);
+                        output_manager.print(format!("✓ 撿起了: {display_name} x{removed}"));
+                        if removed < quantity {
+                            output_manager.set_status(format!("只撿起了 {removed} 個 (要求 {quantity})"));
                         } else {
-                            // 取較小值：要求數量 vs 實際數量
-                            let actual_quantity = quantity.min(available);
-                            let removed = point.remove_objects(&resolved_name, actual_quantity);
-                            
-                            if removed > 0 {
-                                vec![(resolved_name, removed)]
-                            } else {
-                                Vec::new()
-                            }
+                            output_manager.set_status(format!("撿起: {display_name} x{removed}"));
                         }
+                        should_save_map = true;
                     }
                 }
-            }
-        } else {
-            Vec::new()
-        }
-    } else {
-        Vec::new()
-    };
-    
-    // 現在地圖借用已釋放，可以安全地修改角色
-    if items_to_pickup.is_empty() {
-        return;
-    }
-    
-    if let Some(me) = get_current_controlled_mut(game_world) {
-        let mut total_items = 0;
-        for (obj_name, count) in &items_to_pickup {
-            me.add_items(obj_name.clone(), *count);
-            let display_name = item_registry::get_item_display_name(obj_name);
-            output_manager.print(format!("✓ 撿起了: {display_name} x{count}"));
-            total_items += count;
-        }
-        
-        if items_to_pickup.len() > 1 {
-            output_manager.set_status(format!("撿起了 {total_items} 個物品"));
-        } else if let Some((obj_name, count)) = items_to_pickup.first() {
-            let display_name = item_registry::get_item_display_name(obj_name);
-            if *count < quantity {
-                output_manager.set_status(format!("只撿起了 {count} 個 (要求 {quantity})"));
-            } else {
-                output_manager.set_status(format!("撿起: {display_name} x{count}"));
             }
         }
     }
     
     // 保存角色物品和地圖
-    if let Some(me) = get_current_controlled(game_world) {
+    if should_save_map {
         let person_dir = format!("{}/persons", game_world.world_dir);
         let _ = me.save(&person_dir, "me");
-    }
-    
-    if let Some(current_map) = game_world.get_current_map() {
-        let _ = game_world.save_map(current_map);
+        
+        // 同步 me 到 NpcManager
+        sync_me_to_npc_manager(game_world, me);
+        
+        if let Some(current_map) = game_world.get_current_map() {
+            let _ = game_world.save_map(current_map);
+        }
     }
 }
 
-/// 處理 drop 命令 - 丟棄物品到當前位置
-/// 
-/// 將指定數量的物品從角色背包移除，放置到當前地圖位置
-/// 從 NpcManager 獲取當前控制角色的狀態
-/// 
-/// # 參數
-/// * `item_name` - 物品名稱
-/// * `quantity` - 要丟棄的數量
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 fn handle_drop(
     item_name: String,
     quantity: u32,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &mut Person,
 ) {
     // 解析物品名稱（支援英文和中文）
     let resolved_name = item_registry::resolve_item_name(&item_name);
-    
-    // 獲取角色位置和持有數量
-    let (x, y, owned) = {
-        let Some(me) = get_current_controlled(game_world) else {
-            output_manager.print("無法取得當前角色資訊".to_string());
-            return;
-        };
-        (me.x, me.y, me.get_item_count(&resolved_name))
-    };
+    let owned = me.get_item_count(&resolved_name);
     
     if owned == 0 {
         output_manager.print(format!("你沒有 \"{item_name}\"."));
@@ -1392,17 +1102,9 @@ fn handle_drop(
     
     let mut should_save_map = false;
     
-    // 從角色移除物品
-    if let Some(me) = get_current_controlled_mut(game_world) {
-        if me.drop_items(&resolved_name, actual_quantity).is_some() {
-            should_save_map = true;
-        }
-    }
-    
-    // 放到地圖
-    if should_save_map {
+    if me.drop_items(&resolved_name, actual_quantity).is_some() {
         if let Some(current_map) = game_world.get_current_map_mut() {
-            if let Some(point) = current_map.get_point_mut(x, y) {
+            if let Some(point) = current_map.get_point_mut(me.x, me.y) {
                 point.add_objects(resolved_name.clone(), actual_quantity);
                 let display_name = item_registry::get_item_display_name(&resolved_name);
                 output_manager.print(format!("✓ 放下了: {display_name} x{actual_quantity}"));
@@ -1411,16 +1113,15 @@ fn handle_drop(
                 } else {
                     output_manager.set_status(format!("放下: {display_name} x{actual_quantity}"));
                 }
+                should_save_map = true;
             }
         }
     }
     
     // 保存角色物品和地圖
     if should_save_map {
-        if let Some(me) = get_current_controlled(game_world) {
-            let person_dir = format!("{}/persons", game_world.world_dir);
-            let _ = me.save(&person_dir, "me");
-        }
+        let person_dir = format!("{}/persons", game_world.world_dir);
+        let _ = me.save(&person_dir, "me");
         if let Some(current_map) = game_world.get_current_map() {
             let _ = game_world.save_map(current_map);
         }
@@ -1428,25 +1129,11 @@ fn handle_drop(
 }
 
 /// 處理吃食物
-/// 處理吃食物命令
-/// 
-/// 消耗一個食物物品並恢復 HP
-/// 從 NpcManager 獲取並修改當前控制角色的狀態
-/// 
-/// # 參數
-/// * `food_name` - 食物名稱
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 fn handle_eat(
     food_name: String,
     output_manager: &mut OutputManager,
-    game_world: &mut GameWorld,
+    me: &mut Person,
 ) {
-    let Some(me) = get_current_controlled_mut(game_world) else {
-        output_manager.print("無法取得當前角色資訊".to_string());
-        return;
-    };
-    
     // 解析物品名稱（支援英文和中文）
     let resolved_name = item_registry::resolve_item_name(&food_name);
     
@@ -1473,23 +1160,12 @@ fn handle_eat(
         me.check_hp(hp_restore);
         let actual_restore = me.hp - old_hp;
         
-        let display_name = item_registry::get_item_display_name(&resolved_name);
-        output_manager.print(format!("你吃了 \"{display_name}\"，回復了 {actual_restore} HP！"));
+        output_manager.print(format!("你吃了 \"{}\"，回復了 {} HP！", item_registry::get_item_display_name(&resolved_name), actual_restore));
         output_manager.print(format!("目前 HP: {}", me.hp));
-        
-        // me 已經是 NpcManager 的可變引用，修改會自動同步，不需要額外同步
     }
 }
 
 /// 處理使用物品命令
-/// 
-/// 讓指定的角色使用物品
-/// 直接操作角色對象
-/// 
-/// # 參數
-/// * `item_name` - 物品名稱
-/// * `output_manager` - 輸出管理器
-/// * `target` - 目標角色
 fn handle_use_item(
     item_name: String,
     output_manager: &mut OutputManager,
@@ -1505,33 +1181,15 @@ fn handle_use_item(
     }
 }
 
-/// 處理對 NPC 使用物品命令
-/// 
-/// 將物品給予 NPC 然後讓 NPC 使用
-/// 從 NpcManager 獲取當前控制角色和目標 NPC
-/// 
-/// # 參數
-/// * `item_name` - 物品名稱
-/// * `target_name` - 目標 NPC 名稱
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 fn handle_use_item_on(
     item_name: String,
     target_name: String,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &mut Person,
 ) {
-    // 獲取當前角色位置
-    let (x, y) = {
-        let Some(me) = get_current_controlled(game_world) else {
-            output_manager.print("無法取得當前角色資訊".to_string());
-            return;
-        };
-        (me.x, me.y)
-    };
-    
     // 檢查 NPC 是否在同一位置
-    let npcs_here: Vec<&crate::person::Person> = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, x, y);
+    let npcs_here: Vec<&crate::person::Person> = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, me.x, me.y);
     
     let npc_id = npcs_here.iter()
         .find(|n| n.name.to_lowercase() == target_name.to_lowercase())
@@ -1539,7 +1197,7 @@ fn handle_use_item_on(
     
     if let Some(npc_id) = npc_id {
         // 先給物品給 NPC
-        if let Ok(()) = handle_give(target_name.clone(), item_name.clone(), 1, output_manager, game_world) {
+        if let Ok(()) = handle_give(target_name.clone(), item_name.clone(), 1, output_manager, game_world, me) {
             // 對實際的 NPC 使用物品
             if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_id) {
                 handle_use_item(item_name.clone(), output_manager, npc);
@@ -1555,23 +1213,10 @@ fn handle_use_item_on(
 }
 
 /// 處理睡眠命令
-/// 
-/// 讓角色進入睡眠狀態
-/// 睡眠中不消耗 HP，並定期恢復 MP
-/// 從 NpcManager 獲取並修改當前控制角色
-/// 
-/// # 參數
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 fn handle_sleep(
     output_manager: &mut OutputManager,
-    game_world: &mut GameWorld,
+    me: &mut Person,
 ) {
-    let Some(me) = get_current_controlled_mut(game_world) else {
-        output_manager.print("無法取得當前角色資訊".to_string());
-        return;
-    };
-    
     if me.is_sleeping {
         output_manager.print("你已經在睡覺了！".to_string());
         return;
@@ -1582,8 +1227,6 @@ fn handle_sleep(
     output_manager.print("💤 你進入了睡眠狀態...".to_string());
     output_manager.print("在睡眠中，你不會消耗 HP，並且每 10 分鐘恢復 10% MP。".to_string());
     output_manager.print("你可以使用 dream 做夢，或使用 wakeup 醒來。".to_string());
-    
-    // me 已經是 NpcManager 的可變引用，修改會自動同步
 }
 
 /// 處理做夢命令
@@ -1608,22 +1251,10 @@ fn handle_dream(
 }
 
 /// 處理醒來命令
-/// 
-/// 讓角色從睡眠狀態中醒來
-/// 從 NpcManager 獲取並修改當前控制角色
-/// 
-/// # 參數
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 fn handle_wakeup(
     output_manager: &mut OutputManager,
-    game_world: &mut GameWorld,
+    me: &mut Person,
 ) {
-    let Some(me) = get_current_controlled_mut(game_world) else {
-        output_manager.print("無法取得當前角色資訊".to_string());
-        return;
-    };
-    
     if !me.is_sleeping {
         output_manager.print("你還沒睡覺呢！".to_string());
         return;
@@ -1633,78 +1264,40 @@ fn handle_wakeup(
     me.set_status("正常".to_string());
     output_manager.print("☀️ 你醒來了！感覺精神充沛！".to_string());
     output_manager.print(format!("目前 MP: {}", me.mp));
-    
-    // me 已經是 NpcManager 的可變引用，修改會自動同步
 }
 
 /// 處理召喚 NPC
-/// 處理召喚命令
-/// 
-/// 將指定 NPC 傳送到當前角色位置
-/// 從 NpcManager 獲取當前角色位置和目標 NPC
-/// 
-/// # 參數
-/// * `npc_name` - NPC 名稱
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 fn handle_summon(
     npc_name: String,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &Person,
 ) {
-    // 獲取當前角色位置和地圖
-    let (x, y, map_name) = {
-        let Some(me) = get_current_controlled(game_world) else {
-            output_manager.print("無法取得當前角色資訊".to_string());
-            return;
-        };
-        (me.x, me.y, game_world.current_map_name.clone())
-    };
-    
-    // 先檢查 NPC 是否存在並獲取舊位置
-    let npc_info = game_world.npc_manager.get_npc(&npc_name)
-        .map(|npc| (npc.name.clone(), npc.x, npc.y));
+    // 先檢查 NPC 是否存在並獲取名稱
+    let npc_info = game_world.npc_manager.get_npc(&npc_name).map(|npc| (npc.name.clone(), npc.x, npc.y));
     
     if let Some((name, old_x, old_y)) = npc_info {
         // 移動 NPC 到玩家位置和地圖
         if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_name) {
-            npc.move_to(x, y);
-            npc.map = map_name.clone();
+            npc.move_to(me.x, me.y);
+            npc.map = game_world.current_map_name.clone();  // 更新到玩家當前地圖
         }
         
         output_manager.print(format!("你召喚了 {name} 到這裡"));
-        output_manager.log(format!(
-            "{} 從 ({}, {}) 傳送到 {} ({}, {})",
-            name, old_x, old_y, map_name, x, y
-        ));
+        output_manager.log(format!("{} 從 ({}, {}) 傳送到 {} ({}, {})", 
+            name, old_x, old_y, game_world.current_map_name, me.x, me.y));
     } else {
         output_manager.set_status(format!("找不到 NPC: {npc_name}"));
     }
 }
 
 /// 處理征服指令 - 使指定方向可行走
-/// 
-/// GM 指令：將指定方向的障礙設為可行走
-/// 從 NpcManager 獲取當前控制角色位置
-/// 
-/// # 參數
-/// * `direction` - 方向（up/down/left/right）
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 fn handle_conquer(
     direction: String,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // 獲取當前角色位置
-    let (x, y) = {
-        let Some(me) = get_current_controlled(game_world) else {
-            output_manager.print("無法取得當前角色資訊".to_string());
-            return Ok(());
-        };
-        (me.x, me.y)
-    };
-    
     // 解析方向
     let (dx, dy, dir_name) = match direction.to_lowercase().as_str() {
         "up" | "u" => (0, -1, "上"),
@@ -1718,8 +1311,8 @@ fn handle_conquer(
     };
     
     // 計算目標位置
-    let target_x = (x as i32 + dx) as usize;
-    let target_y = (y as i32 + dy) as usize;
+    let target_x = (me.x as i32 + dx) as usize;
+    let target_y = (me.y as i32 + dy) as usize;
     
     // 先獲取地圖名稱
     let map_name = game_world.current_map_name.clone();
@@ -1741,12 +1334,12 @@ fn handle_conquer(
                 point.walkable = true;
                 output_manager.print(format!("你征服了 {dir_name} 方的障礙！"));
                 output_manager.print(format!("位置 ({target_x}, {target_y}) 現在可以行走了"));
-                output_manager.log(format!("玩家在 ({}, {}) 征服了 {} 方 ({}, {})", x, y, dir_name, target_x, target_y));
+                output_manager.log(format!("玩家在 ({}, {}) 征服了 {} 方 ({}, {})", me.x, me.y, dir_name, target_x, target_y));
             }
         }
     }
     
-    // 保存地圖
+    // 保存地圖 (使用地圖名稱)
     if let Some(map) = game_world.maps.get(&map_name) {
         game_world.save_map(map)?;
     }
@@ -1755,28 +1348,11 @@ fn handle_conquer(
 }
 
 /// 處理飛到指令 - 傳送到指定位置/地圖/地點
-/// 
-/// GM 指令：傳送到座標、地圖或地點
-/// 從 NpcManager 獲取並修改當前控制角色
-/// 
-/// # 參數
-/// * `target` - 目標（座標/地圖名/地點名）
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
-/// * `me` - 當前控制角色
-/// 處理 flyto 命令
-/// 
-/// GM 指令：傳送到指定位置
-/// 從 NpcManager 獲取並修改當前控制角色位置
-/// 
-/// # 參數
-/// * `target` - 傳送目標（座標/地圖名/地點名）
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 fn handle_flyto(
     target: String,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &mut Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use crate::world::CombatState;
     
@@ -1786,139 +1362,87 @@ fn handle_flyto(
         return Ok(());
     }
     
-    // 嘗試不同的傳送方式
-    if try_flyto_coordinates(&target, output_manager, game_world)? {
-        return Ok(());
-    }
-    
-    if try_flyto_map(&target, output_manager, game_world)? {
-        return Ok(());
-    }
-    
-    if try_flyto_location(&target, output_manager, game_world)? {
-        return Ok(());
-    }
-    
-    output_manager.set_status(format!("找不到目標: {target}"));
-    Ok(())
-}
-
-/// 嘗試傳送到座標
-fn try_flyto_coordinates(
-    target: &str,
-    output_manager: &mut OutputManager,
-    game_world: &mut GameWorld,
-) -> Result<bool, Box<dyn std::error::Error>> {
-    if let Some((x, y)) = parse_coordinates(target) {
+    // 嘗試解析為坐標 (x,y)
+    if let Some((x, y)) = parse_coordinates(&target) {
+        // 檢查坐標是否在當前地圖範圍內
         if let Some(current_map) = game_world.get_current_map() {
             if x < current_map.width && y < current_map.height {
-                let person_dir = format!("{}/persons", game_world.world_dir);
-                
-                let Some(me) = get_current_controlled_mut(game_world) else {
-                    return Ok(false);
-                };
                 me.move_to(x, y);
-                me.save(&person_dir, "me")?;
-                
                 output_manager.print(format!("你飛到了位置 ({x}, {y})"));
                 output_manager.log(format!("玩家傳送到 ({x}, {y})"));
-                display_look(None, output_manager, game_world);
-                return Ok(true);
+                
+                // 保存玩家位置
+                let person_dir = format!("{}/persons", game_world.world_dir);
+                me.save(&person_dir, "me")?;
+                
+                // 自動執行 look
+                display_look(None, output_manager, game_world, me);
+                return Ok(())
             }
             output_manager.set_status("座標超出地圖範圍".to_string());
+            return Ok(())
         }
     }
-    Ok(false)
-}
-
-/// 嘗試傳送到地圖
-fn try_flyto_map(
-    target: &str,
-    output_manager: &mut OutputManager,
-    game_world: &mut GameWorld,
-) -> Result<bool, Box<dyn std::error::Error>> {
-    if game_world.maps.contains_key(target) {
-        game_world.current_map_name = target.to_string();
-        
-        let (center_x, center_y) = if let Some(new_map) = game_world.get_current_map() {
-            (new_map.width / 2, new_map.height / 2)
-        } else {
-            return Ok(false);
-        };
-        
-        let person_dir = format!("{}/persons", game_world.world_dir);
-        
-        let Some(me) = get_current_controlled_mut(game_world) else {
-            return Ok(false);
-        };
-        me.map = target.to_string();
-        me.move_to(center_x, center_y);
-        me.save(&person_dir, "me")?;
-        game_world.save_metadata()?;
-        
-        output_manager.print(format!("你飛到了地圖「{target}」"));
-        output_manager.log(format!("玩家傳送到地圖「{target}」({center_x}, {center_y})"));
-        display_look(None, output_manager, game_world);
-        return Ok(true);
+    
+    // 嘗試作為地圖名稱
+    if game_world.maps.contains_key(&target) {
+        game_world.current_map_name = target.clone();
+        me.map = target.clone();  // 更新玩家所在地圖
+        // 將玩家移動到地圖中心
+        if let Some(new_map) = game_world.get_current_map() {
+            let center_x = new_map.width / 2;
+            let center_y = new_map.height / 2;
+            me.move_to(center_x, center_y);
+            output_manager.print(format!("你飛到了地圖「{target}」"));
+            output_manager.log(format!("玩家傳送到地圖「{target}」({center_x}, {center_y})"));
+            
+            // 保存玩家位置和世界狀態
+            let person_dir = format!("{}/persons", game_world.world_dir);
+            me.save(&person_dir, "me")?;
+            game_world.save_metadata()?;
+            
+            // 自動執行 look
+            display_look(None, output_manager, game_world, me);
+            return Ok(())
+        }
     }
-    Ok(false)
-}
-
-/// 嘗試傳送到地點
-fn try_flyto_location(
-    target: &str,
-    output_manager: &mut OutputManager,
-    game_world: &mut GameWorld,
-) -> Result<bool, Box<dyn std::error::Error>> {
+    
+    // 嘗試作為地點名稱
     if let Some(current_map) = game_world.get_current_map() {
         for row in &current_map.points {
             for point in row {
                 if !point.name.is_empty() && point.name == target {
-                    let (x, y) = (point.x, point.y);
-                    let person_dir = format!("{}/persons", game_world.world_dir);
+                    me.move_to(point.x, point.y);
+                    output_manager.print(format!("你飛到了地點「{}」({}, {})", target, point.x, point.y));
+                    output_manager.log(format!("玩家傳送到地點「{}」({}, {})", target, point.x, point.y));
                     
-                    let Some(me) = get_current_controlled_mut(game_world) else {
-                        return Ok(false);
-                    };
-                    me.move_to(x, y);
+                    // 保存玩家位置
+                    let person_dir = format!("{}/persons", game_world.world_dir);
                     me.save(&person_dir, "me")?;
                     
-                    output_manager.print(format!("你飛到了地點「{target}」({x}, {y})"));
-                    output_manager.log(format!("玩家傳送到地點「{target}」({x}, {y})"));
-                    display_look(None, output_manager, game_world);
-                    return Ok(true);
+                    // 自動執行 look
+                    display_look(None, output_manager, game_world, me);
+                    return Ok(())
                 }
             }
         }
     }
-    Ok(false)
+    
+    output_manager.set_status(format!("找不到目標: {target}（請使用座標x,y、地圖名或地點名）"));
+    Ok(())
 }
 
 /// 處理 namehere 指令 - 命名當前地點
-/// 
-/// 將當前位置命名為指定名稱
-/// 從 NpcManager 獲取當前控制角色位置
-/// 
-/// # 參數
-/// * `name` - 地點名稱
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 fn handle_namehere(
     name: String,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let map_name = game_world.current_map_name.clone();
-    let (x, y) = {
-        let Some(me) = get_current_controlled(game_world) else {
-            output_manager.print("無法取得當前角色資訊".to_string());
-            return Ok(());
-        };
-        (me.x, me.y)
-    };
     
     if let Some(current_map) = game_world.get_current_map_mut() {
-        if let Some(point) = current_map.get_point_mut(x, y) {
+        if let Some(point) = current_map.get_point_mut(me.x, me.y) {
             let old_name = if point.name.is_empty() {
                 "（無名）".to_string()
             } else {
@@ -1927,7 +1451,7 @@ fn handle_namehere(
             
             point.name = name.clone();
             output_manager.print(format!("你將此地命名為「{name}」"));
-            output_manager.log(format!("位置 ({x}, {y}) 從 {old_name} 更名為「{name}」"));
+            output_manager.log(format!("位置 ({}, {}) 從 {} 更名為「{}」", me.x, me.y, old_name, name));
         }
     }
     
@@ -1940,20 +1464,12 @@ fn handle_namehere(
 }
 
 /// 處理 name 指令 - 命名 NPC 或地點
-/// 
-/// 為 NPC 或地點重新命名
-/// 不需要 me 參數（已經不使用）
-/// 
-/// # 參數
-/// * `target` - 目標（座標或NPC名）
-/// * `new_name` - 新名稱
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 fn handle_name(
     target: String,
     new_name: String,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    _me: &Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // 嘗試解析為坐標
     if let Some((x, y)) = parse_coordinates(&target) {
@@ -2001,32 +1517,17 @@ fn handle_name(
 }
 
 /// 處理 destroy 指令 - 刪除當前位置的 NPC 或物品
-/// 
-/// 刪除當前位置的指定 NPC 或物品
-/// 從 NpcManager 獲取當前控制角色位置
-/// 
-/// # 參數
-/// * `target` - 目標名稱
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 fn handle_destroy(
     target: String,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let (x, y) = {
-        let Some(me) = get_current_controlled(game_world) else {
-            output_manager.print("無法取得當前角色資訊".to_string());
-            return Ok(());
-        };
-        (me.x, me.y)
-    };
-    
     // 先嘗試作為 NPC（在當前位置）
-    if let Some((npc_id, npc)) = game_world.npc_manager.remove_npc_at(&target, x, y) {
+    if let Some((npc_id, npc)) = game_world.npc_manager.remove_npc_at(&target, me.x, me.y) {
         let npc_name = npc.name.clone();
         output_manager.print(format!("你摧毀了 NPC「{npc_name}」"));
-        output_manager.log(format!("NPC「{npc_name}」在 ({x}, {y}) 被刪除"));
+        output_manager.log(format!("NPC「{}」在 ({}, {}) 被刪除", npc_name, me.x, me.y));
         
         // 刪除 NPC 的 JSON 文件
         let person_dir = format!("{}/persons", game_world.world_dir);
@@ -2041,29 +1542,18 @@ fn handle_destroy(
         return Ok(())
     }
     
-    destroy_item_at_location(target, x, y, output_manager, game_world)
-}
-
-/// 刪除位置上的物品
-fn destroy_item_at_location(
-    target: String,
-    x: usize,
-    y: usize,
-    output_manager: &mut OutputManager,
-    game_world: &mut GameWorld,
-) -> Result<(), Box<dyn std::error::Error>> {
+    // 嘗試作為物品
     let item_name = item_registry::resolve_item_name(&target);
     let map_name = game_world.current_map_name.clone();
     
     if let Some(current_map) = game_world.get_current_map_mut() {
-        if let Some(point) = current_map.get_point_mut(x, y) {
+        if let Some(point) = current_map.get_point_mut(me.x, me.y) {
             if let Some(count) = point.objects.get(&item_name) {
                 let count_value = *count;
                 point.objects.remove(&item_name);
                 
-                let display_name = item_registry::get_item_display_name(&item_name);
-                output_manager.print(format!("你摧毀了物品「{display_name}」x{count_value}"));
-                output_manager.log(format!("物品「{display_name}」x{count_value} 在 ({x}, {y}) 被刪除"));
+                output_manager.print(format!("你摧毀了物品「{}」x{}", item_registry::get_item_display_name(&item_name), count_value));
+                output_manager.log(format!("物品「{}」x{} 在 ({}, {}) 被刪除", item_registry::get_item_display_name(&item_name), count_value, me.x, me.y));
                 
                 // 保存地圖
                 if let Some(map) = game_world.maps.get(&map_name) {
@@ -2091,13 +1581,9 @@ fn parse_coordinates(s: &str) -> Option<(usize, usize)> {
 }
 
 /// 檢查並執行事件
-/// 檢查並執行遊戲事件
-/// 
-/// # Arguments
-/// * `game_world` - 遊戲世界
-/// * `output_manager` - 輸出管理器
 fn check_and_execute_events(
     game_world: &mut GameWorld,
+    me: &mut Person,
     output_manager: &mut OutputManager,
 ) {
     let current_day = game_world.time.day;
@@ -2123,15 +1609,8 @@ fn check_and_execute_events(
         }
         let trigger_check = crate::event_scheduler::EventScheduler::new()
             .check_trigger(event, game_world);
-        
-        // 從 NpcManager 獲取 me 來檢查條件
-        let condition_check = if let Some(me) = game_world.npc_manager.get_npc("me") {
-            crate::event_scheduler::EventScheduler::new()
-                .check_conditions(event, game_world, me)
-        } else {
-            false
-        };
-        
+        let condition_check = crate::event_scheduler::EventScheduler::new()
+            .check_conditions(event, game_world, me);
         if trigger_check && condition_check {
             triggered_event_ids.push(event_id.clone());
         }
@@ -2143,10 +1622,10 @@ fn check_and_execute_events(
             let location_info = get_event_location_info(&event_clone, game_world);
             output_manager.log(format!("🎭 事件: {}{}", event_clone.name, location_info));
             
-            // 執行事件（內部會從 NpcManager 獲取 me）
             if let Err(e) = crate::event_executor::EventExecutor::execute_event(
                 &event_clone,
                 game_world,
+                me,
                 output_manager
             ) {
                 output_manager.log(format!("⚠️  事件執行錯誤: {e}"));
@@ -2192,134 +1671,104 @@ fn resolve_npc_type(type_code: &str) -> String {
 }
 
 /// 處理 create 指令 - 創建物件
-/// 處理創建命令
-/// 
-/// GM 指令：創建 NPC 或物品
-/// 從 NpcManager 獲取當前控制角色位置
-/// 
-/// # 參數
-/// * `obj_type` - 對象類型（npc/item）
-/// * `item_type` - 類型名稱
-/// * `name` - 自定義名稱（可選）
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 fn handle_create(
     obj_type: String,
     item_type: String,
     name: Option<String>,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
     match obj_type.to_lowercase().as_str() {
-        "npc" => create_npc(item_type, name, output_manager, game_world),
-        "item" => create_item(item_type, name, output_manager, game_world),
+        "npc" => {
+            // 解析 NPC 類型（支持簡稱）
+            let resolved_type = resolve_npc_type(&item_type);
+            
+            // 創建 NPC
+            let npc_name = name.unwrap_or_else(|| resolved_type.clone());
+            
+            // 檢查 NPC 是否已存在
+            if game_world.npc_manager.get_npc(&npc_name).is_some() {
+                output_manager.set_status(format!("NPC「{npc_name}」已經存在"));
+                return Ok(())
+            }
+            
+            let description = format!("一個{resolved_type}");
+            
+            // 創建新的 Person 作為 NPC
+            let mut npc = Person::new(npc_name.clone(), description);
+            npc.x = me.x;
+            npc.y = me.y;
+            npc.map = game_world.current_map_name.clone();  // 設置在當前地圖
+            
+            // 確保 NPC 有預設的 10000 金幣
+            npc.items.insert("金幣".to_string(), 10_000);
+            
+            // 使用 NPC 名稱作為 ID（如果重複會被覆蓋）
+            let npc_id = npc_name.clone();
+            
+            // 添加到 NPC 管理器
+            game_world.npc_manager.add_npc(npc_id.clone(), npc, vec![]);
+            
+            output_manager.print(format!("你創建了 NPC「{npc_name}」(類型: {resolved_type})"));
+            output_manager.log(format!("NPC「{}」在 ({}, {}) 被創建", npc_name, me.x, me.y));
+        },
+        "item" => {
+            // 創建物品
+            let item_name = item_registry::resolve_item_name(&item_type);
+            let display_name = name.as_ref().unwrap_or(&item_type);
+            let map_name = game_world.current_map_name.clone();
+            
+            if let Some(current_map) = game_world.get_current_map_mut() {
+                if let Some(point) = current_map.get_point_mut(me.x, me.y) {
+                    // 添加物品到當前位置
+                    *point.objects.entry(item_name.clone()).or_insert(0) += 1;
+                    
+                    output_manager.print(format!("你創建了物品「{display_name}」(類型: {item_type})"));
+                    output_manager.log(format!("物品「{}」在 ({}, {}) 被創建", display_name, me.x, me.y));
+                    
+                    // 保存地圖
+                    if let Some(map) = game_world.maps.get(&map_name) {
+                        game_world.save_map(map)?;
+                    }
+                } else {
+                    output_manager.set_status("無法在當前位置創建物品".to_string());
+                }
+            } else {
+                output_manager.set_status("找不到當前地圖".to_string());
+            }
+        },
         _ => {
             output_manager.set_status(format!("未知類型: {obj_type}，請使用 item 或 npc"));
-            Ok(())
         }
     }
-}
-
-/// 創建 NPC
-fn create_npc(
-    npc_type: String,
-    name: Option<String>,
-    output_manager: &mut OutputManager,
-    game_world: &mut GameWorld,
-) -> Result<(), Box<dyn std::error::Error>> {
-    // 獲取當前角色位置
-    let (x, y) = {
-        let Some(me) = get_current_controlled(game_world) else {
-            output_manager.print("無法取得當前角色資訊".to_string());
-            return Ok(());
-        };
-        (me.x, me.y)
-    };
     
-    let resolved_type = resolve_npc_type(&npc_type);
-    let npc_name = name.unwrap_or_else(|| resolved_type.clone());
-    
-    // 檢查 NPC 是否已存在
-    if game_world.npc_manager.get_npc(&npc_name).is_some() {
-        output_manager.set_status(format!("NPC「{npc_name}」已經存在"));
-        return Ok(())
-    }
-    
-    let description = format!("一個{resolved_type}");
-    let mut npc = Person::new(npc_name.clone(), description);
-    npc.x = x;
-    npc.y = y;
-    npc.map = game_world.current_map_name.clone();
-    npc.items.insert("金幣".to_string(), 10_000);
-    
-    game_world.npc_manager.add_npc(npc_name.clone(), npc, vec![]);
-    
-    output_manager.print(format!("你創建了 NPC「{npc_name}」(類型: {resolved_type})"));
-    output_manager.log(format!("NPC「{}」在 ({}, {}) 被創建", npc_name, x, y));
-    Ok(())
-}
-
-/// 創建物品
-fn create_item(
-    item_type: String,
-    name: Option<String>,
-    output_manager: &mut OutputManager,
-    game_world: &mut GameWorld,
-) -> Result<(), Box<dyn std::error::Error>> {
-    // 獲取當前角色位置
-    let (x, y) = {
-        let Some(me) = get_current_controlled(game_world) else {
-            output_manager.print("無法取得當前角色資訊".to_string());
-            return Ok(());
-        };
-        (me.x, me.y)
-    };
-    
-    let item_name = item_registry::resolve_item_name(&item_type);
-    let display_name = name.as_ref().unwrap_or(&item_type);
-    let map_name = game_world.current_map_name.clone();
-    
-    if let Some(current_map) = game_world.get_current_map_mut() {
-        if let Some(point) = current_map.get_point_mut(x, y) {
-            *point.objects.entry(item_name.clone()).or_insert(0) += 1;
-            
-            output_manager.print(format!("你創建了物品「{display_name}」(類型: {item_type})"));
-            output_manager.log(format!("物品「{}」在 ({}, {}) 被創建", display_name, x, y));
-            
-            if let Some(map) = game_world.maps.get(&map_name) {
-                game_world.save_map(map)?;
-            }
-        } else {
-            output_manager.set_status("無法在當前位置創建物品".to_string());
-        }
-    } else {
-        output_manager.set_status("找不到當前地圖".to_string());
-    }
     Ok(())
 }
 
 /// 處理 set 命令
-/// 
-/// GM 指令：設置角色或物品屬性
-/// 從 NpcManager 獲取並修改角色數據
-/// 
-/// # 參數
-/// * `target` - 目標（me/NPC名/item）
-/// * `attribute` - 屬性名稱
-/// * `value` - 值
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 fn handle_set(
     target: String,
     attribute: String,
     value: i32,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &mut Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // 檢查是否為設置物品價格
+    // 檢查是否為設置物品價格：set item <item_name> price <value>
+    // 注意：由於命令解析的限制，這裡我們需要檢查 target 是否為 "item"
+    // 實際的命令格式應該是：set item <item_name> price <value>
+    // 但目前的解析器會將 "item" 作為 target，"<item_name>" 作為 attribute，"price" 作為 value（錯誤）
+    // 所以我們需要特殊處理：如果 target == "item"，則 attribute 是物品名稱，value 是價格
+    
     if target.to_lowercase() == "item" {
-        crate::trade::TradeSystem::set_item_price(&attribute, value.max(0) as u32);
-        output_manager.print(format!("物品「{attribute}」的價格設置為 {} 金幣", value.max(0)));
+        // 設置物品價格：set item <item_name> <price>
+        // 注意：這裡 attribute 實際上是物品名稱，value 是價格
+        let item_name = attribute.clone();
+        let price = value.max(0) as u32;
+        
+        crate::trade::TradeSystem::set_item_price(&item_name, price);
+        output_manager.print(format!("物品「{item_name}」的價格設置為 {price} 金幣"));
         return Ok(());
     }
     
@@ -2327,184 +1776,210 @@ fn handle_set(
     let is_me = target.to_lowercase() == "me" || target == "我";
     
     if is_me {
-        set_player_attribute(attribute, value, output_manager, game_world)
+        // 設置玩家屬性
+        match attribute.to_lowercase().as_str() {
+            "hp" => {
+                me.set_hp(value);
+                output_manager.print(format!("你的 HP 設置為 {value}"));
+            },
+            "mp" => {
+                me.mp = value;
+                output_manager.print(format!("你的 MP 設置為 {value}"));
+            },
+            "strength" | "str" | "力量" => {
+                me.set_strength(value);
+                output_manager.print(format!("你的力量設置為 {value}"));
+            },
+            "knowledge" | "kno" | "知識" => {
+                me.knowledge = value;
+                output_manager.print(format!("你的知識設置為 {value}"));
+            },
+            "sociality" | "soc" | "交誼" => {
+                me.sociality = value;
+                output_manager.print(format!("你的交誼設置為 {value}"));
+            },
+            "gold" | "金幣" | "goldcoin" => {
+                let gold_value = value.max(0) as u32;
+                me.items.insert("金幣".to_string(), gold_value);
+                output_manager.print(format!("你的金幣設置為 {gold_value}"));                
+            },
+            "appearance" | "顏值" => {
+                me.set_appearance(value);
+                output_manager.print(format!("你的顏值設置為 {value}"));
+            },
+            "build" | "體格" => {
+                me.set_build(value);
+                output_manager.print(format!("你的體格設置為 {value}"));
+            },
+            "sex" | "gender" | "性別" => {
+                let gender_str = if value == 0 { "女".to_string() } else { "男".to_string() };
+                me.set_gender(gender_str.clone());
+                output_manager.print(format!("你的性別設置為 {gender_str}"));
+            },
+            _ => {
+                output_manager.set_status(format!("未知屬性: {attribute}，支持: hp, mp, strength, knowledge, sociality, gold/金幣, appearance/顏值, build/體格, sex/性別"));
+            }
+        }
+        me.update_description();
+        let person_dir = format!("{}/persons", game_world.world_dir);
+        let _ = me.save(&person_dir, "me");
     } else {
-        set_npc_attribute(target, attribute, value, output_manager, game_world)
-    }
-}
-
-/// 設置玩家屬性
-fn set_player_attribute(
-    attribute: String,
-    value: i32,
-    output_manager: &mut OutputManager,
-    game_world: &mut GameWorld,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let Some(me) = game_world.npc_manager.get_npc_mut("me") else {
-        output_manager.print("無法取得當前角色資訊".to_string());
-        return Ok(());
-    };
-    
-    match attribute.to_lowercase().as_str() {
-        "hp" => {
-            me.set_hp(value);
-            output_manager.print(format!("你的 HP 設置為 {value}"));
-        },
-        "mp" => {
-            me.mp = value;
-            output_manager.print(format!("你的 MP 設置為 {value}"));
-        },
-        "strength" | "str" | "力量" => {
-            me.set_strength(value);
-            output_manager.print(format!("你的力量設置為 {value}"));
-        },
-        "knowledge" | "kno" | "知識" => {
-            me.knowledge = value;
-            output_manager.print(format!("你的知識設置為 {value}"));
-        },
-        "sociality" | "soc" | "交誼" => {
-            me.sociality = value;
-            output_manager.print(format!("你的交誼設置為 {value}"));
-        },
-        "gold" | "金幣" | "goldcoin" => {
-            let gold_value = value.max(0) as u32;
-            me.items.insert("金幣".to_string(), gold_value);
-            output_manager.print(format!("你的金幣設置為 {gold_value}"));                
-        },
-        "appearance" | "顏值" => {
-            me.set_appearance(value);
-            output_manager.print(format!("你的顏值設置為 {value}"));
-        },
-        "build" | "體格" => {
-            me.set_build(value);
-            output_manager.print(format!("你的體格設置為 {value}"));
-        },
-        "sex" | "gender" | "性別" => {
-            let gender_str = if value == 0 { "女".to_string() } else { "男".to_string() };
-            me.set_gender(gender_str.clone());
-            output_manager.print(format!("你的性別設置為 {gender_str}"));
-        },
-        _ => {
-            output_manager.set_status(format!("未知屬性: {attribute}，支持: hp, mp, strength, knowledge, sociality, gold/金幣, appearance/顏值, build/體格, sex/性別"));
+        // 設置 NPC 屬性
+        if let Some(npc) = game_world.npc_manager.get_npc_mut(&target) {
+            match attribute.to_lowercase().as_str() {
+                "hp" => {
+                    npc.set_hp(value);
+                    output_manager.print(format!("{target}的 HP 設置為 {value}"));
+                },
+                "mp" => {
+                    npc.mp = value;
+                    output_manager.print(format!("{target}的 MP 設置為 {value}"));
+                },
+                "strength" | "str" | "力量" => {
+                    npc.set_strength(value);
+                    output_manager.print(format!("{target}的力量設置為 {value}"));
+                },
+                "knowledge" | "kno" | "知識" => {
+                    npc.knowledge = value;
+                    output_manager.print(format!("{target}的知識設置為 {value}"));
+                },
+                "sociality" | "soc" | "交誼" => {
+                    npc.sociality = value;
+                    output_manager.print(format!("{target}的交誼設置為 {value}"));
+                },
+                "gold" | "金幣" | "goldcoin" => {
+                    let gold_value = value.max(0) as u32;
+                    npc.items.insert("金幣".to_string(), gold_value);
+                    output_manager.print(format!("{target}的金幣設置為 {gold_value}"));
+                },
+                "appearance" | "顏值" => {
+                    npc.set_appearance(value);
+                    output_manager.print(format!("{target}的顏值設置為 {value}"));
+                },
+                "build" | "體格" => {
+                    npc.set_build(value);
+                    output_manager.print(format!("{target}的體格設置為 {value}"));
+                },
+                "sex" | "gender" | "性別" => {
+                    let gender_str = if value == 0 { "女".to_string() } else { "男".to_string() };
+                    npc.set_gender(gender_str.clone());
+                    output_manager.print(format!("{target}的性別設置為 {gender_str}"));
+                },
+                _ => {
+                    output_manager.set_status(format!("未知屬性: {attribute}，支持: hp, mp, strength, knowledge, sociality, gold/金幣, appearance/顏值, build/體格, sex/性別"));
+                }
+            }
+            npc.update_description();
+        } else {
+            output_manager.set_status(format!("找不到 NPC: {target}"));
         }
     }
-    me.update_description();
     
-    // 保存玩家（me 已經是從 NpcManager 傳來的）
-    let person_dir = format!("{}/persons", game_world.world_dir);
-    let _ = me.save(&person_dir, "me");
     Ok(())
 }
 
-/// 設置 NPC 屬性
-fn set_npc_attribute(
-    target: String,
-    attribute: String,
-    value: i32,
+/// 處理切換操控角色命令
+fn handle_switch_control(
+    npc_name: String,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &mut Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let Some(npc) = game_world.npc_manager.get_npc_mut(&target) else {
-        output_manager.set_status(format!("找不到 NPC: {target}"));
-        return Ok(());
-    };
-    
-    match attribute.to_lowercase().as_str() {
-        "hp" => {
-            npc.set_hp(value);
-            output_manager.print(format!("{target}的 HP 設置為 {value}"));
-        },
-        "mp" => {
-            npc.mp = value;
-            output_manager.print(format!("{target}的 MP 設置為 {value}"));
-        },
-        "strength" | "str" | "力量" => {
-            npc.set_strength(value);
-            output_manager.print(format!("{target}的力量設置為 {value}"));
-        },
-        "knowledge" | "kno" | "知識" => {
-            npc.knowledge = value;
-            output_manager.print(format!("{target}的知識設置為 {value}"));
-        },
-        "sociality" | "soc" | "交誼" => {
-            npc.sociality = value;
-            output_manager.print(format!("{target}的交誼設置為 {value}"));
-        },
-        "gold" | "金幣" | "goldcoin" => {
-            let gold_value = value.max(0) as u32;
-            npc.items.insert("金幣".to_string(), gold_value);
-            output_manager.print(format!("{target}的金幣設置為 {gold_value}"));
-        },
-        "appearance" | "顏值" => {
-            npc.set_appearance(value);
-            output_manager.print(format!("{target}的顏值設置為 {value}"));
-        },
-        "build" | "體格" => {
-            npc.set_build(value);
-            output_manager.print(format!("{target}的體格設置為 {value}"));
-        },
-        "sex" | "gender" | "性別" => {
-            let gender_str = if value == 0 { "女".to_string() } else { "男".to_string() };
-            npc.set_gender(gender_str.clone());
-            output_manager.print(format!("{target}的性別設置為 {gender_str}"));
-        },
-        _ => {
-            output_manager.set_status(format!("未知屬性: {attribute}"));
-        }
+    // 步驟1: 如果當前控制的不是原始玩家，先把狀態同步回去並重新加入 NPC 列表
+    if game_world.current_controlled_id != "me" {
+        // 將當前操控的角色（me）加回 NPC 列表
+        let npc_to_restore = me.clone();
+        let id = game_world.current_controlled_id.clone();
+        // 使用名字作為別名
+        let aliases = vec![npc_to_restore.name.clone()];
+        game_world.npc_manager.add_npc(id, npc_to_restore, aliases);
+    } else {
+        // 如果當前控制的是原始玩家，更新 original_player 的狀態
+        game_world.original_player = Some(me.clone());
     }
-    npc.update_description();
+    
+    // 步驟 3: 檢查是否切換回原始玩家
+    if npc_name.to_lowercase() == "me" || npc_name == "我" || npc_name.to_lowercase() == "player" {
+        if let Some(original) = &game_world.original_player {
+            *me = original.clone();
+            game_world.current_controlled_id = "me".to_string();
+            output_manager.print("已切換回原始角色".to_string());
+            output_manager.set_status(format!("現在操控: {}", me.name));
+        } else {
+            output_manager.set_status("你本來就是原始角色！".to_string());
+        }
+        return Ok(())
+    }
+    
+    // 步驟 4: 切換到指定 NPC（並從 NPC 列表中移除）
+    if let Some(npc) = game_world.npc_manager.remove_npc(&npc_name) {
+        let npc_id = npc_name.clone();
+        *me = npc;  // 直接使用移除的 NPC，不需要克隆
+        game_world.current_controlled_id = npc_id;
+        
+        output_manager.print(format!("已切換控制角色為: {}", me.name));
+        output_manager.set_status(format!("現在操控: {}", me.name));
+    } else {
+        output_manager.set_status(format!("找不到 NPC: {npc_name}"));
+    }
+    
     Ok(())
 }
 
-/// 處理切換控制角色命令
-/// 
-/// 切換當前操控的角色
-/// 將舊角色保存回 NpcManager，載入新角色
-/// 
-/// # 參數
-/// * `npc_name` - 目標角色名稱（"me" 表示切換回原始玩家）
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
-/// * `me` - 當前操控的角色（會被修改）
 /// 處理查看 NPC 商品
-/// 處理交易命令
-/// 
-/// 開始與 NPC 交易或顯示交易選單
-/// 從 NpcManager 獲取當前角色位置和 NPC 信息
-/// 
-/// # 參數
-/// * `npc_name` - NPC 名稱或 ID
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
-/// * `interaction_menu` - 交互選單
 fn handle_trade(
     npc_name: String,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &Person,
     interaction_menu: &mut Option<Menu>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // 獲取當前角色位置
-    let (x, y) = {
-        let Some(me) = get_current_controlled(game_world) else {
-            output_manager.print("無法取得當前角色資訊".to_string());
-            return Ok(());
-        };
-        (me.x, me.y)
-    };
-    
     // 檢查當前是否已經在交易狀態中
-    let already_trading = is_already_trading(&game_world.interaction_state);
-    
-    // 查找 NPC
-    let (npc_found, npc_id, npc_display_name, goods_data) = find_trading_npc(
-        &npc_name,
-        already_trading,
-        x,
-        y,
-        &game_world.current_map_name,
-        &game_world.interaction_state,
-        game_world,
+    let already_trading = matches!(
+        game_world.interaction_state,
+        crate::world::InteractionState::Trading { .. } |
+        crate::world::InteractionState::Buying { .. } |
+        crate::world::InteractionState::Selling { .. }
     );
+    
+    // 如果已經在交易中，npc_name 就是 npc_id，不需要再檢查位置
+    // 如果是新交易，需要檢查 NPC 是否在附近
+    let (npc_found, npc_id, npc_display_name, goods_data) = if already_trading {
+        // 已經在交易中，直接使用 npc_name（實際上是 npc_id）
+        if let Some(npc) = game_world.npc_manager.get_npc(&npc_name) {
+            let npc_id = npc_name.clone();
+            let display = npc.name.clone();
+            
+            // 如果是 Buying 狀態，收集商品資料
+            let goods = if matches!(game_world.interaction_state, crate::world::InteractionState::Buying { .. }) {
+                Some(crate::trade::TradeSystem::get_npc_goods(npc))
+            } else {
+                None
+            };
+            
+            (true, npc_id, display, goods)
+        } else {
+            (false, String::new(), String::new(), None)
+        }
+    } else {
+        // 新交易，需要檢查 NPC 是否在同一位置
+        let npcs_here = game_world.npc_manager.get_npcs_with_ids_at_in_map(&game_world.current_map_name, me.x, me.y);
+        
+        // 在當前位置的 NPC 中查找（支援名稱和別名）
+        let npc_opt = npcs_here.iter().find(|(id, npc)| {
+            // 通過 ID 或名字匹配
+            id.to_lowercase() == npc_name.to_lowercase() || 
+            npc.name.to_lowercase() == npc_name.to_lowercase()
+        });
+        
+        if let Some((id, npc)) = npc_opt {
+            let npc_id = id.clone();
+            let display = npc.name.clone();
+            (true, npc_id, display, None)
+        } else {
+            (false, String::new(), String::new(), None)
+        }
+    }; // 釋放 npc_manager 的借用
     
     if !npc_found {
         output_manager.set_status(format!("此處找不到 {npc_name}"));
@@ -2512,262 +1987,127 @@ fn handle_trade(
     }
     
     // 根據互動狀態決定顯示什麼選單
-    handle_trade_menu(
-        &npc_id,
-        &npc_display_name,
-        goods_data,
-        output_manager,
-        game_world,
-        interaction_menu,
-    )
-}
-
-/// 檢查是否已在交易中
-fn is_already_trading(interaction_state: &crate::world::InteractionState) -> bool {
-    matches!(
-        interaction_state,
-        crate::world::InteractionState::Trading { .. } |
-        crate::world::InteractionState::Buying { .. } |
-        crate::world::InteractionState::Selling { .. }
-    )
-}
-
-/// 查找交易 NPC
-fn find_trading_npc(
-    npc_name: &str,
-    already_trading: bool,
-    player_x: usize,
-    player_y: usize,
-    current_map: &str,
-    interaction_state: &crate::world::InteractionState,
-    game_world: &GameWorld,
-) -> (bool, String, String, Option<Vec<(String, u32, u32)>>) {
-    if already_trading {
-        find_npc_in_trading_state(npc_name, interaction_state, game_world)
-    } else {
-        find_npc_nearby(npc_name, player_x, player_y, current_map, game_world)
-    }
-}
-
-/// 在交易狀態中查找 NPC
-fn find_npc_in_trading_state(
-    npc_id: &str,
-    interaction_state: &crate::world::InteractionState,
-    game_world: &GameWorld,
-) -> (bool, String, String, Option<Vec<(String, u32, u32)>>) {
-    if let Some(npc) = game_world.npc_manager.get_npc(npc_id) {
-        let display = npc.name.clone();
-        
-        // 如果是 Buying 狀態，收集商品資料
-        let goods = if matches!(interaction_state, crate::world::InteractionState::Buying { .. }) {
-            Some(crate::trade::TradeSystem::get_npc_goods(npc))
-        } else {
-            None
-        };
-        
-        (true, npc_id.to_string(), display, goods)
-    } else {
-        (false, String::new(), String::new(), None)
-    }
-}
-
-/// 在附近查找 NPC
-fn find_npc_nearby(
-    npc_name: &str,
-    x: usize,
-    y: usize,
-    current_map: &str,
-    game_world: &GameWorld,
-) -> (bool, String, String, Option<Vec<(String, u32, u32)>>) {
-    let npcs_here = game_world.npc_manager
-        .get_npcs_with_ids_at_in_map(current_map, x, y);
-    
-    // 在當前位置的 NPC 中查找（支援名稱和別名）
-    let npc_opt = npcs_here.iter().find(|(id, npc)| {
-        id.to_lowercase() == npc_name.to_lowercase() || 
-        npc.name.to_lowercase() == npc_name.to_lowercase()
-    });
-    
-    if let Some((id, npc)) = npc_opt {
-        (true, id.clone(), npc.name.clone(), None)
-    } else {
-        (false, String::new(), String::new(), None)
-    }
-}
-
-/// 處理交易選單顯示
-fn handle_trade_menu(
-    npc_id: &str,
-    npc_display_name: &str,
-    goods_data: Option<Vec<(String, u32, u32)>>,
-    output_manager: &mut OutputManager,
-    game_world: &mut GameWorld,
-    interaction_menu: &mut Option<Menu>,
-) -> Result<(), Box<dyn std::error::Error>> {
     match &game_world.interaction_state {
         crate::world::InteractionState::Buying { .. } => {
-            show_buying_menu(npc_id, npc_display_name, goods_data, output_manager, game_world, interaction_menu)
+            // 顯示購買物品選單
+            if let Some(goods) = goods_data {
+                if goods.is_empty() {
+                    output_manager.print(format!("{npc_display_name} 目前沒有商品"));
+                    game_world.interaction_state = crate::world::InteractionState::None;
+                    // 取消 NPC 的互動狀態
+                    if let Some(npc_mut) = game_world.npc_manager.get_npc_mut(&npc_id) {
+                        npc_mut.is_interacting = false;
+                    }
+                } else {
+                    let mut items = Vec::new();
+                    for (item_name, quantity, price) in goods {
+                        let display_name = item_registry::get_item_display_name(&item_name);
+                        items.push(format!("{display_name} x{quantity} - {price} 金幣"));
+                    }
+                    items.push("返回".to_string());
+                    
+                    let mut menu = Menu::new(
+                        format!("購買物品 - {npc_display_name}"),
+                        items,
+                    );
+                    menu.activate();
+                    *interaction_menu = Some(menu);
+                }
+            }
         },
         crate::world::InteractionState::Selling { .. } => {
-            show_selling_menu(npc_id, npc_display_name, output_manager, game_world, interaction_menu)
+            // 顯示出售物品選單（顯示當前控制的角色持有的物品）
+            let player_items = crate::trade::TradeSystem::get_player_items(me);
+            
+            if player_items.is_empty() {
+                output_manager.print("你目前沒有可以出售的物品".to_string());
+                game_world.interaction_state = crate::world::InteractionState::None;
+                // 取消 NPC 的互動狀態
+                if let Some(npc_mut) = game_world.npc_manager.get_npc_mut(&npc_id) {
+                    npc_mut.is_interacting = false;
+                }
+            } else {
+                let mut items = Vec::new();
+                for (item_name, quantity, price) in player_items {
+                    let display_name = item_registry::get_item_display_name(&item_name);
+                    items.push(format!("{display_name} x{quantity} - {price} 金幣/個"));
+                }
+                items.push("返回".to_string());
+                
+                let mut menu = Menu::new(
+                    format!("出售物品 - {npc_display_name}"),
+                    items,
+                );
+                menu.activate();
+                *interaction_menu = Some(menu);
+            }
         },
         _ => {
-            show_main_trade_menu(npc_id, npc_display_name, output_manager, game_world, interaction_menu)
-        }
-    }
-}
-
-/// 顯示購買物品選單
-fn show_buying_menu(
-    npc_id: &str,
-    npc_display_name: &str,
-    goods_data: Option<Vec<(String, u32, u32)>>,
-    output_manager: &mut OutputManager,
-    game_world: &mut GameWorld,
-    interaction_menu: &mut Option<Menu>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    if let Some(goods) = goods_data {
-        if goods.is_empty() {
-            output_manager.print(format!("{npc_display_name} 目前沒有商品"));
-            game_world.interaction_state = crate::world::InteractionState::None;
-            if let Some(npc_mut) = game_world.npc_manager.get_npc_mut(npc_id) {
-                npc_mut.is_interacting = false;
+            // 顯示交易主選單（買/賣選擇）
+            game_world.interaction_state = crate::world::InteractionState::Trading { 
+                npc_name: npc_id.clone() 
+            };
+            
+            // 設定 NPC 為互動中狀態
+            if let Some(npc_mut) = game_world.npc_manager.get_npc_mut(&npc_id) {
+                npc_mut.is_interacting = true;
             }
-        } else {
-            let mut items = Vec::new();
-            for (item_name, quantity, price) in goods {
-                let display_name = item_registry::get_item_display_name(&item_name);
-                items.push(format!("{display_name} x{quantity} - {price} 金幣"));
-            }
-            items.push("返回".to_string());
             
             let mut menu = Menu::new(
-                format!("購買物品 - {npc_display_name}"),
-                items,
+                format!("與 {npc_display_name} 交易"),
+                vec![
+                    "購買物品".to_string(),
+                    "出售物品".to_string(),
+                    "離開".to_string(),
+                ],
             );
             menu.activate();
             *interaction_menu = Some(menu);
+            
+            output_manager.print(format!("開始與 {npc_display_name} 交易"));
         }
     }
-    Ok(())
-}
-
-/// 顯示出售物品選單
-fn show_selling_menu(
-    npc_id: &str,
-    npc_display_name: &str,
-    output_manager: &mut OutputManager,
-    game_world: &mut GameWorld,
-    interaction_menu: &mut Option<Menu>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    // 獲取當前角色的物品
-    let player_items = {
-        let Some(me) = get_current_controlled(game_world) else {
-            return Ok(());
-        };
-        crate::trade::TradeSystem::get_player_items(me)
-    };
     
-    if player_items.is_empty() {
-        output_manager.print("你目前沒有可以出售的物品".to_string());
-        game_world.interaction_state = crate::world::InteractionState::None;
-        if let Some(npc_mut) = game_world.npc_manager.get_npc_mut(npc_id) {
-            npc_mut.is_interacting = false;
-        }
-    } else {
-        let mut items = Vec::new();
-        for (item_name, quantity, price) in player_items {
-            let display_name = item_registry::get_item_display_name(&item_name);
-            items.push(format!("{display_name} x{quantity} - {price} 金幣/個"));
-        }
-        items.push("返回".to_string());
-        
-        let mut menu = Menu::new(
-            format!("出售物品 - {npc_display_name}"),
-            items,
-        );
-        menu.activate();
-        *interaction_menu = Some(menu);
-    }
-    Ok(())
-}
-
-/// 顯示交易主選單
-fn show_main_trade_menu(
-    npc_id: &str,
-    npc_display_name: &str,
-    output_manager: &mut OutputManager,
-    game_world: &mut GameWorld,
-    interaction_menu: &mut Option<Menu>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    game_world.interaction_state = crate::world::InteractionState::Trading { 
-        npc_name: npc_id.to_string() 
-    };
-    
-    // 設定 NPC 為互動中狀態
-    if let Some(npc_mut) = game_world.npc_manager.get_npc_mut(npc_id) {
-        npc_mut.is_interacting = true;
-    }
-    
-    let mut menu = Menu::new(
-        format!("與 {npc_display_name} 交易"),
-        vec![
-            "購買物品".to_string(),
-            "出售物品".to_string(),
-            "離開".to_string(),
-        ],
-    );
-    menu.activate();
-    *interaction_menu = Some(menu);
-    
-    output_manager.print(format!("開始與 {npc_display_name} 交易"));
     Ok(())
 }
 
 /// 處理購買物品
-/// 
-/// 從 NPC 購買指定物品
-/// 從 NpcManager 獲取當前控制角色
-/// 
-/// # 參數
-/// * `npc_name` - NPC ID
-/// * `item_name` - 物品名稱
-/// * `quantity` - 購買數量
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
-/// * `interaction_menu` - 交互選單
 fn handle_buy(
     npc_name: String,
     item_name: String,
     quantity: u32,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &mut Person,
     interaction_menu: &mut Option<Menu>,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // npc_name 實際上是 npc_id（從 InteractionState 傳來）
     let npc_id = npc_name;
+    
+    // 解析物品名稱
     let resolved_item = item_registry::resolve_item_name(&item_name);
+    
+    // 計算價格
     let price = crate::trade::TradeSystem::calculate_buy_price(&resolved_item, quantity);
     
-    // 執行交易
-    let result = crate::trade::TradeSystem::buy_from_npc(
-        game_world,
-        &npc_id,
-        &resolved_item,
-        quantity,
-        price,
-    );
+    // 直接執行交易（不需要再次檢查位置，因為交易已經開始）
+    let result = crate::trade::TradeSystem::buy_from_npc(game_world, me, &npc_id, &resolved_item, quantity, price);
     
     match result {
         crate::trade::TradeResult::Success(msg) => {
             output_manager.print(msg);
             
-            // 購買成功後，保持 Buying 狀態並重新顯示購買選單
+            // 保存玩家
+            let person_dir = format!("{}/persons", game_world.world_dir);
+            let _ = me.save(&person_dir, "me");
+            
+            // 購買成功後，保持 Buying 狀態並重新顯示購買選單（數據會刷新）
             game_world.interaction_state = crate::world::InteractionState::Buying { 
                 npc_name: npc_id.clone() 
             };
             
             // 重新調用 handle_trade 以刷新選單
-            handle_trade(npc_id, output_manager, game_world, interaction_menu)?;
+            handle_trade(npc_id, output_manager, game_world, me, interaction_menu)?;
         },
         crate::trade::TradeResult::Failed(msg) => {
             output_manager.set_status(msg);
@@ -2778,49 +2118,42 @@ fn handle_buy(
 }
 
 /// 處理出售物品
-/// 
-/// 將物品出售給 NPC
-/// 從 NpcManager 獲取當前控制角色
-/// 
-/// # 參數
-/// * `npc_name` - NPC ID
-/// * `item_name` - 物品名稱
-/// * `quantity` - 出售數量
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
-/// * `interaction_menu` - 交互選單
 fn handle_sell(
     npc_name: String,
     item_name: String,
     quantity: u32,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &mut Person,
     interaction_menu: &mut Option<Menu>,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    // npc_name 實際上是 npc_id（從 InteractionState 傳來）
     let npc_id = npc_name;
+    
+    // 解析物品名稱
     let resolved_item = item_registry::resolve_item_name(&item_name);
+    
+    // 計算價格
     let price = crate::trade::TradeSystem::calculate_sell_price(&resolved_item, quantity);
     
-    // 執行交易
-    let result = crate::trade::TradeSystem::sell_to_npc(
-        game_world,
-        &npc_id,
-        &resolved_item,
-        quantity,
-        price,
-    );
+    // 直接執行交易（不需要再次檢查位置，因為交易已經開始）
+    let result = crate::trade::TradeSystem::sell_to_npc(game_world, me, &npc_id, &resolved_item, quantity, price);
     
     match result {
         crate::trade::TradeResult::Success(msg) => {
             output_manager.print(msg);
             
-            // 出售成功後，保持 Selling 狀態並重新顯示出售選單
+            // 保存玩家
+            let person_dir = format!("{}/persons", game_world.world_dir);
+            let _ = me.save(&person_dir, "me");
+            
+            // 出售成功後，保持 Selling 狀態並重新顯示出售選單（數據會刷新）
             game_world.interaction_state = crate::world::InteractionState::Selling { 
                 npc_name: npc_id.clone() 
             };
             
             // 重新調用 handle_trade 以刷新選單
-            handle_trade(npc_id, output_manager, game_world, interaction_menu)?;
+            handle_trade(npc_id, output_manager, game_world, me, interaction_menu)?;
         },
         crate::trade::TradeResult::Failed(msg) => {
             output_manager.set_status(msg);
@@ -2831,50 +2164,33 @@ fn handle_sell(
 }
 
 /// 處理給予物品給 NPC
+/// 同步本地 me 到 NpcManager
 /// 
-/// 將物品從玩家背包轉移到指定 NPC
-/// 並增加 NPC 對玩家的好感度
+/// 當本地 me 變數被修改後，需要調用此函數將變更同步到 NpcManager
+/// 確保 inventory 等查詢命令能看到最新狀態
 /// 
 /// # 參數
-/// * `npc_name` - NPC 名稱
-/// * `item_name` - 物品名稱
-/// * `quantity` - 數量
-/// * `output_manager` - 輸出管理器
 /// * `game_world` - 遊戲世界
 /// * `me` - 當前控制的角色
-/// 
-/// # 返回
-/// * `Result<(), Box<dyn std::error::Error>>` - 執行結果
-/// 處理 give 命令 - 給予物品給 NPC
-/// 
-/// 將指定數量的物品從玩家轉移到 NPC
-/// 增加 NPC 好感度作為獎勵
-/// 從 NpcManager 獲取玩家和目標 NPC
-/// 
-/// # 參數
-/// * `npc_name` - NPC 名稱
-/// * `item_name` - 物品名稱
-/// * `quantity` - 數量
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
+fn sync_me_to_npc_manager(game_world: &mut GameWorld, me: &Person) {
+    let aliases = vec![me.name.clone()];
+    game_world.npc_manager.add_npc(
+        game_world.current_controlled_id.clone(),
+        me.clone(),
+        aliases
+    );
+}
+
 fn handle_give(
     npc_name: String,
     item_name: String,
     quantity: u32,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &mut Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // 獲取玩家位置
-    let (x, y) = {
-        let Some(me) = get_current_controlled(game_world) else {
-            output_manager.print("無法取得當前角色資訊".to_string());
-            return Ok(());
-        };
-        (me.x, me.y)
-    };
-    
     // 檢查 NPC 是否在同一位置
-    let npcs_here: Vec<&crate::person::Person> = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, x, y);
+    let npcs_here: Vec<&crate::person::Person> = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, me.x, me.y);
     
     let npc_found = npcs_here.iter().any(|n| {
         n.name.to_lowercase() == npc_name.to_lowercase() ||
@@ -2890,40 +2206,26 @@ fn handle_give(
     let resolved_item = item_registry::resolve_item_name(&item_name);
     
     // 檢查玩家是否擁有該物品
-    let player_quantity = {
-        let Some(me) = get_current_controlled(game_world) else {
-            return Ok(());
-        };
-        
-        if !me.items.contains_key(&resolved_item) {
-            output_manager.set_status(format!("你沒有 {resolved_item}"));
-            return Ok(())
-        }
-        
-        me.get_item_count(&resolved_item)
-    };
+    if !me.items.contains_key(&resolved_item) {
+        output_manager.set_status(format!("你沒有 {resolved_item}"));
+        return Ok(())
+    }
     
+    let player_quantity = me.get_item_count(&resolved_item);
     if player_quantity < quantity {
         output_manager.set_status(format!("你只有 {player_quantity} 個 {resolved_item}，不足 {quantity} 個"));
         return Ok(())
     }
     
     // 從玩家背包移除物品
-    let removed = {
-        let Some(me) = get_current_controlled_mut(game_world) else {
-            return Ok(());
-        };
-        me.drop_items(&resolved_item, quantity).is_some()
-    };
-    
-    if !removed {
+    if me.drop_items(&resolved_item, quantity).is_none() {
         output_manager.set_status(format!("無法移除物品 {resolved_item}"));
         return Ok(())
     }
     
     // 將物品加到 NPC 背包
     let npc_id = {
-        let npcs_at_pos = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, x, y);
+        let npcs_at_pos = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, me.x, me.y);
         npcs_at_pos.iter()
             .find(|n| 
                 n.name.to_lowercase() == npc_name.to_lowercase()
@@ -2942,10 +2244,11 @@ fn handle_give(
             output_manager.print(format!("💖 {npc_name} 對你的好感度增加了！(現在: {})", npc.relationship));
             
             // 保存玩家
-            if let Some(me) = get_current_controlled(game_world) {
-                let person_dir = format!("{}/persons", game_world.world_dir);
-                let _ = me.save(&person_dir, "me");
-            }
+            let person_dir = format!("{}/persons", game_world.world_dir);
+            let _ = me.save(&person_dir, "me");
+            
+            // 同步 me 到 NpcManager（修復 inventory 不更新問題）
+            sync_me_to_npc_manager(game_world, me);
         } else {
             output_manager.set_status(format!("無法找到 NPC {npc_name}"));
         }
@@ -3162,55 +2465,29 @@ fn handle_change_relationship(
 }
 
 /// 處理與 NPC 對話
-/// 處理對話命令
-/// 
-/// 與指定 NPC 開始對話，使用指定話題
-/// 從 NpcManager 獲取當前角色和目標 NPC
-/// 
-/// # 參數
-/// * `npc_name` - NPC 名稱
-/// * `topic` - 對話話題
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 fn handle_talk(
     npc_name: String,
     topic: String,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &mut Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // 獲取當前角色位置
-    let (x, y) = {
-        let Some(me) = get_current_controlled(game_world) else {
-            output_manager.print("無法取得當前角色資訊".to_string());
-            return Ok(());
-        };
-        (me.x, me.y)
-    };
-    
     // 檢查 NPC 是否在同一位置
     let npcs_here: Vec<_> = game_world.npc_manager
-        .get_npcs_at_in_map(&game_world.current_map_name, x, y)
+        .get_npcs_at_in_map(&game_world.current_map_name, me.x, me.y)
         .into_iter()
         .cloned()
         .collect();
     
-    let npc_to_talk = npcs_here.iter()
-        .find(|n| n.name.to_lowercase() == npc_name.to_lowercase());
+    let npc_to_talk = npcs_here.iter().find(|n| n.name.to_lowercase() == npc_name.to_lowercase());
     
     if let Some(npc) = npc_to_talk {
         // 觸發對話（使用指定話題，根據玩家屬性評估條件）
-        let Some(me) = get_current_controlled(game_world) else {
-            return Ok(());
-        };
-        
         if let Some(dialogue) = npc.try_talk(&topic, me) {
             output_manager.print(format!("💬 跟{}開始{topic}...", npc.name));
             output_manager.print(format!("{} 說：「{}」", npc.name, dialogue));
         } else {
-            output_manager.print(format!(
-                "{} 對「{}」這個話題似乎不想說話。",
-                npc.name, topic
-            ));
+            output_manager.print(format!("{} 對「{}」這個話題似乎不想說話。", npc.name, topic));
         }
     } else {
         output_manager.set_status(format!("此處找不到 {npc_name}"));
@@ -3245,169 +2522,100 @@ fn try_stop_npc(
 }
 
 /// 處理 wait 命令 - 叫住 NPC
-/// 
-/// 叫住指定 NPC 或當前位置所有 NPC
-/// 從 NpcManager 獲取當前角色位置和 NPC
-/// 
-/// # 參數
-/// * `npc_name` - NPC 名稱（空字串表示叫住所有）
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 fn handle_wait(
     npc_name: String,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // 獲取當前角色位置
-    let (x, y) = {
-        let Some(me) = get_current_controlled(game_world) else {
-            output_manager.print("無法取得當前角色資訊".to_string());
-            return Ok(());
-        };
-        (me.x, me.y)
-    };
-    
     // 如果 npc_name 為空，叫住當前位置所有的 NPC
     if npc_name.is_empty() {
-        wait_all_npcs_at_location(x, y, game_world, output_manager)?;
-    } else {
-        wait_specific_npc(&npc_name, x, y, game_world, output_manager)?;
-    }
-    
-    Ok(())
-}
-
-/// 叫住當前位置所有 NPC
-fn wait_all_npcs_at_location(
-    x: usize,
-    y: usize,
-    game_world: &mut GameWorld,
-    output_manager: &mut OutputManager,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let npcs_here = game_world.npc_manager
-        .get_npcs_at_in_map(&game_world.current_map_name, x, y);
-    
-    if npcs_here.is_empty() {
-        output_manager.print("此處沒有 NPC".to_string());
-        return Ok(());
-    }
-    
-    let npc_names: Vec<String> = npcs_here.iter()
-        .map(|npc| npc.name.clone())
-        .collect();
-    let mut success_count = 0;
-    let total_count = npc_names.len();
-    
-    for name in npc_names {
-        if let Some(npc) = game_world.npc_manager.get_npc_mut(&name) {
-            if try_stop_npc(npc, output_manager) {
-                success_count += 1;
+        let npcs_here = game_world.npc_manager.get_npcs_at_in_map(&game_world.current_map_name, me.x, me.y);
+        
+        if npcs_here.is_empty() {
+            output_manager.print("此處沒有 NPC".to_string());
+            return Ok(());
+        }
+        
+        let npc_names: Vec<String> = npcs_here.iter().map(|npc| npc.name.clone()).collect();
+        let mut success_count = 0;
+        let total_count = npc_names.len();
+        
+        for name in npc_names {
+            if let Some(npc) = game_world.npc_manager.get_npc_mut(&name) {
+                if try_stop_npc(npc, output_manager) {
+                    success_count += 1;
+                }
             }
         }
-    }
-    
-    output_manager.set_status(format!("叫住了 {success_count}/{total_count} 個 NPC"));
-    Ok(())
-}
-
-/// 叫住指定 NPC
-fn wait_specific_npc(
-    npc_name: &str,
-    player_x: usize,
-    player_y: usize,
-    game_world: &mut GameWorld,
-    output_manager: &mut OutputManager,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let Some(npc) = game_world.npc_manager.get_npc_mut(npc_name) else {
+        
+        output_manager.set_status(format!("叫住了 {success_count}/{total_count} 個 NPC"));
+        return Ok(());
+    } 
+    // 指定了 NPC 名稱的情況
+    else if let Some(npc) =  game_world.npc_manager.get_npc_mut(&npc_name) {
+        if npc.map != game_world.current_map_name {
+            output_manager.print(format!("{} 不在這個地圖", npc.name));
+            return Ok(());
+        }
+        
+        let distance = ((npc.x as i32 - me.x as i32).abs() + (npc.y as i32 - me.y as i32).abs()) as usize;
+        
+        if distance > 1 {
+            output_manager.print(format!("{} 距離太遠，無法叫住", npc.name));
+            return Ok(());
+        }
+        
+        try_stop_npc(npc, output_manager);
+    } else {
         output_manager.set_status(format!("找不到 {npc_name}"));
-        return Ok(());
-    };
-    
-    // 檢查地圖
-    if npc.map != game_world.current_map_name {
-        output_manager.print(format!("{} 不在這個地圖", npc.name));
-        return Ok(());
     }
     
-    // 檢查距離
-    let distance = ((npc.x as i32 - player_x as i32).abs() 
-                  + (npc.y as i32 - player_y as i32).abs()) as usize;
-    
-    if distance > 1 {
-        output_manager.print(format!("{} 距離太遠，無法叫住", npc.name));
-        return Ok(());
-    }
-    
-    try_stop_npc(npc, output_manager);
     Ok(())
 }
 
 /// 處理組隊命令
-/// 
-/// 邀請指定 NPC 加入隊伍
-/// 從 NpcManager 獲取當前角色位置和目標 NPC
-/// 
-/// # 參數
-/// * `npc_name` - NPC 名稱
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 fn handle_party(
     npc_name: String,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // 獲取當前角色位置
-    let (x, y) = {
-        let Some(me) = get_current_controlled(game_world) else {
-            output_manager.print("無法取得當前角色資訊".to_string());
+    if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_name) {
+        // 檢查是否在同一地圖
+        if npc.map != game_world.current_map_name {
+            output_manager.print(format!("{} 不在這個地圖", npc.name));
             return Ok(());
-        };
-        (me.x, me.y)
-    };
-    
-    let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_name) else {
+        }
+        
+        // 檢查距離
+        let distance = ((npc.x as i32 - me.x as i32).abs() + (npc.y as i32 - me.y as i32).abs()) as usize;
+        if distance > 1 {
+            output_manager.print(format!("{} 距離太遠，無法組隊", npc.name));
+            return Ok(());
+        }
+        
+        // 檢查是否已經組隊
+        if npc.party_leader.is_some() {
+            output_manager.print(format!("{} 已經在隊伍中了", npc.name));
+            return Ok(());
+        }
+        
+        // 組隊成功
+        npc.party_leader = Some("me".to_string());
+        output_manager.print(format!("{} 加入了你的隊伍", npc.name));
+    } else {
         output_manager.set_status(format!("找不到 {npc_name}"));
-        return Ok(());
-    };
-    
-    // 檢查是否在同一地圖
-    if npc.map != game_world.current_map_name {
-        output_manager.print(format!("{} 不在這個地圖", npc.name));
-        return Ok(());
     }
-    
-    // 檢查距離
-    let distance = ((npc.x as i32 - x as i32).abs() 
-                  + (npc.y as i32 - y as i32).abs()) as usize;
-    if distance > 1 {
-        output_manager.print(format!("{} 距離太遠，無法組隊", npc.name));
-        return Ok(());
-    }
-    
-    // 檢查是否已經組隊
-    if npc.party_leader.is_some() {
-        output_manager.print(format!("{} 已經在隊伍中了", npc.name));
-        return Ok(());
-    }
-    
-    // 組隊成功
-    npc.party_leader = Some("me".to_string());
-    output_manager.print(format!("{} 加入了你的隊伍", npc.name));
     
     Ok(())
 }
 
 /// 處理解散隊伍命令
-/// 
-/// 解散當前所有跟隨玩家的 NPC
-/// 遍歷所有 NPC 並清除 party_leader
-/// 
-/// # 參數
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 fn handle_disband(
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    _me: &Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let mut disbanded_count = 0;
     let npc_ids = game_world.npc_manager.get_all_npc_ids();
@@ -3436,236 +2644,116 @@ fn handle_disband(
 // =================================================================
 
 /// 處理拳擊命令
-/// 
-/// 使用拳擊技能攻擊目標
-/// 從 NpcManager 獲取當前控制角色
-/// 
-/// # 參數
-/// * `target` - 目標名稱（可選）
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
-/// 處理拳擊命令
-/// 
-/// 使用拳擊技能攻擊目標
-/// 從 NpcManager 獲取當前控制角色
-/// 
-/// # 參數
-/// * `target` - 目標名稱（可選）
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 fn handle_punch(
     target: Option<String>,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &mut Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    handle_combat_skill("punch", target, output_manager, game_world)
+    handle_combat_skill("punch", target, output_manager, game_world, me)
 }
 
 /// 處理踢擊命令
-/// 
-/// 使用踢擊技能攻擊目標
-/// 從 NpcManager 獲取當前控制角色
-/// 
-/// # 參數
-/// * `target` - 目標名稱（可選）
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 fn handle_kick(
     target: Option<String>,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &mut Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    handle_combat_skill("kick", target, output_manager, game_world)
+    handle_combat_skill("kick", target, output_manager, game_world, me)
 }
 
 /// 通用戰鬥技能處理
-/// 
-/// 處理所有戰鬥技能的核心邏輯
-/// 包括目標選擇、練習模式、戰鬥開始和回合執行
-/// 從 NpcManager 獲取當前控制角色
-/// 
-/// # 參數
-/// * `skill_name` - 技能名稱
-/// * `target` - 目標名稱（可選）
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 fn handle_combat_skill(
     skill_name: &str,
     target: Option<String>,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &mut Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use crate::world::CombatState;
     
+    // 檢查是否在戰鬥中
     let in_combat = !matches!(game_world.combat_state, CombatState::None);
     
-    // 复制 combat_state 以避免借用冲突
-    let combat_state_clone = game_world.combat_state.clone();
-    
-    // 確定目標（可能進入練習模式）
-    let target_name = determine_combat_target(
-        target,
-        in_combat,
-        skill_name,
-        &combat_state_clone,
-        output_manager,
-        game_world,
-    )?;
-    
-    // 空字符串表示已處理（練習模式或無目標）
-    if target_name.is_empty() {
-        return Ok(());
-    }
-    
-    // 執行戰鬥
-    execute_combat(
-        skill_name,
-        &target_name,
-        in_combat,
-        output_manager,
-        game_world,
-    )
-}
-
-/// 確定戰鬥目標
-/// 
-/// 如果沒有目標則進入練習模式或自動選擇目標
-/// 返回空字符串表示已進入練習模式
-fn determine_combat_target(
-    target: Option<String>,
-    in_combat: bool,
-    skill_name: &str,
-    combat_state: &crate::world::CombatState,
-    output_manager: &mut OutputManager,
-    game_world: &mut GameWorld,
-) -> Result<String, Box<dyn std::error::Error>> {
-    use crate::world::CombatState;
-    
-    if let Some(t) = target {
-        return Ok(t);
-    }
-    
-    if in_combat {
-        // 在戰鬥中自動選擇第一個 NPC
-        if let CombatState::InCombat { participants, .. } = combat_state {
-            let target = participants.iter()
+    // 確定目標
+    let target_name = if let Some(t) = target {
+        t
+    } else if in_combat {
+        // 在戰鬥中且沒指定目標，自動選擇第一個NPC
+        if let CombatState::InCombat { participants, .. } = &game_world.combat_state {
+            participants.iter()
                 .find(|p| *p != "me")
                 .cloned()
                 .unwrap_or_else(|| {
                     output_manager.print("戰鬥中沒有可攻擊的目標".to_string());
                     String::new()
-                });
-            return Ok(target);
+                })
+        } else {
+            // 不在戰鬥中，沒有目標，進入練習模式
+            if let Some(msg) = me.practice_skill(skill_name, false) {
+                output_manager.print(msg);
+            } else {
+                output_manager.print(format!("未知技能: {skill_name}"));
+            }
+            return Ok(());
         }
-    }
-    
-    // 進入練習模式
-    enter_practice_mode(skill_name, output_manager, game_world);
-    Ok(String::new())
-}
-
-/// 進入技能練習模式
-fn enter_practice_mode(
-    skill_name: &str,
-    output_manager: &mut OutputManager,
-    game_world: &mut GameWorld,
-) {
-    let Some(me) = get_current_controlled_mut(game_world) else {
-        return;
+    } else {
+        // 不在戰鬥中，沒有目標，進入練習模式
+        if let Some(msg) = me.practice_skill(skill_name, false) {
+            output_manager.print(msg);
+        } else {
+            output_manager.print(format!("未知技能: {skill_name}"));
+        }
+        return Ok(());
     };
     
-    if let Some(msg) = me.practice_skill(skill_name, false) {
-        output_manager.print(msg);
-    } else {
-        output_manager.print(format!("未知技能: {skill_name}"));
-    }
-}
-
-/// 執行戰鬥
-/// 
-/// 檢查戰鬥條件，開始戰鬥，執行攻擊和回合
-fn execute_combat(
-    skill_name: &str,
-    target_name: &str,
-    in_combat: bool,
-    output_manager: &mut OutputManager,
-    game_world: &mut GameWorld,
-) -> Result<(), Box<dyn std::error::Error>> {
-    // 檢查玩家是否有足夠 HP
-    {
-        let Some(me) = get_current_controlled(game_world) else {
-            return Ok(());
-        };
-        if !me.can_start_combat() && !in_combat {
-            output_manager.print("你沒力氣戰鬥".to_string());
-            return Ok(());
-        }
-    }
-    
-    // 檢查目標 NPC
-    if !check_target_valid(target_name, in_combat, &game_world.current_map_name, game_world, output_manager)? {
+    // 空字符串表示沒有有效目標
+    if target_name.is_empty() {
         return Ok(());
     }
     
-    // 開始戰鬥（如果尚未開始）
-    if !in_combat {
-        start_combat(target_name, output_manager, game_world);
+    // 檢查玩家是否有足夠HP發動戰鬥
+    if !me.can_start_combat() && !in_combat {
+        output_manager.print("你沒力氣戰鬥".to_string());
+        return Ok(());
     }
     
-    // 執行玩家攻擊和戰鬥回合
-    execute_attack(skill_name, "me", target_name, output_manager, game_world)?;
-    execute_combat_round(output_manager, game_world)?;
+    // 檢查目標NPC
+    if let Some(target_npc) = game_world.npc_manager.get_npc(&target_name) {
+        // 檢查目標是否有足夠HP
+        if !target_npc.can_start_combat() && !in_combat {
+            output_manager.print(format!("{} 沒力氣跟你打", target_npc.name));
+            return Ok(());
+        }
+        
+        // 檢查距離
+        if target_npc.map != game_world.current_map_name || 
+           ((target_npc.x as i32 - me.x as i32).abs() + (target_npc.y as i32 - me.y as i32).abs()) > 1 {
+            output_manager.print(format!("{} 距離太遠", target_npc.name));
+            return Ok(());
+        }
+        
+        // 如果不在戰鬥中，開始戰鬥
+        if !in_combat {
+            game_world.combat_state = CombatState::InCombat {
+                participants: vec!["me".to_string(), target_name.clone()],
+                round: 1,
+            };
+            output_manager.print(format!("⚔️  戰鬥開始！你 vs {target_name}"));
+        }
+        
+        // 執行玩家攻擊
+        execute_attack(skill_name, "me", &target_name, output_manager, game_world, me)?;
+        
+        // 執行戰鬥回合（NPC行動）
+        execute_combat_round(output_manager, game_world, me)?;
+        
+    } else {
+        output_manager.print(format!("找不到 {target_name}"));
+    }
     
     Ok(())
-}
-
-/// 檢查目標是否有效
-fn check_target_valid(
-    target_name: &str,
-    in_combat: bool,
-    current_map: &str,
-    game_world: &GameWorld,
-    output_manager: &mut OutputManager,
-) -> Result<bool, Box<dyn std::error::Error>> {
-    let Some(target_npc) = game_world.npc_manager.get_npc(target_name) else {
-        output_manager.print(format!("找不到 {target_name}"));
-        return Ok(false);
-    };
-    
-    // 檢查目標是否有足夠 HP
-    if !target_npc.can_start_combat() && !in_combat {
-        output_manager.print(format!("{} 沒力氣跟你打", target_npc.name));
-        return Ok(false);
-    }
-    
-    // 檢查距離
-    let Some(me) = game_world.npc_manager.get_npc("me") else {
-        return Ok(false);
-    };
-    
-    if target_npc.map != current_map || 
-       ((target_npc.x as i32 - me.x as i32).abs() + 
-        (target_npc.y as i32 - me.y as i32).abs()) > 1 {
-        output_manager.print(format!("{} 距離太遠", target_npc.name));
-        return Ok(false);
-    }
-    
-    Ok(true)
-}
-
-/// 開始戰鬥
-fn start_combat(
-    target_name: &str,
-    output_manager: &mut OutputManager,
-    game_world: &mut GameWorld,
-) {
-    use crate::world::CombatState;
-    
-    game_world.combat_state = CombatState::InCombat {
-        participants: vec!["me".to_string(), target_name.to_string()],
-        round: 1,
-    };
-    output_manager.print(format!("⚔️  戰鬥開始！你 vs {target_name}"));
 }
 
 /// 執行攻擊
@@ -3675,13 +2763,10 @@ fn execute_attack(
     defender_id: &str,
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &mut Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // 獲取攻擊者
     let (attacker_name, skill_dialogue, damage, cooldown_ready) = if attacker_id == "me" {
-        let Some(me) = game_world.npc_manager.get_npc(attacker_id) else {
-            return Ok(());
-        };
-        
         let cooldown = me.get_skill_cooldown(skill_name);
         if cooldown > 0 {
             output_manager.print(format!("你還沒準備好 {skill_name}"));
@@ -3716,14 +2801,9 @@ fn execute_attack(
     
     // 執行傷害
     if defender_id == "me" {
-        let Some(me) = game_world.npc_manager.get_npc_mut(defender_id) else {
-            return Ok(());
-        };
         me.check_hp(-damage);
-        
-        let (hp, max_hp) = (me.hp, me.max_hp);
         output_manager.print(format!("💥 {} 說：「{}」造成 {} 點傷害！你剩餘 HP: {}/{}", 
-            attacker_name, skill_dialogue, damage, hp, max_hp));
+            attacker_name, skill_dialogue, damage, me.hp, me.max_hp));
     } else if let Some(defender) = game_world.npc_manager.get_npc_mut(defender_id) {
         defender.check_hp(-damage);
         output_manager.print(format!("💥 {} 說：「{}」造成 {} 點傷害！{} 剩餘 HP: {}/{}", 
@@ -3731,12 +2811,16 @@ fn execute_attack(
     }
     
     // 設置技能冷卻並增加熟練度
-    if let Some(attacker) = game_world.npc_manager.get_npc_mut(attacker_id) {
-        let _ = attacker.practice_skill(skill_name, true);
+    if attacker_id == "me" {
+        if let Some(_msg) = me.practice_skill(skill_name, true) {
+            // 在戰鬥中熟練度增加2倍
+        }
+    } else if let Some(npc) = game_world.npc_manager.get_npc_mut(attacker_id) {
+        let _ = npc.practice_skill(skill_name, true);
     }
     
     // 檢查戰鬥是否結束
-    check_combat_end(output_manager, game_world)?;
+    check_combat_end(output_manager, game_world, me)?;
     
     Ok(())
 }
@@ -3745,6 +2829,7 @@ fn execute_attack(
 fn check_combat_end(
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &mut Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use crate::world::CombatState;
     
@@ -3753,11 +2838,9 @@ fn check_combat_end(
         let current_round = *round;
         
         // 檢查玩家HP
-        if let Some(me) = game_world.npc_manager.get_npc("me") {
-            if me.hp <= me.max_hp / 2 {
-                combat_ended = true;
-                output_manager.print("你的HP低於50%，戰鬥結束！".to_string());
-            }
+        if me.hp <= me.max_hp / 2 {
+            combat_ended = true;
+            output_manager.print("你的HP低於50%，戰鬥結束！".to_string());
         }
         
         // 檢查NPC HP
@@ -3776,10 +2859,7 @@ fn check_combat_end(
             // 顯示戰鬥結果
             output_manager.print("".to_string());
             output_manager.print("⚔️  戰鬥結束！".to_string());
-            
-            if let Some(me) = game_world.npc_manager.get_npc("me") {
-                output_manager.print(format!("你的 HP: {}/{}", me.hp, me.max_hp));
-            }
+            output_manager.print(format!("你的 HP: {}/{}", me.hp, me.max_hp));
             
             for participant in participants.iter() {
                 if participant != "me" {
@@ -3791,9 +2871,7 @@ fn check_combat_end(
             
             // 給予戰鬥經驗
             let exp = current_round * 2;
-            if let Some(me) = game_world.npc_manager.get_npc_mut("me") {
-                me.combat_exp += exp;
-            }
+            me.combat_exp += exp;
             output_manager.print(format!("獲得 {exp} 點戰鬥經驗！"));
             
             for participant in participants.iter() {
@@ -3816,6 +2894,7 @@ fn check_combat_end(
 fn execute_combat_round(
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &mut Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use crate::world::CombatState;
     
@@ -3841,7 +2920,7 @@ fn execute_combat_round(
             let skill_name = skills[rng.gen_range(0..skills.len())];
             
             // 執行NPC攻擊玩家
-            execute_attack(skill_name, participant, "me", output_manager, game_world)?;
+            execute_attack(skill_name, participant, "me", output_manager, game_world, me)?;
         }
     }
     
@@ -3849,28 +2928,30 @@ fn execute_combat_round(
     if let CombatState::InCombat { participants, round } = &mut game_world.combat_state {
         *round += 1;
         
-        // 減少所有參與者的冷卻
+        // 減少玩家冷卻
+        me.reduce_skill_cooldowns();
+        
+        // 減少NPC冷卻
         for participant in participants.clone() {
-            if let Some(npc) = game_world.npc_manager.get_npc_mut(&participant) {
-                npc.reduce_skill_cooldowns();
+            if participant != "me" {
+                if let Some(npc) = game_world.npc_manager.get_npc_mut(&participant) {
+                    npc.reduce_skill_cooldowns();
+                }
             }
         }
     }
+    
+    // 檢查戰鬥是否結束
+    check_combat_end(output_manager, game_world, me)?;
     
     Ok(())
 }
 
 /// 處理逃離戰鬥命令
-/// 
-/// 從戰鬥中逃跑，給予部分經驗
-/// 從 NpcManager 獲取當前控制角色
-/// 
-/// # 參數
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 fn handle_escape(
     output_manager: &mut OutputManager,
     game_world: &mut GameWorld,
+    me: &mut Person,
 ) -> Result<(), Box<dyn std::error::Error>> {
     use crate::world::CombatState;
     
@@ -3880,10 +2961,7 @@ fn handle_escape(
         // 執行結算（給予經驗值）
         if let CombatState::InCombat { participants, round } = &game_world.combat_state {
             let exp = round / 2; // 逃跑只給一半經驗
-            
-            if let Some(me) = game_world.npc_manager.get_npc_mut("me") {
-                me.combat_exp += exp;
-            }
+            me.combat_exp += exp;
             output_manager.print(format!("逃跑獲得 {exp} 點戰鬥經驗"));
             
             for participant in participants.iter() {
@@ -3982,25 +3060,13 @@ fn handle_quest_start(quest_id: String, output_manager: &mut OutputManager, game
 }
 
 /// 處理完成任務
-/// 
-/// 完成任務並應用獎勵
-/// 從 NpcManager 獲取當前控制角色
-/// 
-/// # 參數
-/// * `quest_id` - 任務 ID
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
-fn handle_quest_complete(
-    quest_id: String, 
-    output_manager: &mut OutputManager, 
-    game_world: &mut GameWorld,
-) -> Result<(), Box<dyn std::error::Error>> {
-    match game_world.quest_manager.complete_quest(&quest_id) {
-        Ok(rewards_vec) => {
+fn handle_quest_complete(quest_id: String, output_manager: &mut OutputManager, game_world: &mut GameWorld, me: &mut Person) -> Result<(), Box<dyn std::error::Error>> {
+    match game_world.quest_manager.complete_quest(&quest_id) { // Removed 'me' argument
+        Ok(rewards_vec) => { // Now returns Vec<QuestReward>
             if let Some(quest) = game_world.quest_manager.get_quest(&quest_id) {
-                output_manager.print(format!("任務完成: {}", quest.name));
+                output_manager.print(format!("任務完成: {}", quest.name)); // Use quest.name
                 output_manager.print("獲得獎勵:".to_string());
-                apply_quest_reward(rewards_vec, output_manager, game_world)?;
+                apply_quest_reward(rewards_vec, output_manager, me, game_world)?; // Pass Vec<QuestReward>
             } else {
                 output_manager.set_status(format!("任務完成但找不到任務詳情: {quest_id}"));
             }
@@ -4020,28 +3086,19 @@ fn handle_quest_abandon(quest_id: String, output_manager: &mut OutputManager, ga
 }
 
 /// 應用任務獎勵
-/// 
-/// 將任務獎勵應用到當前控制角色
-/// 從 NpcManager 獲取當前控制角色
-/// 
-/// # 參數
-/// * `rewards` - 獎勵列表
-/// * `output_manager` - 輸出管理器
-/// * `game_world` - 遊戲世界
 fn apply_quest_reward(
-    rewards: Vec<QuestReward>,
+    rewards: Vec<QuestReward>, // Corrected: takes Vec<QuestReward>
     output_manager: &mut OutputManager,
+    me: &mut Person,
     game_world: &mut GameWorld,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    for reward_item in rewards {
+    output_manager.print("獲得獎勵:".to_string());
+    for reward_item in rewards { // Iterate through each QuestReward
         match reward_item {
             QuestReward::Item { item, count } => {
                 let display_name = item_registry::get_item_display_name(&item);
                 output_manager.print(format!("  - 物品: {display_name} x{count}"));
-                
-                if let Some(me) = game_world.npc_manager.get_npc_mut("me") {
-                    me.add_items(item.to_string(), count);
-                }
+                me.add_items(item.to_string(), count); // item is String, no need for .to_string() here, but keep for consistency with other add_items
             },
             QuestReward::Experience { amount } => {
                 output_manager.print(format!("  - 經驗值: {amount}"));
@@ -4049,13 +3106,13 @@ fn apply_quest_reward(
             },
             QuestReward::Relationship { npc_id, change } => {
                 if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_id) {
-                    npc.change_relationship(change);
+                    npc.change_relationship(change); // Corrected: only takes delta
                     output_manager.print(format!("  - {npc_id} 對你的好感度變化: {change}"));
                 }
             },
             QuestReward::UnlockDialogue { npc_id, scene, text } => {
                 if let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_id) {
-                    npc.set_dialogue(scene.to_string(), text.to_string());
+                    npc.set_dialogue(scene.to_string(), text.to_string()); // Corrected arguments
                     output_manager.print(format!("  - 解鎖 {npc_id} 的 {scene} 對話"));
                 }
             },

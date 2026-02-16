@@ -24,17 +24,16 @@ pub struct EventExecutor;
 
 impl EventExecutor {
     /// 執行事件的所有動作
-    /// me: 當前玩家（用於某些動作如傳送）
+    /// 從 game_world.npc_manager 獲取當前控制的角色
     pub fn execute_event<O: EventOutput>(
         event: &GameEvent,
         game_world: &mut GameWorld,
-        me: &mut crate::person::Person,
         output: &mut O,
     ) -> Result<(), String> {
         output.print(format!("🎭 事件觸發: {}", event.name));
         
         for action in &event.actions {
-            if let Err(e) = Self::execute_action(action, game_world, me, output) {
+            if let Err(e) = Self::execute_action(action, game_world, output) {
                 return Err(format!("執行動作失敗: {e}"));
             }
         }
@@ -46,7 +45,6 @@ impl EventExecutor {
     fn execute_action<O: EventOutput>(
         action: &EventAction,
         game_world: &mut GameWorld,
-        me: &mut crate::person::Person,
         output: &mut O,
     ) -> Result<(), String> {
         match action {
@@ -69,13 +67,13 @@ impl EventExecutor {
                 Self::remove_item(item, position, game_world, output)
             }
             EventAction::Teleport { map, position } => {
-                Self::teleport_player(map, position, game_world, me, output)
+                Self::teleport_player(map, position, game_world, output)
             }
             EventAction::SetMapProperty { map, property, value } => {
                 Self::set_map_property(map, property, value, game_world, output)
             }
             EventAction::RandomAction { actions } => {
-                Self::execute_random_action(actions, game_world, me, output)
+                Self::execute_random_action(actions, game_world, output)
             }
         }
     }
@@ -177,11 +175,12 @@ impl EventExecutor {
         Err(format!("無法在位置 ({}, {}) 移除物品 {}", resolved_pos[0], resolved_pos[1], item))
     }
     
+    /// 傳送玩家到指定地圖位置
+    /// 從 game_world.npc_manager 獲取當前控制的角色
     fn teleport_player<O: EventOutput>(
         map: &str,
         position: &crate::event::Position,
         game_world: &mut GameWorld,
-        me: &mut crate::person::Person,
         output: &mut O,
     ) -> Result<(), String> {
         if game_world.change_map(map) {
@@ -191,12 +190,17 @@ impl EventExecutor {
             let resolved_pos = position.resolve(current_map)
                 .ok_or("無法解析目標位置")?;
             
-            me.move_to(resolved_pos[0], resolved_pos[1]);
-            output.print(format!(
-                "✨ 你被傳送到 {} ({}, {})",
-                map, resolved_pos[0], resolved_pos[1]
-            ));
-            Ok(())
+            // 從 NpcManager 獲取當前控制的角色並傳送
+            if let Some(me) = game_world.npc_manager.get_npc_mut(&game_world.current_controlled_id) {
+                me.move_to(resolved_pos[0], resolved_pos[1]);
+                output.print(format!(
+                    "✨ 你被傳送到 {} ({}, {})",
+                    map, resolved_pos[0], resolved_pos[1]
+                ));
+                Ok(())
+            } else {
+                Err("無法獲取當前角色".to_string())
+            }
         } else {
             Err(format!("地圖 {map} 不存在"))
         }
@@ -220,10 +224,10 @@ impl EventExecutor {
         }
     }
 
+    /// 執行隨機動作
     fn execute_random_action<O: EventOutput>(
         weighted_actions: &[crate::event::WeightedAction],
         game_world: &mut GameWorld,
-        me: &mut crate::person::Person,
         output: &mut O,
     ) -> Result<(), String> {
         if weighted_actions.is_empty() {
@@ -246,13 +250,13 @@ impl EventExecutor {
         for weighted_action in weighted_actions {
             random_value -= weighted_action.weight;
             if random_value <= 0.0 {
-                return Self::execute_action(&weighted_action.action, game_world, me, output);
+                return Self::execute_action(&weighted_action.action, game_world, output);
             }
         }
 
         // 如果沒有選中任何動作（理論上不應該發生），執行最後一個
         if let Some(last) = weighted_actions.last() {
-            Self::execute_action(&last.action, game_world, me, output)
+            Self::execute_action(&last.action, game_world, output)
         } else {
             Err("無法選擇隨機動作".to_string())
         }

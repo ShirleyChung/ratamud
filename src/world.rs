@@ -394,10 +394,16 @@ impl GameWorld {
     /// 建立所有 NPC 的視圖（不可變快照）
     /// 這些視圖將傳送給 NPC AI 執行緒用於決策
     /// me: 當前玩家（用於計算 nearby_entities）
-    pub fn build_npc_views(&self, me: &Person) -> std::collections::HashMap<String, crate::npc_view::NpcView> {
+    pub fn build_npc_views(&self) -> std::collections::HashMap<String, crate::npc_view::NpcView> {
         use crate::npc_view::{NpcView, Position, GameTime, TerrainInfo};
         
         let mut views = std::collections::HashMap::new();
+        
+        // 從 NpcManager 獲取 me（用於計算附近實體）
+        let me = match self.npc_manager.get_npc(&self.current_controlled_id) {
+            Some(m) => m,
+            None => return views, // 如果沒有當前控制的角色，返回空視圖
+        };
         
         // 獲取所有 NPC
         let all_npc_ids = self.npc_manager.get_all_npc_ids();
