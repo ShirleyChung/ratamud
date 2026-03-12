@@ -1,28 +1,44 @@
 {
   "name": "商人",
-  "description": "精明的商人，販售各種物品",
+  "description": "一位清秀的，普通體格，有力量的人，看起來健康的。",
   "abilities": [],
   "items": {
     "魔法書": 10,
-    "治療藥水": 100,
-    "木劍": 10,
     "魔力藥水": 100,
     "匕首": 10,
+    "木劍": 10,
+    "皮衣": 2,
+    "治療藥水": 100,
     "金幣": 10000
   },
-  "item_instances": {},
+  "item_instances": {
+    "皮衣": [
+      {
+        "id": 3,
+        "name": "皮衣",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 5,
+        "name": "皮衣",
+        "age": 0,
+        "stories": []
+      }
+    ]
+  },
   "status": "",
-  "x": 77,
+  "x": 78,
   "y": 63,
   "map": "beginMap",
-  "hp": 98975,
+  "hp": 98972,
   "mp": 99970,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 159340,
+  "age": 163767,
   "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
@@ -83,6 +99,20 @@
         "weight": 1.0
       }
     ],
+    "punch": [
+      {
+        "text": "punch",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "kick": [
+      {
+        "text": "kick",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
     "閒聊": [
       {
         "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
@@ -118,5 +148,23 @@
   "interaction_count": 0,
   "gender": "未知",
   "appearance": 50,
-  "build": 50
+  "build": 50,
+  "party_leader": null,
+  "combat_skills": {
+    "punch": {
+      "name": "punch",
+      "proficiency": 0,
+      "damage": 2,
+      "cooldown": 2,
+      "current_cooldown": 0
+    },
+    "kick": {
+      "name": "kick",
+      "proficiency": 0,
+      "damage": 3,
+      "cooldown": 3,
+      "current_cooldown": 0
+    }
+  },
+  "combat_exp": 0
 }

@@ -16,7 +16,13 @@ if not os.path.exists(dist_dir):
 # 設定編譯選項（dylib 版本）
 local_env.Append(CPPPATH=['#/dist'])
 local_env.Append(LIBPATH=['#/' + dist_dir])
-local_env.Append(LIBS=['ratamud'])
+
+# Windows 使用導入庫 (.lib)，Unix 使用庫名
+if env.get('LIB_EXT') == 'dll':
+    # Windows: 鏈接 ratamud.dll.lib
+    local_env.Append(LIBS=['ratamud.dll'])
+else:
+    local_env.Append(LIBS=['ratamud'])
 
 if local_env['RPATH']:
     local_env.Append(LINKFLAGS=[local_env['RPATH']])

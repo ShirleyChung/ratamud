@@ -1,25 +1,25 @@
 {
   "name": "工人",
-  "description": "努力的工人，從事建築工作",
+  "description": "一位清秀的，普通體格，有力量的人，看起來健康的。",
   "abilities": [],
   "items": {
-    "繩索": 2,
-    "蘋果": 2,
     "羽毛": 4,
     "匕首": 1,
-    "漿果": 4,
     "火把": 4,
     "皮衣": 3,
-    "盾牌": 3,
     "頭盔": 5,
-    "毒藥": 4,
-    "治療藥水": 6,
-    "乾肉": 1,
     "麵包": 8,
-    "弓": 3,
+    "治療藥水": 6,
+    "繩索": 2,
     "舊布料": 5,
+    "盾牌": 3,
+    "漿果": 4,
     "金幣": 10000,
-    "鐵劍": 1
+    "蘋果": 2,
+    "弓": 3,
+    "鐵劍": 1,
+    "毒藥": 4,
+    "乾肉": 1
   },
   "item_instances": {
     "治療藥水": [
@@ -44,17 +44,17 @@
     ]
   },
   "status": "",
-  "x": 77,
-  "y": 83,
+  "x": 78,
+  "y": 82,
   "map": "beginMap",
-  "hp": 97761,
+  "hp": 97753,
   "mp": 99998,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 159468,
+  "age": 163895,
   "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
@@ -89,7 +89,21 @@
         "weight": 1.0
       }
     ],
-    "閒聊": []
+    "閒聊": [],
+    "punch": [
+      {
+        "text": "punch",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "kick": [
+      {
+        "text": "kick",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ]
   },
   "talk_eagerness": 60,
   "relationship": 0,
@@ -98,5 +112,23 @@
   "interaction_count": 0,
   "gender": "未知",
   "appearance": 50,
-  "build": 50
+  "build": 50,
+  "party_leader": null,
+  "combat_skills": {
+    "kick": {
+      "name": "kick",
+      "proficiency": 0,
+      "damage": 3,
+      "cooldown": 3,
+      "current_cooldown": 0
+    },
+    "punch": {
+      "name": "punch",
+      "proficiency": 0,
+      "damage": 2,
+      "cooldown": 2,
+      "current_cooldown": 0
+    }
+  },
+  "combat_exp": 0
 }

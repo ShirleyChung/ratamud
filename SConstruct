@@ -34,22 +34,36 @@ env['RUST_BUILD_DIR'] = 'target/release'
 env['RUST_DEBUG_DIR'] = 'target/debug'
 
 # C/C++ 編譯設定
-env['CC'] = 'gcc'
-env['CXX'] = 'g++'
-env['CFLAGS'] = ['-Wall', '-Wextra']
-env['CXXFLAGS'] = ['-std=c++17', '-Wall', '-Wextra']
+if system == 'Windows':
+    # Windows 使用 MSVC 或 MinGW
+    # SCons 會自動偵測可用的編譯器
+    env['CFLAGS'] = []
+    env['CXXFLAGS'] = ['/std:c++17'] if 'MSVC' in env['TOOLS'] else ['-std=c++17', '-Wall', '-Wextra']
+else:
+    env['CC'] = 'gcc'
+    env['CXX'] = 'g++'
+    env['CFLAGS'] = ['-Wall', '-Wextra']
+    env['CXXFLAGS'] = ['-std=c++17', '-Wall', '-Wextra']
 
 # 構建模式（release 或 debug）
 build_mode = ARGUMENTS.get('mode', 'release')
 env['BUILD_MODE'] = build_mode
 
 if build_mode == 'debug':
-    env.Append(CFLAGS=['-g', '-O0'])
-    env.Append(CXXFLAGS=['-g', '-O0'])
+    if system == 'Windows':
+        env.Append(CFLAGS=['/Zi', '/Od'])
+        env.Append(CXXFLAGS=['/Zi', '/Od'])
+    else:
+        env.Append(CFLAGS=['-g', '-O0'])
+        env.Append(CXXFLAGS=['-g', '-O0'])
     env['RUST_TARGET_DIR'] = env['RUST_DEBUG_DIR']
 else:
-    env.Append(CFLAGS=['-O2'])
-    env.Append(CXXFLAGS=['-O2'])
+    if system == 'Windows':
+        env.Append(CFLAGS=['/O2'])
+        env.Append(CXXFLAGS=['/O2'])
+    else:
+        env.Append(CFLAGS=['-O2'])
+        env.Append(CXXFLAGS=['-O2'])
     env['RUST_TARGET_DIR'] = env['RUST_BUILD_DIR']
 
 # 輸出目錄

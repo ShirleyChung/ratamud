@@ -1,6 +1,6 @@
 {
   "name": "ace",
-  "description": "一個ace",
+  "description": "一位清秀的，普通體格，有力量的男子，看起來健康的。",
   "abilities": [],
   "items": {
     "金幣": 10000
@@ -17,26 +17,58 @@
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 127001,
+  "age": 131428,
   "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": true,
   "dialogues": {
+    "punch": [
+      {
+        "text": "punch",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
     "被叫住": [
       {
         "text": "ace 有什麼事嗎？",
         "conditions": [],
         "weight": 1.0
       }
+    ],
+    "kick": [
+      {
+        "text": "kick",
+        "conditions": [],
+        "weight": 1.0
+      }
     ]
   },
   "talk_eagerness": 100,
-  "relationship": 5,
+  "relationship": 10,
   "dialogue_state": "初見",
   "met_player": false,
   "interaction_count": 0,
-  "gender": "女",
+  "gender": "男",
   "appearance": 50,
-  "build": 50
+  "build": 50,
+  "party_leader": null,
+  "combat_skills": {
+    "punch": {
+      "name": "punch",
+      "proficiency": 0,
+      "damage": 2,
+      "cooldown": 2,
+      "current_cooldown": 0
+    },
+    "kick": {
+      "name": "kick",
+      "proficiency": 0,
+      "damage": 3,
+      "cooldown": 3,
+      "current_cooldown": 0
+    }
+  },
+  "combat_exp": 0
 }

@@ -1,33 +1,33 @@
 {
   "name": "阿猛",
-  "description": "一個工人",
+  "description": "一位清秀的，普通體格，有力量的人，看起來健康的。",
   "abilities": [],
   "items": {
-    "治療藥水": 5,
-    "乾肉": 3,
     "舊布料": 4,
-    "鎬": 1,
-    "漿果": 7,
-    "盾牌": 11,
-    "羽毛": 6,
     "魔力藥水": 1,
+    "盾牌": 11,
+    "乾肉": 3,
     "毒藥": 12,
+    "漿果": 7,
     "金幣": 10000,
-    "蘋果": 4
+    "蘋果": 4,
+    "羽毛": 6,
+    "鎬": 1,
+    "治療藥水": 5
   },
   "item_instances": {},
   "status": "",
-  "x": 37,
-  "y": 53,
+  "x": 34,
+  "y": 51,
   "map": "forest",
-  "hp": 98051,
+  "hp": 98046,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 152458,
+  "age": 156885,
   "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
@@ -109,6 +109,20 @@
         "conditions": [],
         "weight": 1.0
       }
+    ],
+    "kick": [
+      {
+        "text": "kick",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "punch": [
+      {
+        "text": "punch",
+        "conditions": [],
+        "weight": 1.0
+      }
     ]
   },
   "talk_eagerness": 99,
@@ -118,5 +132,23 @@
   "interaction_count": 0,
   "gender": "未知",
   "appearance": 50,
-  "build": 50
+  "build": 50,
+  "party_leader": null,
+  "combat_skills": {
+    "punch": {
+      "name": "punch",
+      "proficiency": 0,
+      "damage": 2,
+      "cooldown": 2,
+      "current_cooldown": 0
+    },
+    "kick": {
+      "name": "kick",
+      "proficiency": 0,
+      "damage": 3,
+      "cooldown": 3,
+      "current_cooldown": 0
+    }
+  },
+  "combat_exp": 0
 }

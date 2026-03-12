@@ -1,13 +1,13 @@
 {
   "name": "vicky",
-  "description": "一個traveler",
+  "description": "一位清秀的，普通體格，有力量的女子，看起來健康的。",
   "abilities": [],
   "items": {
     "蘋果": 3,
+    "男溺泉": 1,
     "金幣": 10002,
-    "雷神劍": 1,
     "匕首": 1,
-    "男溺泉": 1
+    "雷神劍": 1
   },
   "item_instances": {
     "男溺泉": [
@@ -41,24 +41,24 @@
   },
   "status": "",
   "x": 42,
-  "y": 69,
+  "y": 71,
   "map": "beginMap",
-  "hp": 99396,
+  "hp": 99387,
   "mp": 4987,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 136470,
+  "age": 140897,
   "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
-    "見面": [
+    "punch": [
       {
-        "text": "哈囉，你好",
+        "text": "punch",
         "conditions": [],
         "weight": 1.0
       }
@@ -79,6 +79,20 @@
         "conditions": [],
         "weight": 1.0
       }
+    ],
+    "kick": [
+      {
+        "text": "kick",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "見面": [
+      {
+        "text": "哈囉，你好",
+        "conditions": [],
+        "weight": 1.0
+      }
     ]
   },
   "talk_eagerness": 100,
@@ -88,5 +102,23 @@
   "interaction_count": 0,
   "gender": "女",
   "appearance": 50,
-  "build": 50
+  "build": 50,
+  "party_leader": null,
+  "combat_skills": {
+    "kick": {
+      "name": "kick",
+      "proficiency": 2,
+      "damage": 3,
+      "cooldown": 3,
+      "current_cooldown": 1
+    },
+    "punch": {
+      "name": "punch",
+      "proficiency": 0,
+      "damage": 2,
+      "cooldown": 2,
+      "current_cooldown": 0
+    }
+  },
+  "combat_exp": 3
 }

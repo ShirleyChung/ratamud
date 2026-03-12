@@ -1,18 +1,18 @@
 {
   "name": "www",
-  "description": "一個工人",
+  "description": "一位清秀的，普通體格，有力量的人，看起來健康的。",
   "abilities": [],
   "items": {
-    "鐵劍": 5,
-    "石子": 7,
-    "金幣": 9980,
     "鑰匙": 2,
-    "蘋果": 1,
     "男溺泉": 1,
     "木劍": 2,
+    "石子": 7,
+    "金幣": 9980,
+    "繩索": 2,
     "舊布料": 1,
-    "弓": 1,
-    "繩索": 2
+    "鐵劍": 5,
+    "蘋果": 1,
+    "弓": 1
   },
   "item_instances": {},
   "status": "",
@@ -26,12 +26,33 @@
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 150748,
+  "age": 155175,
   "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": true,
   "dialogues": {
+    "kick": [
+      {
+        "text": "kick",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "閒聊": [
+      {
+        "text": "工作雖然辛苦，但我很享受web browsing的快感！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "punch": [
+      {
+        "text": "punch",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
     "見面": [
       {
         "text": "哈囉，小姐，今天好嗎",
@@ -76,13 +97,6 @@
         ],
         "weight": 1.0
       }
-    ],
-    "閒聊": [
-      {
-        "text": "工作雖然辛苦，但我很享受web browsing的快感！",
-        "conditions": [],
-        "weight": 1.0
-      }
     ]
   },
   "talk_eagerness": 100,
@@ -92,5 +106,23 @@
   "interaction_count": 0,
   "gender": "未知",
   "appearance": 50,
-  "build": 50
+  "build": 50,
+  "party_leader": null,
+  "combat_skills": {
+    "kick": {
+      "name": "kick",
+      "proficiency": 0,
+      "damage": 3,
+      "cooldown": 3,
+      "current_cooldown": 0
+    },
+    "punch": {
+      "name": "punch",
+      "proficiency": 0,
+      "damage": 2,
+      "cooldown": 2,
+      "current_cooldown": 0
+    }
+  },
+  "combat_exp": 0
 }

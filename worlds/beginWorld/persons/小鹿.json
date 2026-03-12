@@ -1,11 +1,11 @@
 {
   "name": "小鹿",
-  "description": "一個商人",
+  "description": "一位清秀的，普通體格，有力量的人，看起來健康的。",
   "abilities": [],
   "items": {
+    "乾肉": 1,
     "金幣": 10000,
-    "羽毛": 2,
-    "乾肉": 1
+    "羽毛": 2
   },
   "item_instances": {
     "乾肉": [
@@ -33,21 +33,40 @@
   },
   "status": "",
   "x": 53,
-  "y": 45,
+  "y": 46,
   "map": "forest",
-  "hp": 99007,
+  "hp": 99004,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 154636,
+  "age": 159063,
   "last_hunger_hour": 23,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
+    "punch": [
+      {
+        "text": "punch",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "閒聊": [
+      {
+        "text": "這森林裡的風景真美麗！",
+        "conditions": [],
+        "weight": 5.0
+      },
+      {
+        "text": "我喜歡和旅人們交流，聽他們的故事。",
+        "conditions": [],
+        "weight": 7.0
+      }
+    ],
     "見面": [
       {
         "text": "你好～我是小鹿，正在這裡擺攤呢",
@@ -77,16 +96,11 @@
         "weight": 1.0
       }
     ],
-    "閒聊": [
+    "kick": [
       {
-        "text": "這森林裡的風景真美麗！",
+        "text": "kick",
         "conditions": [],
-        "weight": 5.0
-      },
-      {
-        "text": "我喜歡和旅人們交流，聽他們的故事。",
-        "conditions": [],
-        "weight": 7.0
+        "weight": 1.0
       }
     ]
   },
@@ -97,5 +111,23 @@
   "interaction_count": 0,
   "gender": "未知",
   "appearance": 50,
-  "build": 50
+  "build": 50,
+  "party_leader": null,
+  "combat_skills": {
+    "punch": {
+      "name": "punch",
+      "proficiency": 0,
+      "damage": 2,
+      "cooldown": 2,
+      "current_cooldown": 0
+    },
+    "kick": {
+      "name": "kick",
+      "proficiency": 0,
+      "damage": 3,
+      "cooldown": 3,
+      "current_cooldown": 0
+    }
+  },
+  "combat_exp": 0
 }
