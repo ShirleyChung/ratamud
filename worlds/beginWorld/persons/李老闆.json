@@ -44,40 +44,19 @@
   "x": 65,
   "y": 54,
   "map": "beginMap",
-  "hp": 98902,
+  "hp": 98798,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 163407,
-  "last_hunger_hour": 23,
+  "age": 168578,
+  "last_hunger_hour": 0,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
-    "感謝": [
-      {
-        "text": "不客氣！隨時歡迎你來店裡看看。",
-        "conditions": [],
-        "weight": 0.8
-      }
-    ],
-    "kick": [
-      {
-        "text": "kick",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
-    "購買": [
-      {
-        "text": "當然可以！請告訴我你想買什麼。",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
     "見面": [
       {
         "text": "哈囉，小姐，今天好嗎",
@@ -133,20 +112,6 @@
         "weight": 1.0
       }
     ],
-    "punch": [
-      {
-        "text": "punch",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
-    "出售": [
-      {
-        "text": "好的，讓我看看你有什麼想賣的。",
-        "conditions": [],
-        "weight": 0.5
-      }
-    ],
     "閒聊": [
       {
         "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
@@ -159,9 +124,23 @@
         "weight": 1.0
       }
     ],
+    "kick": [
+      {
+        "text": "kick",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
     "袐密": [
       {
         "text": "其實我有一個隱藏的商品清單，只有特別的客人才能看到哦！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "punch": [
+      {
+        "text": "punch",
         "conditions": [],
         "weight": 1.0
       }
@@ -171,6 +150,27 @@
         "text": "感謝你的光臨，期待下次再見！",
         "conditions": [],
         "weight": 0.5
+      }
+    ],
+    "感謝": [
+      {
+        "text": "不客氣！隨時歡迎你來店裡看看。",
+        "conditions": [],
+        "weight": 0.8
+      }
+    ],
+    "出售": [
+      {
+        "text": "好的，讓我看看你有什麼想賣的。",
+        "conditions": [],
+        "weight": 0.5
+      }
+    ],
+    "購買": [
+      {
+        "text": "當然可以！請告訴我你想買什麼。",
+        "conditions": [],
+        "weight": 1.0
       }
     ]
   },

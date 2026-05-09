@@ -3,10 +3,10 @@
   "description": "一位清秀的，普通體格，有力量的女子，看起來健康的。",
   "abilities": [],
   "items": {
+    "匕首": 1,
+    "金幣": 10002,
     "蘋果": 3,
     "男溺泉": 1,
-    "金幣": 10002,
-    "匕首": 1,
     "雷神劍": 1
   },
   "item_instances": {
@@ -40,18 +40,18 @@
     ]
   },
   "status": "",
-  "x": 42,
-  "y": 71,
+  "x": 41,
+  "y": 72,
   "map": "beginMap",
-  "hp": 99387,
+  "hp": 99281,
   "mp": 4987,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 140897,
-  "last_hunger_hour": 23,
+  "age": 146068,
+  "last_hunger_hour": 0,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
@@ -59,6 +59,13 @@
     "punch": [
       {
         "text": "punch",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "見面": [
+      {
+        "text": "哈囉，你好",
         "conditions": [],
         "weight": 1.0
       }
@@ -86,13 +93,6 @@
         "conditions": [],
         "weight": 1.0
       }
-    ],
-    "見面": [
-      {
-        "text": "哈囉，你好",
-        "conditions": [],
-        "weight": 1.0
-      }
     ]
   },
   "talk_eagerness": 100,
@@ -105,19 +105,19 @@
   "build": 50,
   "party_leader": null,
   "combat_skills": {
-    "kick": {
-      "name": "kick",
-      "proficiency": 2,
-      "damage": 3,
-      "cooldown": 3,
-      "current_cooldown": 1
-    },
     "punch": {
       "name": "punch",
       "proficiency": 0,
       "damage": 2,
       "cooldown": 2,
       "current_cooldown": 0
+    },
+    "kick": {
+      "name": "kick",
+      "proficiency": 2,
+      "damage": 3,
+      "cooldown": 3,
+      "current_cooldown": 1
     }
   },
   "combat_exp": 3

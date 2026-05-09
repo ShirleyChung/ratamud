@@ -1,0 +1,154 @@
+{
+  "name": "阿猛",
+  "description": "一位清秀的，普通體格，有力量的人，看起來健康的。",
+  "abilities": [],
+  "items": {
+    "舊布料": 4,
+    "金幣": 10000,
+    "魔力藥水": 1,
+    "蘋果": 4,
+    "毒藥": 12,
+    "羽毛": 6,
+    "鎬": 1,
+    "盾牌": 11,
+    "漿果": 7,
+    "乾肉": 3,
+    "治療藥水": 5
+  },
+  "item_instances": {},
+  "status": "",
+  "x": 38,
+  "y": 52,
+  "map": "forest",
+  "hp": 97933,
+  "mp": 100000,
+  "max_hp": 100000,
+  "max_mp": 100000,
+  "strength": 100,
+  "knowledge": 100,
+  "sociality": 100,
+  "age": 170648,
+  "last_hunger_hour": 0,
+  "is_sleeping": false,
+  "last_mp_restore_minute": 0,
+  "is_interacting": false,
+  "dialogues": {
+    "kick": [
+      {
+        "text": "kick",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "見面": [
+      {
+        "text": "哈囉，小姐，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉，帥哥，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "男"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "美女，你需要幫忙搬運東西嗎？我可以幫你！",
+        "conditions": [
+          {
+            "attribute": "appearance",
+            "operator": ">",
+            "value": "80"
+          },
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "喲！有什麼活要幹嗎？我可是很能幹的！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "嘿！我是阿猛，這附近的工作我都能做！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "你好！需要幫忙的話，找我就對了！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "punch": [
+      {
+        "text": "punch",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "閒聊": [
+      {
+        "text": "工作雖然辛苦，但能賺錢養家也是值得的。",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "我聽說森林深處有寶藏，不知道是真是假？",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "有時候工作累了，就會想起家人，讓我更有動力了。",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "這附近的工作機會還不少，你要不要也來試試？",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ]
+  },
+  "talk_eagerness": 99,
+  "relationship": 50,
+  "dialogue_state": "",
+  "met_player": false,
+  "interaction_count": 0,
+  "gender": "未知",
+  "appearance": 50,
+  "build": 50,
+  "party_leader": null,
+  "combat_skills": {
+    "punch": {
+      "name": "punch",
+      "proficiency": 0,
+      "damage": 2,
+      "cooldown": 2,
+      "current_cooldown": 0
+    },
+    "kick": {
+      "name": "kick",
+      "proficiency": 0,
+      "damage": 3,
+      "cooldown": 3,
+      "current_cooldown": 0
+    }
+  },
+  "combat_exp": 0
+}

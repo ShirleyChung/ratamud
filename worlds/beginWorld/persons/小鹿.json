@@ -3,19 +3,11 @@
   "description": "一位清秀的，普通體格，有力量的人，看起來健康的。",
   "abilities": [],
   "items": {
-    "乾肉": 1,
     "金幣": 10000,
-    "羽毛": 2
+    "羽毛": 2,
+    "乾肉": 1
   },
   "item_instances": {
-    "乾肉": [
-      {
-        "id": 4,
-        "name": "乾肉",
-        "age": 0,
-        "stories": []
-      }
-    ],
     "羽毛": [
       {
         "id": 2,
@@ -29,42 +21,38 @@
         "age": 0,
         "stories": []
       }
+    ],
+    "乾肉": [
+      {
+        "id": 4,
+        "name": "乾肉",
+        "age": 0,
+        "stories": []
+      }
     ]
   },
   "status": "",
   "x": 53,
   "y": 46,
   "map": "forest",
-  "hp": 99004,
+  "hp": 98896,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 159063,
-  "last_hunger_hour": 23,
+  "age": 164234,
+  "last_hunger_hour": 0,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
-    "punch": [
+    "kick": [
       {
-        "text": "punch",
+        "text": "kick",
         "conditions": [],
         "weight": 1.0
-      }
-    ],
-    "閒聊": [
-      {
-        "text": "這森林裡的風景真美麗！",
-        "conditions": [],
-        "weight": 5.0
-      },
-      {
-        "text": "我喜歡和旅人們交流，聽他們的故事。",
-        "conditions": [],
-        "weight": 7.0
       }
     ],
     "見面": [
@@ -96,9 +84,21 @@
         "weight": 1.0
       }
     ],
-    "kick": [
+    "閒聊": [
       {
-        "text": "kick",
+        "text": "這森林裡的風景真美麗！",
+        "conditions": [],
+        "weight": 5.0
+      },
+      {
+        "text": "我喜歡和旅人們交流，聽他們的故事。",
+        "conditions": [],
+        "weight": 7.0
+      }
+    ],
+    "punch": [
+      {
+        "text": "punch",
         "conditions": [],
         "weight": 1.0
       }
@@ -114,18 +114,18 @@
   "build": 50,
   "party_leader": null,
   "combat_skills": {
-    "punch": {
-      "name": "punch",
-      "proficiency": 0,
-      "damage": 2,
-      "cooldown": 2,
-      "current_cooldown": 0
-    },
     "kick": {
       "name": "kick",
       "proficiency": 0,
       "damage": 3,
       "cooldown": 3,
+      "current_cooldown": 0
+    },
+    "punch": {
+      "name": "punch",
+      "proficiency": 0,
+      "damage": 2,
+      "cooldown": 2,
       "current_cooldown": 0
     }
   },

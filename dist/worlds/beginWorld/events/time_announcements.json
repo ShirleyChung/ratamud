@@ -1,0 +1,62 @@
+[
+  {
+    "id": "morning_announcement",
+    "name": "早晨報時",
+    "description": "每天早上6點報時",
+    "trigger": {
+      "type": "time",
+      "schedule": "0 6 * * *"
+    },
+    "actions": [
+      {
+        "type": "message",
+        "text": "早上了！新的一天開始了！"
+      }
+    ],
+    "state": {
+      "repeatable": true,
+      "cooldown": 0,
+      "max_triggers": -1
+    }
+  },
+  {
+    "id": "noon_announcement",
+    "name": "中午報時",
+    "description": "每天中午12點報時",
+    "trigger": {
+      "type": "time",
+      "schedule": "0 12 * * *"
+    },
+    "actions": [
+      {
+        "type": "message",
+        "text": "中午了！該吃午餐了！"
+      }
+    ],
+    "state": {
+      "repeatable": true,
+      "cooldown": 0,
+      "max_triggers": -1
+    }
+  },
+  {
+    "id": "evening_announcement",
+    "name": "傍晚報時",
+    "description": "每天傍晚18點報時",
+    "trigger": {
+      "type": "time",
+      "schedule": "0 18 * * *"
+    },
+    "actions": [
+      {
+        "type": "message",
+        "text": "晚上了！一天即將結束！"
+      }
+    ],
+    "state": {
+      "repeatable": true,
+      "cooldown": 0,
+      "max_triggers": -1
+    }
+  }
+]

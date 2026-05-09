@@ -1,315 +1,211 @@
-# RataTUI MUD 遊戲引擎
+# RataMUD
 
-一個用 Rust 和 Ratatui 構建的文字冒險遊戲引擎，採用 MUD (Multi-User Dungeon) 風格的設計。
+RataMUD 是一個以 Rust 為主體的文字冒險 / MUD 遊戲引擎。專案的主要程式碼在 `src/`，遊戲資料在 `worlds/`。C/C++、iOS framework、SCons、shell script 主要是外部介面、建置包裝或測試輔助，不是遊戲邏輯的核心。
 
-## 🎮 遊戲概述
+## 專案定位
 
-這是一個終端式的互動冒險遊戲，玩家可以在虛擬世界中探索、移動、與 NPC 互動。遊戲特色包括：
+本專案可以分成三層：
 
-- **多地圖世界系統**: 支援 5 種不同地形的地圖（初始之地、森林、洞穴、沙漠、山脈），每個地圖 100×100 的點陣
-- **動態 NPC 系統**: 5 種 NPC 類型（商人、路人、醫生、工人、農夫）隨機散布在地圖上
-- **增強的環境探索**: Look 命令顯示當前位置及周圍 3×3 範圍的點，方向指示幫助導航
-- **物品系統**: 24 種不同物品支援，為未來交互做準備
-- **角色管理**: 玩家角色（Me）和所有 NPC 都可持久化存儲
-- **觀察系統**: Observable trait 允許不同物件以統一方式展示信息
-- **懸浮 UI 窗口**: 右側懸浮狀態窗口顯示角色信息
-- **時間系統**: 遊戲內時間流逝，角色狀態隨時間改變，支援時間持久化
+1. **Rust 遊戲核心**
+   - 負責世界狀態、地圖、角色、NPC、物品、任務、事件、交易、戰鬥、時間推進與指令處理。
+   - 這是專案的主要程式。
 
-## 📁 項目結構
+2. **使用者介面 / Client**
+   - Terminal UI 使用 Ratatui + Crossterm。
+   - C ABI / FFI 讓 C/C++、iOS 或其他平台可以呼叫 Rust core。
+   - 這些 client 不應該放遊戲規則，只應該負責輸入、輸出、畫面呈現與平台整合。
 
-```
-rataui_demo/
-├── src/
-│   ├── main.rs           # 主程序入口
-│   ├── ui.rs             # UI 渲染邏輯
-│   ├── input.rs          # 指令輸入處理
-│   ├── output.rs         # 輸出管理
-│   ├── map.rs            # 地圖系統
-│   ├── world.rs          # 世界系統
-│   ├── person.rs         # 角色系統
-│   ├── item.rs           # 物品系統
-│   ├── observable.rs     # Observable trait
-│   ├── time_updatable.rs # 時間系統
-│   └── bin/
+3. **資料與輔助資源**
+   - `worlds/` 放遊戲世界資料。
+   - `Docs/` 放設計、開發記錄與功能文件。
+   - `dist/`、`frameworks/` 放建置輸出或發佈用檔案。
+   - `scripts/`、`testscripts/` 多數是 Copilot 生成的測試腳本或建置輔助，只是輔助，不是必要程式。
 
-├── worlds/               # 世界數據存儲
-│   └── 初始世界/
-│       ├── world.json    # 世界配置
-│       ├── time.json     # 遊戲時間狀態
-│       ├── maps/         # 地圖文件 (5 個 JSON)
-│       └── persons/      # 角色數據 (Me + 5 NPC)
-├── Cargo.toml            # 項目配置
-└── README.md             # 本文件
+## 主要目錄
+
+```text
+.
+├── src/                  # Rust 主程式與遊戲核心
+├── worlds/               # 遊戲世界資料，JSON 格式
+├── Docs/                 # 架構、功能、bugfix、開發記錄
+├── Docs/Archive/         # 從根目錄整理進來的歷史 markdown
+├── scripts/              # 建置、測試、resume Codex 等輔助腳本
+├── dist/                 # 發佈輸出與範例 client 產物
+├── frameworks/           # iOS/macOS framework 產物
+├── testscripts/          # 舊的輔助測試腳本，不是核心程式
+├── Cargo.toml            # Rust crate 設定
+├── SConstruct            # SCons 建置包裝，主要給 native/client 發佈用
+└── README.md             # 專案入口說明
 ```
 
-## 🎯 核心功能模組
+## Rust Core
 
-### 1. 世界系統 (world.rs)
-- 存儲世界的名稱、描述和所有地圖列表
-- 管理世界狀態的持久化
-- 支援多世界切換（預留功能）
-- 時間管理系統
+核心模組都在 `src/`：
 
-### 2. 地圖系統 (map.rs)
-- 100×100 的點陣式地圖結構
-- 5 種不同地形類型（Normal, Forest, Cave, Desert, Mountain）
-- 每個點 (Point) 包含：
-  - `x, y` 坐標
-  - `walkable`: 可移動/不可移動標記
-  - `description`: 詳細的點描述
-  - `objects`: 該點上的物件（角色、物品等）
-- 周圍環境查詢功能（3×3 範圍）
+| 檔案 | 責任 |
+|------|------|
+| `main.rs` | Terminal 版本入口 |
+| `lib.rs` | Library 版本匯出 |
+| `app.rs` | Terminal UI 主迴圈、事件處理、畫面更新 |
+| `world.rs` | GameWorld，管理地圖、時間、NPC、任務、事件、互動與戰鬥狀態 |
+| `map.rs` | 100x100 地圖、地形、格點、物品掉落 |
+| `person.rs` | 玩家 / NPC 資料、屬性、對話、關係、物品、時間更新 |
+| `npc_manager.rs` | NPC 載入、查找、儲存、位置查詢 |
+| `npc_ai.rs`、`npc_view.rs`、`npc_action.rs` | NPC AI 快照與行動決策 |
+| `command_handler.rs` | 字串指令解析成 `CommandResult` |
+| `command_executor.rs` | 無 UI / FFI 模式可用的指令執行 |
+| `input.rs` | Terminal 鍵盤輸入與命令歷史 |
+| `output.rs` | Terminal 輸出管理 |
+| `core_output.rs` | 無 UI / FFI 模式輸出 callback |
+| `ffi.rs` | C ABI 介面 |
+| `event*.rs` | 事件載入、排程、執行 |
+| `quest.rs` | 任務系統 |
+| `trade.rs` | 交易系統 |
+| `item.rs`、`item_registry.rs` | 物品模型與物品資料庫 |
+| `time_thread.rs`、`time_updatable.rs` | 時間推進與可更新物件 |
+| `ui.rs` | Ratatui 畫面元件 |
 
-### 3. 角色系統 (person.rs)
-- **Person 結構體**包含：
-  - `name`: 角色名稱
-  - `description`: 角色描述
-  - `abilities`: 能力信息
-  - `items`: 持有物品
-  - `status`: 當前狀態
-  - `x, y`: 在地圖上的位置
-- 支援序列化/反序列化持久化存儲
-- 實現 TimeUpdatable trait，根據遊戲時間改變狀態
+## Client / Interface
 
-### 4. 物品系統 (item.rs)
-- **Item 結構體**包含：
-  - `name`: 物品名稱
-  - `item_type`: 物品類型
-  - `description`: 物品描述
-  - `value`: 物品價值
-- 6 種物品類型：雜物、食物、武器、裝備、消耗品、工具
-- 24 種隨機物品支援
+### Terminal UI
 
-### 5. Observable 系統 (observable.rs)
-- 統一的觀察介面 trait
-- 方法：
-  - `show_title()`: 標題
-  - `show_description()`: 詳細描述
-  - `show_list()`: 列表信息
-- 實現類型：
-  - `Person`: 顯示角色信息
-  - `WorldInfo`: 顯示世界信息
-  - `Empty`: 空狀態（默認）
+預設執行方式是 terminal 版本：
 
-### 6. 時間系統 (time_updatable.rs)
-- **TimeUpdatable trait**: 允許物件響應時間更新事件
-- **TimeInfo 結構**: 包含遊戲時間 (hour, minute, day)
-- **遊戲時間**: 每 10 幀更新一次
-- **時間持久化**: 自動保存和載入遊戲時間
-
-### 7. UI 系統 (ui.rs)
-- 基於 Ratatui 的終端 UI
-- 三個主要區域：
-  - **輸出區**: 顯示遊戲輸出和 look 命令結果
-  - **輸入區**: 命令輸入框
-  - **狀態欄**: 一行消息提示（5秒自動清除）
-  - **懸浮窗**: 右側可選的角色狀態面板
-
-## 🎮 遊戲指令
-
-### 基本指令
-
-| 指令 | 說明 | 例子 |
-|------|------|------|
-| `look` | 查看當前位置及周圍環境 | `look` |
-| `l` / `r` / `u` / `d` | 向左/右/上/下移動 | `l` |
-| `status` | 打開右側角色狀態窗口 | `status` |
-| `hello <text>` | 顯示問候信息 | `hello world` |
-| `show world` | 顯示世界資訊 | `show world` |
-| `clear` | 清除輸出 | `clear` |
-| `exit` / `quit` | 退出遊戲 | `exit` |
-
-### 指令行為
-
-- **正確指令**: 結果顯示在輸出區
-- **錯誤指令**: 錯誤消息顯示在狀態欄，5秒後自動清除
-- **移動指令**: 顯示"往 ? 移動"在狀態欄，失敗顯示原因
-- **status 指令**: 打開懸浮窗顯示 Me 的詳細信息
-- **其他指令**: 關閉懸浮窗（如果打開）
-
-## 🗂️ 數據存儲
-
-### 世界配置 (worlds/初始世界/world.json)
-```json
-{
-  "name": "初始世界",
-  "description": "...",
-  "maps": ["初始之地", "森林", "洞穴", "沙漠", "山脈"]
-}
-```
-
-### 時間配置 (worlds/初始世界/time.json)
-```json
-{
-  "hour": 9,
-  "minute": 0,
-  "day": 1,
-  "last_update": 1733564291
-}
-```
-
-### 地圖文件 (worlds/初始世界/maps/*.json)
-- 每個地圖存儲 100×100 的點陣信息
-- 包含可移動性、詳細描述和物件列表
-
-### 角色數據 (worlds/初始世界/persons/*.json)
-- 存儲所有角色（Me + NPC）的詳細信息
-- 包括位置、能力、物品、狀態等
-
-## 🛠️ 工具程序
-
-### 地圖生成
-地圖可以通過遊戲內的編輯功能進行創建和修改。
-
-```bash
-cargo run --bin main
-```
-- 為每個點生成詳細描述
-- 保存為 JSON 文件
-
-## 🚀 使用方法
-
-### 1. 編譯項目
-```bash
-cargo build --release
-```
-
-### 2. 運行遊戲
 ```bash
 cargo run
 ```
 
-首次運行時：
-- 自動檢查世界數據目錄
-- 如果不存在則創建初始世界
-- 生成所有必要的文件和 NPC
-- 初始化遊戲時間
+或：
 
-### 3. 遊戲流程
-```
-1. 遊戲啟動 → 載入初始世界和所有地圖
-2. 載入遊戲時間和所有角色（Me + NPC）
-3. 玩家在"初始之地"開始冒險
-4. 輸入命令進行交互
-5. 遊戲自動保存所有狀態
-```
-
-## 🎨 UI 設計
-
-### 佈局示意
-```
-┌─────────────────────────────────────────────────────────┐
-│                                                         │
-│           輸出區域                                      │
-│      (look、移動、命令結果)          ┌──────浮窗───┐  │
-│                                      │ 角色狀態    │  │
-│                                      │ 信息顯示   │  │
-│                                      └────────────┘  │
-│                                                         │
-├─────────────────────────────────────────────────────────┤
-│ > _                                                      │
-│  (輸入框)                                                │
-├─────────────────────────────────────────────────────────┤
-│ 狀態: 往右移動 | 時間: 09:00                             │
-│ (狀態 5 秒自動清除)                                      │
-└─────────────────────────────────────────────────────────┘
-```
-
-## 🎭 NPC 系統
-
-遊戲包含 5 種 NPC 類型，在初始之地隨機散布：
-
-| NPC 類型 | 描述 | 數量 |
-|---------|------|------|
-| 商人 | 販賣物品的商業人士 | 1 |
-| 路人 | 普通的行人 | 1 |
-| 醫生 | 提供治療服務 | 1 |
-| 工人 | 從事勞動工作 | 1 |
-| 農夫 | 從事農業工作 | 1 |
-
-所有 NPC 都會：
-- 隨機放置在可移動的點上
-- 被持久化存儲
-- 在程序啟動時自動載入
-- 可通過 status 窗口查看信息
-- 根據遊戲時間改變狀態
-
-## 🔧 技術棧
-
-- **語言**: Rust
-- **TUI 框架**: Ratatui
-- **序列化**: Serde + serde_json
-- **數據持久化**: JSON 文件
-- **隨機數**: rand crate
-- **事件系統**: TimeUpdatable trait
-
-## 📝 注意事項
-
-1. **首次運行**: 會自動創建必要的目錄結構和文件
-2. **數據保存**: 所有更改自動保存到 JSON 文件
-3. **NPC 生成**: 每次啟動時重新載入已保存的 NPC
-4. **時間流逝**: 遊戲時間自動保存，關閉後恢復
-5. **地圖尺寸**: 當前固定為 100×100（可通過參數調整）
-
-## 🚧 未來功能計劃
-
-- [x] NPC 對話系統 (✅ 已完成 - 見 [NPC 說話功能文檔](Docs/NPC_TALK_QUICKSTART.md))
-- [ ] 物品拾取和丟棄
-- [ ] 物品交易系統
-- [ ] 戰鬥系統
-- [ ] 任務系統
-- [ ] 天氣系統
-- [ ] 多世界支援
-- [ ] 聯網多人模式（遠期）
-
-## 🆕 最新功能：NPC 說話系統
-
-NPC 現在可以在玩家接近時說話了！你可以：
-- 為 NPC 設置不同場景的台詞（例如：見面、告別等）
-- 調整 NPC 的說話積極度（0-100%）
-- 商人預設積極度為 100%，一定會打招呼
-
-### 快速開始
 ```bash
-# 創建商人
-create npc m 張商人
-
-# 設置打招呼台詞
-setdialogue 張商人 見面 哈囉！你好，來看看我的商品吧！
-
-# 設置說話積極度（可選）
-seteagerness 張商人 100
-
-# 移動到商人位置觀察
-look
+cargo run --bin main
 ```
 
-詳細說明請見：[NPC 說話功能快速開始](Docs/NPC_TALK_QUICKSTART.md)
+Terminal UI 是目前最完整的 client，包含互動選單、地圖顯示、戰鬥、交易、任務、log、狀態欄等畫面邏輯。
 
-## 📖 代碼文檔
+### C ABI / Library Mode
 
-詳細的實現記錄請見 [UPDATE.md](UPDATE.md)
+`Cargo.toml` 會把 crate 編成：
 
----
+```toml
+crate-type = ["staticlib", "cdylib", "rlib"]
+```
 
-**最後更新**: 2025-12-06  
-**版本**: 0.1.0
+FFI 相關檔案：
 
+- `src/ffi.rs`
+- `src/ratamud.h`
+- `test_callback.cpp`
+- `Docs/Archive/LIB_MODE_GUIDE.md`
+- `Docs/Archive/OUTPUT_CALLBACK_USAGE.md`
+- `Docs/C_ABI_README.md`
+- `Docs/C_ABI_GUIDE.md`
 
----
+Library 模式用來讓 C/C++、iOS 或其他平台接入 Rust core。這些 client 應透過 C ABI 傳入指令、接收 callback 輸出，不應複製遊戲規則。
 
-## 最近更新 (2025-12-24)
+### iOS / macOS Framework
 
-### 地圖和世界名稱英文化
-- 世界：`初始世界` → `beginWorld`
-- 地圖：`初始之地` → `beginMap`, `森林` → `forest`, `山脈` → `mountain`
+`frameworks/` 裡的檔案是建置產物或發佈包，目標是讓 iOS/macOS client 使用 Rust core。它們不是遊戲邏輯來源。
 
-### NPC 對話系統增強
-- 新增 Person 屬性：`gender`（性別）、`appearance`（顏值）
-- 支援多對話選項和條件判斷
-- 新增 sdl 三種語法：
-  1. `sdl <NPC> <話題> <對話>` - 簡單版
-  2. `sdl <NPC> <話題> add <對話> when <條件>` - add 語法
-  3. `sdl <NPC> set <話題> when <條件> say <對話>` - set 語法（推薦）
+相關文件：
 
-詳見：`README_DIALOGUE.md` 和 `SDL_SYNTAX.md`
+- `Docs/Archive/IOS_FRAMEWORK_SUCCESS.md`
+- `Docs/Archive/SCONS_IOS_FRAMEWORKS.md`
+- `Docs/IOS_FRAMEWORK_README.md`
+- `scripts/build_frameworks.sh`
+- `scripts/test_ios_build.sh`
+
+## 遊戲資料
+
+主要資料在：
+
+```text
+worlds/
+├── settings.json
+├── person_descriptions.json
+└── beginWorld/
+    ├── world.json
+    ├── time.json
+    ├── maps/
+    ├── persons/
+    ├── quests/
+    └── events/
+```
+
+`worlds/beginWorld/` 是目前預設世界。程式會讀寫其中的 `time.json`、`maps/*.json`、`persons/*.json` 等檔案，所以執行遊戲後資料可能會改變。
+
+## 建置與執行
+
+### 檢查 Rust core
+
+```bash
+cargo check --lib
+```
+
+### 執行單元測試
+
+```bash
+cargo test --lib
+```
+
+目前專案內有少量 Rust 單元測試。部分 shell script 是 Copilot 生成的整合測試草稿，不代表必要測試流程。
+
+### 執行遊戲
+
+```bash
+cargo run
+```
+
+### 建置 library
+
+```bash
+cargo build --release --lib
+```
+
+若要同時編譯 C++ callback 範例，可使用：
+
+```bash
+scripts/build_and_test.sh
+```
+
+這是 client / FFI 驗證，不是 Rust core 的必要建置步驟。
+
+## 常用指令
+
+遊戲內支援的指令由 `src/command_handler.rs` 定義。常見指令包括：
+
+| 指令 | 說明 |
+|------|------|
+| `help` | 顯示可用指令 |
+| `look` / `l` | 查看目前位置或 NPC |
+| `up` / `down` / `left` / `right` | 移動 |
+| `get` / `drop` / `use` | 物品操作 |
+| `npcs` | 列出 NPC |
+| `talk` | 與 NPC 對話 |
+| `trade` / `buy` / `sell` | 交易 |
+| `quest ...` | 任務操作 |
+| `punch` / `kick` / `escape` | 戰鬥 |
+| `show map` / `show minimap` / `show log` | UI 顯示控制 |
+| `exit` / `quit` | 離開 |
+
+完整內容以 `CommandResult::get_help_info()` 和 `parse_command()` 為準。
+
+## 文件整理原則
+
+`Docs/` 中有很多文件是功能開發、重構、bugfix 或 Copilot 協作過程留下的紀錄。閱讀時建議優先看：
+
+- `Docs/README.md`：文件索引
+- `Docs/Development/CODE_RULES.md`：開發規範
+- `Docs/EVENT_DRIVEN_RULE.md`：事件驅動架構原則
+- `Docs/C_ABI_README.md`：C ABI 使用說明
+- `Docs/README_DIALOGUE.md`、`Docs/SDL_SYNTAX.md`：對話系統
+
+其他 `*_SUMMARY.md`、`*_FIX.md`、`*_COMPLETE.md` 多半是歷史記錄，不一定代表目前最佳入口。
+
+## 目前整理重點
+
+- Rust code 是主要程式。
+- C/C++ 與 iOS 是 client/interface。
+- `dist/`、`frameworks/` 是建置或發佈產物。
+- `scripts/` 和 `testscripts/` 裡的 shell 測試腳本只是輔助，不是核心架構。
+- 真正需要維護的主線是 `src/`、`worlds/`、`Cargo.toml` 和必要文件。

@@ -3,14 +3,14 @@
   "description": "一位清秀的，普通體格，有力量的男子，看起來健康的。",
   "abilities": [],
   "items": {
+    "金幣": 9938,
     "鐵劍": 5,
+    "弓": 1,
+    "舊布料": 2,
+    "頭盔": 2,
     "水": 1,
     "魔法書": 1,
-    "麵包": 1,
-    "頭盔": 2,
-    "舊布料": 2,
-    "弓": 1,
-    "金幣": 9938
+    "麵包": 1
   },
   "item_instances": {
     "麵包": [
@@ -39,22 +39,34 @@
     ]
   },
   "status": "",
-  "x": 39,
-  "y": 65,
+  "x": 38,
+  "y": 64,
   "map": "beginMap",
-  "hp": 99113,
+  "hp": 99005,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 155709,
-  "last_hunger_hour": 23,
+  "age": 160880,
+  "last_hunger_hour": 0,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
+    "閒聊": [
+      {
+        "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "如果你有什麼特別需求，隨時告訴我！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
     "購買": [
       {
         "text": "當然可以！請告訴我你想買什麼。",
@@ -137,18 +149,6 @@
         "conditions": [],
         "weight": 1.0
       }
-    ],
-    "閒聊": [
-      {
-        "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "如果你有什麼特別需求，隨時告訴我！",
-        "conditions": [],
-        "weight": 1.0
-      }
     ]
   },
   "talk_eagerness": 100,
@@ -161,18 +161,18 @@
   "build": 50,
   "party_leader": null,
   "combat_skills": {
-    "punch": {
-      "name": "punch",
-      "proficiency": 0,
-      "damage": 2,
-      "cooldown": 2,
-      "current_cooldown": 0
-    },
     "kick": {
       "name": "kick",
       "proficiency": 0,
       "damage": 3,
       "cooldown": 3,
+      "current_cooldown": 0
+    },
+    "punch": {
+      "name": "punch",
+      "proficiency": 0,
+      "damage": 2,
+      "cooldown": 2,
       "current_cooldown": 0
     }
   },

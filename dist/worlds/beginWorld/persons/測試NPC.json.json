@@ -1,0 +1,89 @@
+{
+  "name": "新測試者",
+  "description": "一位清秀的，有力量的人，看起來健康的。",
+  "abilities": [],
+  "items": {
+    "金幣": 10002
+  },
+  "item_instances": {
+    "金幣": [
+      {
+        "id": 5,
+        "name": "金幣",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 16,
+        "name": "金幣",
+        "age": 0,
+        "stories": []
+      }
+    ]
+  },
+  "status": "",
+  "x": 35,
+  "y": 75,
+  "map": "beginMap",
+  "hp": 100000,
+  "mp": 100000,
+  "max_hp": 100000,
+  "max_mp": 100000,
+  "strength": 100,
+  "knowledge": 100,
+  "sociality": 100,
+  "age": 1988,
+  "last_hunger_hour": 0,
+  "is_sleeping": false,
+  "last_mp_restore_minute": 0,
+  "is_interacting": false,
+  "dialogues": {
+    "kick": [
+      {
+        "text": "kick",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "被叫住": [
+      {
+        "text": "測試NPC 有什麼事嗎？",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "punch": [
+      {
+        "text": "punch",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ]
+  },
+  "talk_eagerness": 100,
+  "relationship": 0,
+  "dialogue_state": "初見",
+  "met_player": false,
+  "interaction_count": 0,
+  "gender": "",
+  "appearance": 50,
+  "build": 50,
+  "party_leader": null,
+  "combat_skills": {
+    "punch": {
+      "name": "punch",
+      "proficiency": 0,
+      "damage": 2,
+      "cooldown": 2,
+      "current_cooldown": 0
+    },
+    "kick": {
+      "name": "kick",
+      "proficiency": 0,
+      "damage": 3,
+      "cooldown": 3,
+      "current_cooldown": 0
+    }
+  },
+  "combat_exp": 0
+}

@@ -1676,8 +1676,8 @@
         "description": "懸崖的邊緣，可以俯瞰遠景",
         "name": "",
         "objects": {
-          "蘋果": 1,
-          "漿果": 1
+          "漿果": 1,
+          "蘋果": 1
         },
         "object_ages": {},
         "terrain_type": "Normal"
@@ -6894,7 +6894,7 @@
         },
         "object_ages": {
           "蘋果": [
-            39014
+            40223
           ]
         },
         "terrain_type": "Normal"
@@ -7736,7 +7736,7 @@
         },
         "object_ages": {
           "蘋果": [
-            26753
+            27962
           ]
         },
         "terrain_type": "Normal"
@@ -11651,8 +11651,8 @@
         "description": "寂靜的墓地",
         "name": "",
         "objects": {
-          "毒藥": 2,
-          "頭盔": 2
+          "頭盔": 2,
+          "毒藥": 2
         },
         "object_ages": {},
         "terrain_type": "Normal"
@@ -17144,8 +17144,8 @@
         "description": "鬱鬱蒼蒼的樹林",
         "name": "",
         "objects": {
-          "漿果": 3,
-          "魔力藥水": 1
+          "魔力藥水": 1,
+          "漿果": 3
         },
         "object_ages": {},
         "terrain_type": "Normal"
@@ -21646,7 +21646,7 @@
         },
         "object_ages": {
           "蘋果": [
-            26830
+            28039
           ]
         },
         "terrain_type": "Normal"
@@ -22091,7 +22091,7 @@
         },
         "object_ages": {
           "蘋果": [
-            16595
+            17804
           ]
         },
         "terrain_type": "Normal"
@@ -24952,8 +24952,8 @@
         "description": "密集的灌木叢",
         "name": "",
         "objects": {
-          "舊布料": 3,
-          "樹皮": 3
+          "樹皮": 3,
+          "舊布料": 3
         },
         "object_ages": {},
         "terrain_type": "Normal"
@@ -26939,8 +26939,8 @@
         "description": "白雪皚皚的地面",
         "name": "",
         "objects": {
-          "鑰匙": 1,
-          "弓": 1
+          "弓": 1,
+          "鑰匙": 1
         },
         "object_ages": {},
         "terrain_type": "Normal"
@@ -32934,7 +32934,7 @@
         },
         "object_ages": {
           "羽毛": [
-            54080
+            55289
           ]
         },
         "terrain_type": "Normal"
@@ -36622,8 +36622,8 @@
         "description": "白雪皚皚的地面",
         "name": "",
         "objects": {
-          "石子": 2,
-          "頭盔": 1
+          "頭盔": 1,
+          "石子": 2
         },
         "object_ages": {},
         "terrain_type": "Normal"
@@ -37637,7 +37637,7 @@
         },
         "object_ages": {
           "蘋果": [
-            76416
+            77625
           ]
         },
         "terrain_type": "Normal"
@@ -38088,7 +38088,7 @@
         },
         "object_ages": {
           "蘋果": [
-            36156
+            37365
           ]
         },
         "terrain_type": "Normal"
@@ -44013,8 +44013,8 @@
         "description": "宏偉的石砌城堡",
         "name": "",
         "objects": {
-          "毒藥": 1,
-          "樹皮": 2
+          "樹皮": 2,
+          "毒藥": 1
         },
         "object_ages": {},
         "terrain_type": "Normal"
@@ -45624,8 +45624,8 @@
         "description": "白雪皚皚的地面",
         "name": "",
         "objects": {
-          "盾牌": 1,
-          "鎬": 2
+          "鎬": 2,
+          "盾牌": 1
         },
         "object_ages": {},
         "terrain_type": "Normal"
@@ -47325,7 +47325,7 @@
         "objects": {},
         "object_ages": {
           "蘋果": [
-            58581
+            59790
           ]
         },
         "terrain_type": "Normal"
@@ -48873,8 +48873,8 @@
         "description": "熱鬧的小村落",
         "name": "",
         "objects": {
-          "木劍": 3,
-          "頭盔": 1
+          "頭盔": 1,
+          "木劍": 3
         },
         "object_ages": {},
         "terrain_type": "Normal"
@@ -49808,8 +49808,8 @@
         "description": "寬闊的綠色草地，微風吹過",
         "name": "",
         "objects": {
-          "弓": 2,
-          "盾牌": 3
+          "盾牌": 3,
+          "弓": 2
         },
         "object_ages": {},
         "terrain_type": "Normal"
@@ -58964,8 +58964,8 @@
         "description": "清涼的泉水湧出",
         "name": "",
         "objects": {
-          "頭盔": 3,
-          "蘋果": 3
+          "蘋果": 3,
+          "頭盔": 3
         },
         "object_ages": {},
         "terrain_type": "Normal"
@@ -60099,8 +60099,8 @@
         "description": "聳立的懸崖",
         "name": "",
         "objects": {
-          "繩索": 1,
-          "舊布料": 3
+          "舊布料": 3,
+          "繩索": 1
         },
         "object_ages": {},
         "terrain_type": "Normal"
@@ -60256,7 +60256,7 @@
         },
         "object_ages": {
           "蘋果": [
-            1766
+            2975
           ]
         },
         "terrain_type": "Normal"
@@ -68541,9 +68541,7 @@
         "walkable": true,
         "description": "清澈的河流流經此地",
         "name": "",
-        "objects": {
-          "魔力藥水": 1
-        },
+        "objects": {},
         "object_ages": {},
         "terrain_type": "Normal"
       },
@@ -71102,7 +71100,7 @@
         },
         "object_ages": {
           "蘋果": [
-            31414
+            32623
           ]
         },
         "terrain_type": "Normal"
@@ -73508,7 +73506,7 @@
         "objects": {},
         "object_ages": {
           "變美果": [
-            3594
+            4803
           ]
         },
         "terrain_type": "Normal"
@@ -75606,7 +75604,7 @@
       {
         "x": 43,
         "y": 74,
-        "walkable": false,
+        "walkable": true,
         "description": "清涼的泉水湧出",
         "name": "",
         "objects": {},
@@ -76280,7 +76278,7 @@
         },
         "object_ages": {
           "蘋果": [
-            12886
+            14095
           ]
         },
         "terrain_type": "Normal"
@@ -76546,8 +76544,8 @@
         "description": "灰色的嶙峋岩石",
         "name": "",
         "objects": {
-          "鐵劍": 1,
-          "漿果": 3
+          "漿果": 3,
+          "鐵劍": 1
         },
         "object_ages": {},
         "terrain_type": "Normal"
@@ -77867,7 +77865,7 @@
         },
         "object_ages": {
           "蘋果": [
-            14947
+            16156
           ]
         },
         "terrain_type": "Normal"
@@ -78763,8 +78761,8 @@
         "description": "古老的廢墟遺跡",
         "name": "",
         "objects": {
-          "治療藥水": 2,
-          "樹皮": 3
+          "樹皮": 3,
+          "治療藥水": 2
         },
         "object_ages": {},
         "terrain_type": "Normal"
@@ -83178,7 +83176,7 @@
         },
         "object_ages": {
           "蘋果": [
-            8795
+            10004
           ]
         },
         "terrain_type": "Normal"
@@ -85542,7 +85540,7 @@
         },
         "object_ages": {
           "蘋果": [
-            20465
+            21674
           ]
         },
         "terrain_type": "Normal"
@@ -97451,8 +97449,8 @@
         "description": "寬闊的綠色草地，微風吹過",
         "name": "",
         "objects": {
-          "魔力藥水": 3,
-          "治療藥水": 2
+          "治療藥水": 2,
+          "魔力藥水": 3
         },
         "object_ages": {},
         "terrain_type": "Normal"

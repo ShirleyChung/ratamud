@@ -1,0 +1,161 @@
+{
+  "name": "醫生",
+  "description": "一位清秀的，普通體格，有力量的人，看起來健康的。",
+  "abilities": [],
+  "items": {
+    "火把": 1,
+    "匕首": 7,
+    "盾牌": 3,
+    "頭盔": 5,
+    "漿果": 1,
+    "魔力藥水": 5,
+    "治療藥水": 8,
+    "舊布料": 4,
+    "毒藥": 3,
+    "弓": 6,
+    "樹皮": 5,
+    "金幣": 10000,
+    "鑰匙": 1,
+    "王冠": 1,
+    "乾肉": 3,
+    "皮衣": 8,
+    "繩索": 4
+  },
+  "item_instances": {
+    "魔力藥水": [
+      {
+        "id": 3,
+        "name": "魔力藥水",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "樹皮": [
+      {
+        "id": 3,
+        "name": "樹皮",
+        "age": 0,
+        "stories": []
+      }
+    ]
+  },
+  "status": "",
+  "x": 19,
+  "y": 9,
+  "map": "beginMap",
+  "hp": 97627,
+  "mp": 99998,
+  "max_hp": 100000,
+  "max_mp": 100000,
+  "strength": 100,
+  "knowledge": 100,
+  "sociality": 100,
+  "age": 177447,
+  "last_hunger_hour": 0,
+  "is_sleeping": false,
+  "last_mp_restore_minute": 0,
+  "is_interacting": false,
+  "dialogues": {
+    "閒聊": [
+      {
+        "text": "我是開小兒科的醫生，有什麼奇怪問題別找我。",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "如果你有任何健康問題，去找別的醫生吧",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "作為醫生，唉，真是一言難盡！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "punch": [
+      {
+        "text": "punch",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "kick": [
+      {
+        "text": "kick",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "見面": [
+      {
+        "text": "哈囉，小姐，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉，帥哥，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "男"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "你好，有什麼不舒服的嗎？我可以幫你檢查一下。",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "歡迎來到診所，需要治療還是建議？",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉！我是這裡的醫生，隨時準備幫助你！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "需要醫療幫助嗎？我可以為你提供專業的治療。",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ]
+  },
+  "talk_eagerness": 80,
+  "relationship": 0,
+  "dialogue_state": "",
+  "met_player": false,
+  "interaction_count": 0,
+  "gender": "未知",
+  "appearance": 50,
+  "build": 50,
+  "party_leader": null,
+  "combat_skills": {
+    "punch": {
+      "name": "punch",
+      "proficiency": 0,
+      "damage": 2,
+      "cooldown": 2,
+      "current_cooldown": 0
+    },
+    "kick": {
+      "name": "kick",
+      "proficiency": 0,
+      "damage": 3,
+      "cooldown": 3,
+      "current_cooldown": 0
+    }
+  },
+  "combat_exp": 0
+}

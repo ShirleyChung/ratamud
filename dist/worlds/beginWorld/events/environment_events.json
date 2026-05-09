@@ -1,0 +1,208 @@
+[
+  {
+    "id": "weather_change_forest",
+    "name": "森林天氣變化",
+    "description": "森林地圖的天氣每8分鐘變化一次，多霧和雨天",
+    "trigger": {
+      "type": "time",
+      "schedule": "*/8 * * * *",
+      "random_chance": 1.0
+    },
+    "where": {
+      "map": "forest"
+    },
+    "actions": [
+      {
+        "type": "random_action",
+        "actions": [
+          {
+            "weight": 0.2,
+            "action": {
+              "type": "set_map_property",
+              "map": "forest",
+              "property": "天氣",
+              "value": "晴天"
+            }
+          },
+          {
+            "weight": 0.25,
+            "action": {
+              "type": "set_map_property",
+              "map": "forest",
+              "property": "天氣",
+              "value": "陰天"
+            }
+          },
+          {
+            "weight": 0.3,
+            "action": {
+              "type": "set_map_property",
+              "map": "forest",
+              "property": "天氣",
+              "value": "雨天"
+            }
+          },
+          {
+            "weight": 0.25,
+            "action": {
+              "type": "set_map_property",
+              "map": "forest",
+              "property": "天氣",
+              "value": "霧天"
+            }
+          }
+        ]
+      },
+      {
+        "type": "random_action",
+        "actions": [
+          {
+            "weight": 0.2,
+            "action": {
+              "type": "message",
+              "text": "☀️ 陽光穿透樹葉間的縫隙灑下。"
+            }
+          },
+          {
+            "weight": 0.25,
+            "action": {
+              "type": "message",
+              "text": "☁️ 森林上方烏雲密布，光線變暗。"
+            }
+          },
+          {
+            "weight": 0.3,
+            "action": {
+              "type": "message",
+              "text": "🌧️ 雨滴從樹葉上滴落，林地變得濕滑。"
+            }
+          },
+          {
+            "weight": 0.25,
+            "action": {
+              "type": "message",
+              "text": "🌫️ 晨霧在樹林間瀰漫，能見度很低。"
+            }
+          }
+        ]
+      }
+    ],
+    "state": {
+      "repeatable": true,
+      "cooldown": 480,
+      "max_triggers": -1,
+      "prerequisites": []
+    }
+  },
+  {
+    "id": "temperature_change_beginMap",
+    "name": "溫度變化",
+    "description": "beginMap的溫度隨機變化",
+    "trigger": {
+      "type": "time",
+      "schedule": "*/10 * * * *",
+      "random_chance": 0.7
+    },
+    "where": {
+      "map": "beginMap"
+    },
+    "actions": [
+      {
+        "type": "random_action",
+        "actions": [
+          {
+            "weight": 0.1,
+            "action": {
+              "type": "set_map_property",
+              "map": "beginMap",
+              "property": "溫度",
+              "value": "炎熱"
+            }
+          },
+          {
+            "weight": 0.3,
+            "action": {
+              "type": "set_map_property",
+              "map": "beginMap",
+              "property": "溫度",
+              "value": "溫暖"
+            }
+          },
+          {
+            "weight": 0.4,
+            "action": {
+              "type": "set_map_property",
+              "map": "beginMap",
+              "property": "溫度",
+              "value": "舒適"
+            }
+          },
+          {
+            "weight": 0.15,
+            "action": {
+              "type": "set_map_property",
+              "map": "beginMap",
+              "property": "溫度",
+              "value": "涼爽"
+            }
+          },
+          {
+            "weight": 0.05,
+            "action": {
+              "type": "set_map_property",
+              "map": "beginMap",
+              "property": "溫度",
+              "value": "寒冷"
+            }
+          }
+        ]
+      },
+      {
+        "type": "random_action",
+        "actions": [
+          {
+            "weight": 0.1,
+            "action": {
+              "type": "message",
+              "text": "🔥 太陽高照，空氣變得炎熱。"
+            }
+          },
+          {
+            "weight": 0.3,
+            "action": {
+              "type": "message",
+              "text": "🌤️ 氣溫回升，感覺溫暖舒服。"
+            }
+          },
+          {
+            "weight": 0.4,
+            "action": {
+              "type": "message",
+              "text": "😌 氣溫適中，非常舒適。"
+            }
+          },
+          {
+            "weight": 0.15,
+            "action": {
+              "type": "message",
+              "text": "🍃 微風吹拂，帶來些許涼意。"
+            }
+          },
+          {
+            "weight": 0.05,
+            "action": {
+              "type": "message",
+              "text": "❄️ 氣溫驟降，感覺有點寒冷。"
+            }
+          }
+        ]
+      }
+    ],
+    "state": {
+      "repeatable": true,
+      "cooldown": 600,
+      "max_triggers": -1,
+      "prerequisites": []
+    }
+  }
+]

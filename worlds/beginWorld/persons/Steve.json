@@ -3,22 +3,22 @@
   "description": "一位清秀的，普通體格，有力量的人，看起來健康的。",
   "abilities": [],
   "items": {
-    "繩索": 2,
-    "金幣": 10000,
-    "皮衣": 1,
-    "乾肉": 1,
     "鑰匙": 2,
+    "麵包": 1,
+    "樹皮": 3,
     "毒藥": 12,
     "治療藥水": 1,
-    "樹皮": 3,
+    "金幣": 10000,
+    "蘋果": 2,
     "鐵劍": 2,
+    "皮衣": 1,
     "弓": 1,
     "木劍": 3,
-    "石子": 3,
     "舊布料": 7,
-    "蘋果": 2,
-    "羽毛": 8,
-    "麵包": 1
+    "繩索": 2,
+    "石子": 3,
+    "乾肉": 1,
+    "羽毛": 8
   },
   "item_instances": {
     "毒藥": [
@@ -97,18 +97,18 @@
     ]
   },
   "status": "",
-  "x": 54,
+  "x": 52,
   "y": 75,
   "map": "beginMap",
-  "hp": 97680,
+  "hp": 97574,
   "mp": 99891,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 165676,
-  "last_hunger_hour": 23,
+  "age": 170847,
+  "last_hunger_hour": 0,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
@@ -152,16 +152,16 @@
         "weight": 1.0
       }
     ],
-    "punch": [
+    "kick": [
       {
-        "text": "punch",
+        "text": "kick",
         "conditions": [],
         "weight": 1.0
       }
     ],
-    "kick": [
+    "punch": [
       {
-        "text": "kick",
+        "text": "punch",
         "conditions": [],
         "weight": 1.0
       }

@@ -1,0 +1,142 @@
+{
+  "name": "小鹿",
+  "description": "一位清秀的，普通體格，有力量的人，看起來健康的。",
+  "abilities": [],
+  "items": {
+    "鑰匙": 1,
+    "羽毛": 2,
+    "金幣": 10000,
+    "乾肉": 1
+  },
+  "item_instances": {
+    "乾肉": [
+      {
+        "id": 4,
+        "name": "乾肉",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "羽毛": [
+      {
+        "id": 2,
+        "name": "羽毛",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 2,
+        "name": "羽毛",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "鑰匙": [
+      {
+        "id": 6,
+        "name": "鑰匙",
+        "age": 0,
+        "stories": []
+      }
+    ]
+  },
+  "status": "",
+  "x": 52,
+  "y": 47,
+  "map": "forest",
+  "hp": 98884,
+  "mp": 100000,
+  "max_hp": 100000,
+  "max_mp": 100000,
+  "strength": 100,
+  "knowledge": 100,
+  "sociality": 100,
+  "age": 172826,
+  "last_hunger_hour": 0,
+  "is_sleeping": false,
+  "last_mp_restore_minute": 0,
+  "is_interacting": false,
+  "dialogues": {
+    "見面": [
+      {
+        "text": "你好～我是小鹿，正在這裡擺攤呢",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉，小姐，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉，帥哥，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "男"
+          }
+        ],
+        "weight": 1.0
+      }
+    ],
+    "punch": [
+      {
+        "text": "punch",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "閒聊": [
+      {
+        "text": "這森林裡的風景真美麗！",
+        "conditions": [],
+        "weight": 5.0
+      },
+      {
+        "text": "我喜歡和旅人們交流，聽他們的故事。",
+        "conditions": [],
+        "weight": 7.0
+      }
+    ],
+    "kick": [
+      {
+        "text": "kick",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ]
+  },
+  "talk_eagerness": 90,
+  "relationship": 0,
+  "dialogue_state": "",
+  "met_player": false,
+  "interaction_count": 0,
+  "gender": "未知",
+  "appearance": 50,
+  "build": 50,
+  "party_leader": null,
+  "combat_skills": {
+    "kick": {
+      "name": "kick",
+      "proficiency": 0,
+      "damage": 3,
+      "cooldown": 3,
+      "current_cooldown": 0
+    },
+    "punch": {
+      "name": "punch",
+      "proficiency": 0,
+      "damage": 2,
+      "cooldown": 2,
+      "current_cooldown": 0
+    }
+  },
+  "combat_exp": 0
+}

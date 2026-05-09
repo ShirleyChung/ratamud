@@ -1,0 +1,64 @@
+[
+  {
+  "id": "random_apple",
+  "name": "樹上掉下些什麼",
+  "description": "每3分鐘有30%機率出現物品",
+  "trigger": {
+    "type": "time",
+    "schedule": "*/3 * * * *",
+    "random_chance": 0.3
+  },
+  "where": {
+    "map": "forest",
+    "position": "random"
+  },
+  "actions": [
+    {
+      "type": "message",
+      "text": "✨ 樹上掉下些什麼..."
+    },
+    {
+      "type": "add_item",
+      "item": "蘋果",
+      "position": "random"
+    }
+  ],
+  "state": {
+    "repeatable": true,
+    "cooldown": 180,
+    "max_triggers": -1,
+    "prerequisites": []
+  }
+},
+  {
+  "id": "random_berry",
+  "name": "路邊的野草結了些果子",
+  "description": "每2分鐘有50%機率出現物品",
+  "trigger": {
+    "type": "time",
+    "schedule": "*/2 * * * *",
+    "random_chance": 0.5
+  },
+  "where": {
+    "map": "beginMap",
+    "position": "random"
+  },
+  "actions": [
+    {
+      "type": "message",
+      "text": "✨ 草叢裡長出了些野果..."
+    },
+    {
+      "type": "add_item",
+      "item": "蘋果",
+      "position": "random"
+    }
+  ],
+  "state": {
+    "repeatable": true,
+    "cooldown": 180,
+    "max_triggers": -1,
+    "prerequisites": []
+  }
+}
+]

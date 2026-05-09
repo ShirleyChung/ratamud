@@ -1,0 +1,218 @@
+{
+  "name": "老虎",
+  "description": "一位清秀的，普通體格，有力量的人，看起來健康的。",
+  "abilities": [],
+  "items": {
+    "匕首": 4,
+    "鎬": 2,
+    "漿果": 13,
+    "蘋果": 3,
+    "治療藥水": 7,
+    "石子": 14,
+    "盾牌": 1,
+    "金幣": 10000,
+    "毒藥": 7,
+    "繩索": 1
+  },
+  "item_instances": {
+    "蘋果": [
+      {
+        "id": 4,
+        "name": "蘋果",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 11,
+        "name": "蘋果",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 14,
+        "name": "蘋果",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "匕首": [
+      {
+        "id": 1,
+        "name": "匕首",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 1,
+        "name": "匕首",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 2,
+        "name": "匕首",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 1,
+        "name": "匕首",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "石子": [
+      {
+        "id": 1,
+        "name": "石子",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 4,
+        "name": "石子",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "漿果": [
+      {
+        "id": 1,
+        "name": "漿果",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "治療藥水": [
+      {
+        "id": 1,
+        "name": "治療藥水",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 4,
+        "name": "治療藥水",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 18,
+        "name": "治療藥水",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 4,
+        "name": "治療藥水",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 5,
+        "name": "治療藥水",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 1,
+        "name": "治療藥水",
+        "age": 0,
+        "stories": []
+      }
+    ]
+  },
+  "status": "",
+  "x": 35,
+  "y": 76,
+  "map": "forest",
+  "hp": 98915,
+  "mp": 100000,
+  "max_hp": 100000,
+  "max_mp": 100000,
+  "strength": 100,
+  "knowledge": 100,
+  "sociality": 100,
+  "age": 167739,
+  "last_hunger_hour": 0,
+  "is_sleeping": false,
+  "last_mp_restore_minute": 0,
+  "is_interacting": false,
+  "dialogues": {
+    "punch": [
+      {
+        "text": "punch",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "閒聊": [
+      {
+        "text": "其實我是很溫和的",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "靠近我，我不會發怒！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "kick": [
+      {
+        "text": "kick",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "見面": [
+      {
+        "text": "吼~~~",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "雖然妳很美，我也是不會想把妳吃掉的！",
+        "conditions": [
+          {
+            "attribute": "appearance",
+            "operator": ">",
+            "value": "80"
+          },
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      }
+    ]
+  },
+  "talk_eagerness": 100,
+  "relationship": 0,
+  "dialogue_state": "初見",
+  "met_player": false,
+  "interaction_count": 0,
+  "gender": "未知",
+  "appearance": 50,
+  "build": 50,
+  "party_leader": null,
+  "combat_skills": {
+    "punch": {
+      "name": "punch",
+      "proficiency": 0,
+      "damage": 2,
+      "cooldown": 2,
+      "current_cooldown": 0
+    },
+    "kick": {
+      "name": "kick",
+      "proficiency": 0,
+      "damage": 3,
+      "cooldown": 3,
+      "current_cooldown": 0
+    }
+  },
+  "combat_exp": 0
+}

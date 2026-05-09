@@ -2,6 +2,18 @@
 
 本目錄包含 RataMUD 專案的所有技術文檔。
 
+## 閱讀原則
+
+這個專案的主要程式是 Rust 遊戲核心，位於 `../src/`。C/C++、iOS、framework、SCons 和 shell script 主要是 client、建置包裝或測試輔助。
+
+閱讀文件時建議先分清楚：
+
+- **核心程式**：Rust code、遊戲資料、指令、事件、NPC、任務、交易、戰鬥。
+- **Client / interface**：C ABI、C++ 範例、iOS/macOS framework。
+- **輔助腳本**：`../scripts/`、`../testscripts/` 多數是 Copilot 生成的測試腳本或建置輔助，不是必要程式。
+- **歷史記錄**：`*_SUMMARY.md`、`*_FIX.md`、`*_COMPLETE.md` 多半是開發過程紀錄，內容可能和目前實作有落差。
+- **根目錄舊文件**：原本散在根目錄的 markdown 已整理到 `Archive/`。
+
 ## 📁 目錄結構
 
 ### Development/ - 開發規範與指南
@@ -103,9 +115,10 @@
 ## 🔍 快速查找
 
 ### 新手入門
-1. 閱讀 [Development/CODE_RULES.md](Development/CODE_RULES.md) 了解開發規範
-2. 閱讀 [Build/WINDOWS_BUILD.md](Build/WINDOWS_BUILD.md) 學習如何建置專案
-3. 閱讀 [API/C_ABI_README.md](API/C_ABI_README.md) 了解 API 使用
+1. 先看根目錄 [README.md](../README.md)，了解 Rust core、client、資料與輔助腳本的分工
+2. 閱讀 [Development/CODE_RULES.md](Development/CODE_RULES.md) 了解開發規範
+3. 閱讀 [EVENT_DRIVEN_RULE.md](EVENT_DRIVEN_RULE.md) 了解事件驅動架構
+4. 需要接外部 client 時，再閱讀 [C_ABI_README.md](C_ABI_README.md) 或 [C_ABI_GUIDE.md](C_ABI_GUIDE.md)
 
 ### 功能開發
 - 查看 Features/ 目錄下的功能說明文檔

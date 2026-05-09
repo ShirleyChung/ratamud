@@ -1,0 +1,35 @@
+{
+  "id": "collect_wood",
+  "name": "收集木材",
+  "description": "商人需要10根木材來修理他的攤位",
+  "prerequisites": ["tutorial_talk_to_merchant"],
+  "conditions": [
+    {
+      "type": "has_item",
+      "item": "木材",
+      "count": 10,
+      "completed": false
+    }
+  ],
+  "rewards": [
+    {
+      "type": "item",
+      "item": "金幣",
+      "count": 100
+    },
+    {
+      "type": "relationship",
+      "npc_id": "商人",
+      "change": 20
+    },
+    {
+      "type": "unlock_dialogue",
+      "npc_id": "商人",
+      "scene": "感謝",
+      "text": "太感謝你了！有了這些木材，我的攤位很快就能修好了！"
+    }
+  ],
+  "status": "NotStarted",
+  "giver": "商人",
+  "repeatable": false
+}

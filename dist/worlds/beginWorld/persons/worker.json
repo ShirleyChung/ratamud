@@ -1,0 +1,134 @@
+{
+  "name": "工人",
+  "description": "一位清秀的，普通體格，有力量的人，看起來健康的。",
+  "abilities": [],
+  "items": {
+    "治療藥水": 6,
+    "皮衣": 3,
+    "匕首": 1,
+    "麵包": 8,
+    "火把": 4,
+    "舊布料": 5,
+    "金幣": 10000,
+    "羽毛": 4,
+    "毒藥": 4,
+    "蘋果": 2,
+    "弓": 3,
+    "頭盔": 5,
+    "盾牌": 3,
+    "鐵劍": 1,
+    "乾肉": 1,
+    "繩索": 2,
+    "漿果": 4
+  },
+  "item_instances": {
+    "治療藥水": [
+      {
+        "id": 1,
+        "name": "治療藥水",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 2,
+        "name": "治療藥水",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 3,
+        "name": "治療藥水",
+        "age": 0,
+        "stories": []
+      }
+    ]
+  },
+  "status": "",
+  "x": 81,
+  "y": 83,
+  "map": "beginMap",
+  "hp": 97641,
+  "mp": 99998,
+  "max_hp": 100000,
+  "max_mp": 100000,
+  "strength": 100,
+  "knowledge": 100,
+  "sociality": 100,
+  "age": 177658,
+  "last_hunger_hour": 0,
+  "is_sleeping": false,
+  "last_mp_restore_minute": 0,
+  "is_interacting": false,
+  "dialogues": {
+    "punch": [
+      {
+        "text": "punch",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "見面": [
+      {
+        "text": "哈囉，小姐，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉，帥哥，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "男"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "你好！工作辛苦了！這附近有什麼需要修的嗎？",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "kick": [
+      {
+        "text": "kick",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "閒聊": []
+  },
+  "talk_eagerness": 60,
+  "relationship": 0,
+  "dialogue_state": "",
+  "met_player": false,
+  "interaction_count": 0,
+  "gender": "未知",
+  "appearance": 50,
+  "build": 50,
+  "party_leader": null,
+  "combat_skills": {
+    "kick": {
+      "name": "kick",
+      "proficiency": 0,
+      "damage": 3,
+      "cooldown": 3,
+      "current_cooldown": 0
+    },
+    "punch": {
+      "name": "punch",
+      "proficiency": 0,
+      "damage": 2,
+      "cooldown": 2,
+      "current_cooldown": 0
+    }
+  },
+  "combat_exp": 0
+}

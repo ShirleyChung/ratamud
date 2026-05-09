@@ -3,13 +3,13 @@
   "description": "一位清秀的，普通體格，有力量的人，看起來健康的。",
   "abilities": [],
   "items": {
-    "魔法書": 10,
     "魔力藥水": 100,
     "匕首": 10,
-    "木劍": 10,
     "皮衣": 2,
+    "金幣": 10000,
+    "魔法書": 10,
     "治療藥水": 100,
-    "金幣": 10000
+    "木劍": 10
   },
   "item_instances": {
     "皮衣": [
@@ -31,19 +31,46 @@
   "x": 78,
   "y": 63,
   "map": "beginMap",
-  "hp": 98972,
+  "hp": 98872,
   "mp": 99970,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 163767,
-  "last_hunger_hour": 23,
+  "age": 168938,
+  "last_hunger_hour": 0,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
+    "閒聊": [
+      {
+        "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "如果你有什麼特別需求，隨時告訴我！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "做生意要講信用，這是我的座右銘。",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "旅途辛苦了，來買點補給吧！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "我聽說附近有個神秘的寶藏，不知道是真是假？",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
     "見面": [
       {
         "text": "哈囉，小姐，今天好嗎",
@@ -99,13 +126,6 @@
         "weight": 1.0
       }
     ],
-    "punch": [
-      {
-        "text": "punch",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
     "kick": [
       {
         "text": "kick",
@@ -113,29 +133,9 @@
         "weight": 1.0
       }
     ],
-    "閒聊": [
+    "punch": [
       {
-        "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "如果你有什麼特別需求，隨時告訴我！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "做生意要講信用，這是我的座右銘。",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "旅途辛苦了，來買點補給吧！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "我聽說附近有個神秘的寶藏，不知道是真是假？",
+        "text": "punch",
         "conditions": [],
         "weight": 1.0
       }
@@ -151,18 +151,18 @@
   "build": 50,
   "party_leader": null,
   "combat_skills": {
-    "punch": {
-      "name": "punch",
-      "proficiency": 0,
-      "damage": 2,
-      "cooldown": 2,
-      "current_cooldown": 0
-    },
     "kick": {
       "name": "kick",
       "proficiency": 0,
       "damage": 3,
       "cooldown": 3,
+      "current_cooldown": 0
+    },
+    "punch": {
+      "name": "punch",
+      "proficiency": 0,
+      "damage": 2,
+      "cooldown": 2,
       "current_cooldown": 0
     }
   },

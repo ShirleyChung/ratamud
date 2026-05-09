@@ -1,0 +1,198 @@
+{
+  "name": "陳老闆",
+  "description": "一位清秀的，普通體格，有力量的女子，看起來健康的。",
+  "abilities": [],
+  "items": {
+    "舊布料": 2,
+    "魔法書": 1,
+    "石子": 1,
+    "男溺泉": 1,
+    "水": 1,
+    "麵包": 1,
+    "鐵劍": 5,
+    "金幣": 9938,
+    "弓": 1,
+    "頭盔": 2
+  },
+  "item_instances": {
+    "弓": [
+      {
+        "id": 5,
+        "name": "弓",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "麵包": [
+      {
+        "id": 6,
+        "name": "麵包",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "石子": [
+      {
+        "id": 18,
+        "name": "石子",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "girl_spring": [
+      {
+        "id": 5,
+        "name": "girl_spring",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "男溺泉": [
+      {
+        "id": 9,
+        "name": "男溺泉",
+        "age": 0,
+        "stories": []
+      }
+    ]
+  },
+  "status": "",
+  "x": 39,
+  "y": 69,
+  "map": "beginMap",
+  "hp": 98989,
+  "mp": 100000,
+  "max_hp": 100000,
+  "max_mp": 100000,
+  "strength": 100,
+  "knowledge": 100,
+  "sociality": 100,
+  "age": 169472,
+  "last_hunger_hour": 0,
+  "is_sleeping": false,
+  "last_mp_restore_minute": 0,
+  "is_interacting": false,
+  "dialogues": {
+    "見面": [
+      {
+        "text": "哈囉，小姐，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉，帥哥，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "男"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "哇！真是漂亮的小姐姐！",
+        "conditions": [
+          {
+            "attribute": "appearance",
+            "operator": ">",
+            "value": "80"
+          },
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "歡迎光臨陳老闆的店鋪！需要什麼幫助嗎？",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "你好！我是陳老闆，這裡有各種商品供你選擇。",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉！有什麼我可以幫忙的嗎？",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "閒聊": [
+      {
+        "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "如果你有什麼特別需求，隨時告訴我！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "出售": [
+      {
+        "text": "好的，讓我看看你有什麼想賣的。",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "kick": [
+      {
+        "text": "kick",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "購買": [
+      {
+        "text": "當然可以！請告訴我你想買什麼。",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "punch": [
+      {
+        "text": "punch",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ]
+  },
+  "talk_eagerness": 100,
+  "relationship": 30,
+  "dialogue_state": "",
+  "met_player": false,
+  "interaction_count": 0,
+  "gender": "女",
+  "appearance": 50,
+  "build": 50,
+  "party_leader": null,
+  "combat_skills": {
+    "punch": {
+      "name": "punch",
+      "proficiency": 0,
+      "damage": 2,
+      "cooldown": 2,
+      "current_cooldown": 0
+    },
+    "kick": {
+      "name": "kick",
+      "proficiency": 0,
+      "damage": 3,
+      "cooldown": 3,
+      "current_cooldown": 0
+    }
+  },
+  "combat_exp": 0
+}

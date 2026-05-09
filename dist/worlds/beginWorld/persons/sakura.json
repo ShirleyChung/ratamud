@@ -1,0 +1,165 @@
+{
+  "name": "sakura",
+  "description": "一位清秀的，普通體格，有力量的人，看起來健康的。",
+  "abilities": [],
+  "items": {
+    "弓": 4,
+    "魔力藥水": 1,
+    "麵包": 4,
+    "蘋果": 5,
+    "治療藥水": 1,
+    "木劍": 3,
+    "鎬": 1,
+    "盾牌": 6,
+    "羽毛": 2,
+    "金幣": 9972
+  },
+  "item_instances": {
+    "麵包": [
+      {
+        "id": 3,
+        "name": "麵包",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 4,
+        "name": "麵包",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "盾牌": [
+      {
+        "id": 1,
+        "name": "盾牌",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 2,
+        "name": "盾牌",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "魔力藥水": [
+      {
+        "id": 1,
+        "name": "魔力藥水",
+        "age": 0,
+        "stories": []
+      }
+    ]
+  },
+  "status": "",
+  "x": 43,
+  "y": 60,
+  "map": "beginMap",
+  "hp": 98682,
+  "mp": 100000,
+  "max_hp": 100000,
+  "max_mp": 100000,
+  "strength": 100,
+  "knowledge": 100,
+  "sociality": 100,
+  "age": 167739,
+  "last_hunger_hour": 0,
+  "is_sleeping": false,
+  "last_mp_restore_minute": 0,
+  "is_interacting": false,
+  "dialogues": {
+    "punch": [
+      {
+        "text": "punch",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "見面": [
+      {
+        "text": "哈囉，小姐，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "哇！我可以請教妳今天用的化妝品嗎?",
+        "conditions": [
+          {
+            "attribute": "appearance",
+            "operator": ">",
+            "value": "80"
+          },
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉，帥哥，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "男"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "你好！我是櫻花醫生，有什麼我可以幫助你的嗎？",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "kick": [
+      {
+        "text": "kick",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "閒聊": [
+      {
+        "text": "健康是最重要的，記得多休息和保持良好的飲食習慣！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ]
+  },
+  "talk_eagerness": 100,
+  "relationship": 0,
+  "dialogue_state": "初見",
+  "met_player": false,
+  "interaction_count": 0,
+  "gender": "未知",
+  "appearance": 50,
+  "build": 50,
+  "party_leader": null,
+  "combat_skills": {
+    "kick": {
+      "name": "kick",
+      "proficiency": 0,
+      "damage": 3,
+      "cooldown": 3,
+      "current_cooldown": 0
+    },
+    "punch": {
+      "name": "punch",
+      "proficiency": 0,
+      "damage": 2,
+      "cooldown": 2,
+      "current_cooldown": 0
+    }
+  },
+  "combat_exp": 0
+}

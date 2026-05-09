@@ -1,0 +1,9 @@
+MAIN:歡迎來到 RataMUD！
+MAIN:你站在一個廣場中央。
+LOG:遊戲初始化完成
+LOG:載入地圖: town_square
+STATUS:遊戲時間: Day 1 09:00
+SIDE:NPC: 商人
+等級: 10
+生命: 100/100
+MAIN:一隻野豬向你衝來！

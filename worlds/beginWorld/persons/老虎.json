@@ -3,14 +3,14 @@
   "description": "一位清秀的，普通體格，有力量的人，看起來健康的。",
   "abilities": [],
   "items": {
+    "匕首": 5,
+    "治療藥水": 5,
     "漿果": 13,
+    "鎬": 2,
+    "繩索": 1,
+    "毒藥": 7,
     "盾牌": 1,
     "金幣": 10000,
-    "繩索": 1,
-    "治療藥水": 4,
-    "鎬": 2,
-    "毒藥": 7,
-    "匕首": 3,
     "石子": 14
   },
   "item_instances": {
@@ -30,6 +30,26 @@
       {
         "id": 2,
         "name": "匕首",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 2,
+        "name": "匕首",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 4,
+        "name": "匕首",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "漿果": [
+      {
+        "id": 1,
+        "name": "漿果",
         "age": 0,
         "stories": []
       }
@@ -52,6 +72,12 @@
         "name": "治療藥水",
         "age": 0,
         "stories": []
+      },
+      {
+        "id": 1,
+        "name": "治療藥水",
+        "age": 0,
+        "stories": []
       }
     ],
     "石子": [
@@ -67,29 +93,21 @@
         "age": 0,
         "stories": []
       }
-    ],
-    "漿果": [
-      {
-        "id": 1,
-        "name": "漿果",
-        "age": 0,
-        "stories": []
-      }
     ]
   },
   "status": "",
-  "x": 38,
+  "x": 40,
   "y": 72,
   "map": "forest",
-  "hp": 99022,
+  "hp": 98920,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 153976,
-  "last_hunger_hour": 23,
+  "age": 159147,
+  "last_hunger_hour": 0,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,

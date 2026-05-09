@@ -129,9 +129,9 @@ Windows 版測試腳本 (PowerShell):
 - `test_combat_loop_windows.ps1` - 戰鬥系統測試
 
 原 Bash 腳本 (需要 Git Bash 或 WSL):
-- `build_and_test.sh`
-- `test_combat_loop.sh`
-- 其他 `test_*.sh`
+- `scripts/build_and_test.sh`
+- `scripts/test_combat_loop.sh`
+- 其他 `scripts/test_*.sh`
 
 ## 開發環境建議
 

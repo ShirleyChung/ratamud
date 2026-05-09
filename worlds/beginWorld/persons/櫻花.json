@@ -3,15 +3,15 @@
   "description": "一位清秀的，普通體格，有力量的人，看起來健康的。",
   "abilities": [],
   "items": {
-    "鎬": 7,
-    "蘋果": 3,
     "舊布料": 3,
-    "繩索": 2,
-    "火把": 3,
-    "金幣": 10000,
-    "盾牌": 8,
     "治療藥水": 5,
-    "麵包": 2
+    "麵包": 2,
+    "盾牌": 8,
+    "火把": 3,
+    "鎬": 7,
+    "金幣": 10000,
+    "蘋果": 3,
+    "繩索": 2
   },
   "item_instances": {
     "盾牌": [
@@ -41,33 +41,19 @@
   "x": 50,
   "y": 41,
   "map": "beginMap",
-  "hp": 97838,
+  "hp": 97728,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 159711,
-  "last_hunger_hour": 23,
+  "age": 164882,
+  "last_hunger_hour": 0,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
-    "kick": [
-      {
-        "text": "kick",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
-    "punch": [
-      {
-        "text": "punch",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
     "閒聊": [
       {
         "text": "健康是最重要的，記得多休息和補充營養！",
@@ -96,6 +82,13 @@
       },
       {
         "text": "醫學是一門不斷學習的藝術，我每天都在進步！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "kick": [
+      {
+        "text": "kick",
         "conditions": [],
         "weight": 1.0
       }
@@ -147,6 +140,13 @@
             "value": "男"
           }
         ],
+        "weight": 1.0
+      }
+    ],
+    "punch": [
+      {
+        "text": "punch",
+        "conditions": [],
         "weight": 1.0
       }
     ]

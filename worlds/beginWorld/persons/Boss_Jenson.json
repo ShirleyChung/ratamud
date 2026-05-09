@@ -3,9 +3,9 @@
   "description": "一位清秀的，普通體格，有力量的人，看起來健康的。",
   "abilities": [],
   "items": {
-    "蘋果": 1,
     "麵包": 3,
-    "金幣": 10007
+    "金幣": 10007,
+    "蘋果": 1
   },
   "item_instances": {
     "麵包": [
@@ -30,37 +30,39 @@
     ]
   },
   "status": "",
-  "x": 62,
+  "x": 60,
   "y": 59,
   "map": "beginMap",
-  "hp": 99458,
+  "hp": 99350,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 164992,
-  "last_hunger_hour": 23,
+  "age": 170163,
+  "last_hunger_hour": 0,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
-    "閒聊": [
+    "punch": [
       {
-        "text": "最近的市場行情不錯，貨物銷售得很快！",
-        "conditions": [],
-        "weight": 1.0
-      },
-      {
-        "text": "但是經營商店也有不少挑戰呢！",
+        "text": "punch",
         "conditions": [],
         "weight": 1.0
       }
     ],
-    "kick": [
+    "購買": [
       {
-        "text": "kick",
+        "text": "當然可以！請告訴我你想買什麼。",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "出售": [
+      {
+        "text": "好的，讓我看看你有什麼想賣的。",
         "conditions": [],
         "weight": 1.0
       }
@@ -104,23 +106,21 @@
         "weight": 1.0
       }
     ],
-    "出售": [
+    "閒聊": [
       {
-        "text": "好的，讓我看看你有什麼想賣的。",
+        "text": "最近的市場行情不錯，貨物銷售得很快！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "但是經營商店也有不少挑戰呢！",
         "conditions": [],
         "weight": 1.0
       }
     ],
-    "購買": [
+    "kick": [
       {
-        "text": "當然可以！請告訴我你想買什麼。",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
-    "punch": [
-      {
-        "text": "punch",
+        "text": "kick",
         "conditions": [],
         "weight": 1.0
       }
@@ -136,18 +136,18 @@
   "build": 50,
   "party_leader": null,
   "combat_skills": {
-    "kick": {
-      "name": "kick",
-      "proficiency": 0,
-      "damage": 3,
-      "cooldown": 3,
-      "current_cooldown": 0
-    },
     "punch": {
       "name": "punch",
       "proficiency": 0,
       "damage": 2,
       "cooldown": 2,
+      "current_cooldown": 0
+    },
+    "kick": {
+      "name": "kick",
+      "proficiency": 0,
+      "damage": 3,
+      "cooldown": 3,
       "current_cooldown": 0
     }
   },

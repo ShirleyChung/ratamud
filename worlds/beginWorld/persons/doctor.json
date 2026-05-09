@@ -3,33 +3,25 @@
   "description": "一位清秀的，普通體格，有力量的人，看起來健康的。",
   "abilities": [],
   "items": {
-    "弓": 6,
-    "匕首": 7,
     "乾肉": 3,
-    "繩索": 4,
-    "治療藥水": 8,
-    "毒藥": 3,
-    "皮衣": 8,
-    "火把": 1,
-    "頭盔": 5,
-    "金幣": 10000,
-    "鑰匙": 1,
-    "王冠": 1,
-    "樹皮": 5,
     "漿果": 1,
-    "盾牌": 3,
+    "樹皮": 5,
+    "弓": 6,
+    "王冠": 1,
+    "舊布料": 4,
+    "金幣": 10000,
+    "繩索": 4,
+    "火把": 1,
     "魔力藥水": 6,
-    "舊布料": 4
+    "皮衣": 8,
+    "鑰匙": 1,
+    "治療藥水": 8,
+    "匕首": 7,
+    "毒藥": 3,
+    "頭盔": 5,
+    "盾牌": 3
   },
   "item_instances": {
-    "樹皮": [
-      {
-        "id": 3,
-        "name": "樹皮",
-        "age": 0,
-        "stories": []
-      }
-    ],
     "魔力藥水": [
       {
         "id": 1,
@@ -43,28 +35,36 @@
         "age": 0,
         "stories": []
       }
+    ],
+    "樹皮": [
+      {
+        "id": 3,
+        "name": "樹皮",
+        "age": 0,
+        "stories": []
+      }
     ]
   },
   "status": "",
-  "x": 18,
+  "x": 19,
   "y": 4,
   "map": "beginMap",
-  "hp": 97745,
+  "hp": 97638,
   "mp": 99998,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 163684,
-  "last_hunger_hour": 23,
+  "age": 168855,
+  "last_hunger_hour": 0,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
-    "punch": [
+    "kick": [
       {
-        "text": "punch",
+        "text": "kick",
         "conditions": [],
         "weight": 1.0
       }
@@ -82,13 +82,6 @@
       },
       {
         "text": "作為醫生，唉，真是一言難盡！",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
-    "kick": [
-      {
-        "text": "kick",
         "conditions": [],
         "weight": 1.0
       }
@@ -133,6 +126,13 @@
       },
       {
         "text": "需要醫療幫助嗎？我可以為你提供專業的治療。",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "punch": [
+      {
+        "text": "punch",
         "conditions": [],
         "weight": 1.0
       }

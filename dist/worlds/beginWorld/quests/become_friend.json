@@ -1,0 +1,35 @@
+{
+  "id": "become_friend",
+  "name": "成為好友",
+  "description": "與商人建立良好關係，達到30點好感度",
+  "prerequisites": ["collect_wood"],
+  "conditions": [
+    {
+      "type": "npc_relationship",
+      "npc_id": "商人",
+      "min_value": 30,
+      "completed": false
+    }
+  ],
+  "rewards": [
+    {
+      "type": "item",
+      "item": "魔法書",
+      "count": 1
+    },
+    {
+      "type": "stat_boost",
+      "stat": "sociality",
+      "amount": 10
+    },
+    {
+      "type": "unlock_dialogue",
+      "npc_id": "商人",
+      "scene": "密友",
+      "text": "我把你當作真正的朋友！這本魔法書送給你，好好學習吧！"
+    }
+  ],
+  "status": "NotStarted",
+  "giver": "商人",
+  "repeatable": false
+}

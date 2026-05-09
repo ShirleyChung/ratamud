@@ -1,0 +1,154 @@
+{
+  "name": "商人",
+  "description": "一位清秀的，普通體格，有力量的人，看起來健康的。",
+  "abilities": [],
+  "items": {
+    "魔力藥水": 100,
+    "匕首": 10,
+    "治療藥水": 100,
+    "木劍": 10,
+    "金幣": 10000,
+    "魔法書": 10
+  },
+  "item_instances": {},
+  "status": "",
+  "x": 77,
+  "y": 63,
+  "map": "beginMap",
+  "hp": 98875,
+  "mp": 99970,
+  "max_hp": 100000,
+  "max_mp": 100000,
+  "strength": 100,
+  "knowledge": 100,
+  "sociality": 100,
+  "age": 177530,
+  "last_hunger_hour": 0,
+  "is_sleeping": false,
+  "last_mp_restore_minute": 0,
+  "is_interacting": false,
+  "dialogues": {
+    "punch": [
+      {
+        "text": "punch",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "見面": [
+      {
+        "text": "哈囉，小姐，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉，帥哥，今天好嗎",
+        "conditions": [
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "男"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "美女～妳好啊！",
+        "conditions": [
+          {
+            "attribute": "appearance",
+            "operator": ">",
+            "value": "80"
+          },
+          {
+            "attribute": "gender",
+            "operator": "==",
+            "value": "女"
+          }
+        ],
+        "weight": 1.0
+      },
+      {
+        "text": "歡迎光臨我的商店！需要什麼幫助嗎？",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "你好！我是這裡的商人，隨時為你服務。",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "哈囉！有什麼我可以幫忙的嗎？",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "kick": [
+      {
+        "text": "kick",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "閒聊": [
+      {
+        "text": "這裡的商品都是我精心挑選的，希望你會喜歡！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "如果你有什麼特別需求，隨時告訴我！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "做生意要講信用，這是我的座右銘。",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "旅途辛苦了，來買點補給吧！",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "我聽說附近有個神秘的寶藏，不知道是真是假？",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ]
+  },
+  "talk_eagerness": 100,
+  "relationship": 0,
+  "dialogue_state": "",
+  "met_player": false,
+  "interaction_count": 0,
+  "gender": "未知",
+  "appearance": 50,
+  "build": 50,
+  "party_leader": null,
+  "combat_skills": {
+    "kick": {
+      "name": "kick",
+      "proficiency": 0,
+      "damage": 3,
+      "cooldown": 3,
+      "current_cooldown": 0
+    },
+    "punch": {
+      "name": "punch",
+      "proficiency": 0,
+      "damage": 2,
+      "cooldown": 2,
+      "current_cooldown": 0
+    }
+  },
+  "combat_exp": 0
+}

@@ -3,43 +3,36 @@
   "description": "一位清秀的，普通體格，有力量的人，看起來健康的。",
   "abilities": [],
   "items": {
-    "盾牌": 6,
-    "繩索": 9,
-    "木劍": 4,
-    "弓": 6,
-    "漿果": 2,
-    "頭盔": 1,
-    "火把": 4,
     "鐵劍": 3,
-    "金幣": 10000,
     "匕首": 3,
-    "毒藥": 2
+    "毒藥": 2,
+    "盾牌": 6,
+    "漿果": 2,
+    "繩索": 9,
+    "頭盔": 1,
+    "弓": 6,
+    "火把": 4,
+    "金幣": 10000,
+    "木劍": 4
   },
   "item_instances": {},
   "status": "",
-  "x": 3,
+  "x": 1,
   "y": 20,
   "map": "beginMap",
-  "hp": 97867,
+  "hp": 97761,
   "mp": 99998,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 155436,
-  "last_hunger_hour": 23,
+  "age": 160607,
+  "last_hunger_hour": 0,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
   "dialogues": {
-    "punch": [
-      {
-        "text": "punch",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
     "閒聊": [
       {
         "text": "健康是最重要的，記得多休息和補充營養！",
@@ -52,9 +45,9 @@
         "weight": 1.0
       }
     ],
-    "kick": [
+    "punch": [
       {
-        "text": "kick",
+        "text": "punch",
         "conditions": [],
         "weight": 1.0
       }
@@ -110,6 +103,13 @@
       },
       {
         "text": "哈囉！我是喬巴，隨時準備幫助你！",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "kick": [
+      {
+        "text": "kick",
         "conditions": [],
         "weight": 1.0
       }

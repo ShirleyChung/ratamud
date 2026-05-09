@@ -8,14 +8,6 @@
     "金幣": 10000
   },
   "item_instances": {
-    "麵包": [
-      {
-        "id": 1,
-        "name": "麵包",
-        "age": 0,
-        "stories": []
-      }
-    ],
     "舊布料": [
       {
         "id": 1,
@@ -47,21 +39,29 @@
         "age": 0,
         "stories": []
       }
+    ],
+    "麵包": [
+      {
+        "id": 1,
+        "name": "麵包",
+        "age": 0,
+        "stories": []
+      }
     ]
   },
   "status": "",
-  "x": 48,
-  "y": 48,
+  "x": 49,
+  "y": 49,
   "map": "beginMap",
-  "hp": 98733,
+  "hp": 98619,
   "mp": 100000,
   "max_hp": 100000,
   "max_mp": 100000,
   "strength": 100,
   "knowledge": 100,
   "sociality": 100,
-  "age": 163407,
-  "last_hunger_hour": 23,
+  "age": 168578,
+  "last_hunger_hour": 0,
   "is_sleeping": false,
   "last_mp_restore_minute": 0,
   "is_interacting": false,
@@ -81,13 +81,6 @@
       },
       {
         "text": "如果你有什麼特別需求，隨時告訴我！",
-        "conditions": [],
-        "weight": 1.0
-      }
-    ],
-    "punch": [
-      {
-        "text": "punch",
         "conditions": [],
         "weight": 1.0
       }
@@ -143,6 +136,13 @@
       },
       {
         "text": "哈囉！有什麼我可以幫忙的嗎？",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "punch": [
+      {
+        "text": "punch",
         "conditions": [],
         "weight": 1.0
       }

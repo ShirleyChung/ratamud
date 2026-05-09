@@ -1,0 +1,124 @@
+{
+  "name": "vicky",
+  "description": "一位清秀的，普通體格，有力量的女子，看起來健康的。",
+  "abilities": [],
+  "items": {
+    "男溺泉": 1,
+    "蘋果": 3,
+    "金幣": 10002,
+    "雷神劍": 1,
+    "匕首": 1
+  },
+  "item_instances": {
+    "男溺泉": [
+      {
+        "id": 7,
+        "name": "男溺泉",
+        "age": 0,
+        "stories": []
+      }
+    ],
+    "蘋果": [
+      {
+        "id": 7,
+        "name": "蘋果",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 8,
+        "name": "蘋果",
+        "age": 0,
+        "stories": []
+      },
+      {
+        "id": 9,
+        "name": "蘋果",
+        "age": 0,
+        "stories": []
+      }
+    ]
+  },
+  "status": "",
+  "x": 41,
+  "y": 68,
+  "map": "beginMap",
+  "hp": 99270,
+  "mp": 4987,
+  "max_hp": 100000,
+  "max_mp": 100000,
+  "strength": 100,
+  "knowledge": 100,
+  "sociality": 100,
+  "age": 154660,
+  "last_hunger_hour": 0,
+  "is_sleeping": false,
+  "last_mp_restore_minute": 0,
+  "is_interacting": false,
+  "dialogues": {
+    "punch": [
+      {
+        "text": "punch",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "kick": [
+      {
+        "text": "kick",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "add": [
+      {
+        "text": "見面 天氣真好 when 天氣 == 晴天",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "見面 when 天氣==晴天 say 天氣真好",
+        "conditions": [],
+        "weight": 1.0
+      },
+      {
+        "text": "見面 嗨！又見面了",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ],
+    "見面": [
+      {
+        "text": "哈囉，你好",
+        "conditions": [],
+        "weight": 1.0
+      }
+    ]
+  },
+  "talk_eagerness": 100,
+  "relationship": 45,
+  "dialogue_state": "初見",
+  "met_player": false,
+  "interaction_count": 0,
+  "gender": "女",
+  "appearance": 50,
+  "build": 50,
+  "party_leader": null,
+  "combat_skills": {
+    "punch": {
+      "name": "punch",
+      "proficiency": 0,
+      "damage": 2,
+      "cooldown": 2,
+      "current_cooldown": 0
+    },
+    "kick": {
+      "name": "kick",
+      "proficiency": 0,
+      "damage": 3,
+      "cooldown": 3,
+      "current_cooldown": 0
+    }
+  },
+  "combat_exp": 0
+}
