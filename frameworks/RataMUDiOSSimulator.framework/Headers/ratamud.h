@@ -36,6 +36,9 @@ void ratamud_register_event_callback(EventCallback callback);
 /// 處理命令（返回 1=繼續, 0=退出, -1=錯誤）
 int ratamud_input_command(const char* command);
 
+/// 初始化無 UI 遊戲世界（返回 0=成功, -1=失敗）
+int ratamud_init_game(void);
+
 void ratamud_start_game(void);
 
 /// 測試輸出回調功能（會生成各種類型的測試輸出）
