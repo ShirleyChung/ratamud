@@ -39,7 +39,10 @@ int ratamud_input_command(const char* command);
 /// 初始化無 UI 遊戲世界（返回 0=成功, -1=失敗）
 int ratamud_init_game(void);
 
-void ratamud_start_game(void);
+/// 推進無 UI 遊戲循環一次（返回 0=成功, -1=失敗）
+int ratamud_tick(void);
+
+int ratamud_start_game(void);
 
 /// 測試輸出回調功能（會生成各種類型的測試輸出）
 void ratamud_test_output_callback(void);

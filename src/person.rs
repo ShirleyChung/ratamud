@@ -797,7 +797,12 @@ impl Person {
     // 保存 Person 到文件
     pub fn save(&self, person_dir: &str, filename: &str) -> Result<(), Box<dyn std::error::Error>> {
         fs::create_dir_all(person_dir)?;
-        let file_path = format!("{person_dir}/{filename}.json");
+        let file_name = if filename.ends_with(".json") {
+            filename.to_string()
+        } else {
+            format!("{filename}.json")
+        };
+        let file_path = format!("{person_dir}/{file_name}");
         let json = serde_json::to_string_pretty(self)?;
         fs::write(file_path, json)?;
         Ok(())
@@ -805,7 +810,12 @@ impl Person {
 
     // 從文件加載 Person
     pub fn load(person_dir: &str, filename: &str) -> Result<Person, Box<dyn std::error::Error>> {
-        let file_path = format!("{person_dir}/{filename}.json");
+        let file_name = if filename.ends_with(".json") {
+            filename.to_string()
+        } else {
+            format!("{filename}.json")
+        };
+        let file_path = format!("{person_dir}/{file_name}");
         if Path::new(&file_path).exists() {
             let json = fs::read_to_string(file_path)?;
             let person = serde_json::from_str(&json)?;

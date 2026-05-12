@@ -5,7 +5,7 @@ use std::os::raw::{c_char, c_int};
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
 
-use crate::core_output;
+use crate::core_output::{self, OutputZone};
 use crate::world::GameWorld;
 
 /// 全局遊戲世界實例（FFI 和其他非 UI 模式共用）
@@ -14,6 +14,11 @@ static GAME_WORLD: Lazy<Mutex<Option<GameWorld>>> = Lazy::new(|| Mutex::new(None
 /// 輸出回調函數類型 (C FFI)
 /// 參數: msg_type (類型標記: MAIN/LOG/STATUS/SIDE), content (內容)
 pub type OutputCallback = extern "C" fn(*const c_char, *const c_char);
+pub type StateCallback = extern "C" fn(*const c_char);
+pub type EventCallback = extern "C" fn(*const c_char, *const c_char);
+
+static STATE_CALLBACK: Lazy<Mutex<Option<StateCallback>>> = Lazy::new(|| Mutex::new(None));
+static EVENT_CALLBACK: Lazy<Mutex<Option<EventCallback>>> = Lazy::new(|| Mutex::new(None));
 
 /// 註冊輸出回調（C FFI）
 /// 當遊戲有新輸出時，會調用此回調
@@ -38,6 +43,142 @@ pub extern "C" fn ratamud_clear_output_callback() {
     core_output::clear_output_callback();
 }
 
+#[no_mangle]
+pub extern "C" fn ratamud_register_state_callback(callback: StateCallback) {
+    if let Ok(mut cb) = STATE_CALLBACK.lock() {
+        *cb = Some(callback);
+    }
+}
+
+#[no_mangle]
+pub extern "C" fn ratamud_register_event_callback(callback: EventCallback) {
+    if let Ok(mut cb) = EVENT_CALLBACK.lock() {
+        *cb = Some(callback);
+    }
+}
+
+fn trigger_state_callback(game_world: &GameWorld) {
+    let callback = match STATE_CALLBACK.lock() {
+        Ok(cb) => *cb,
+        Err(_) => None,
+    };
+
+    if let Some(callback) = callback {
+        let current_player = game_world.npc_manager.get_npc(&game_world.current_controlled_id);
+        let state_json = serde_json::json!({
+            "world": game_world.metadata.name,
+            "current_map": game_world.current_map_name,
+            "time": game_world.format_time(),
+            "player": current_player.map(|player| serde_json::json!({
+                "id": game_world.current_controlled_id,
+                "name": player.name,
+                "x": player.x,
+                "y": player.y,
+                "hp": player.hp,
+                "max_hp": player.max_hp
+            }))
+        });
+
+        if let Ok(state_c) = CString::new(state_json.to_string()) {
+            callback(state_c.as_ptr());
+        }
+    }
+}
+
+fn trigger_event_callback(event_type: &str, event_data: &str) {
+    let callback = match EVENT_CALLBACK.lock() {
+        Ok(cb) => *cb,
+        Err(_) => None,
+    };
+
+    if let Some(callback) = callback {
+        if let (Ok(type_c), Ok(data_c)) = (CString::new(event_type), CString::new(event_data)) {
+            callback(type_c.as_ptr(), data_c.as_ptr());
+        }
+    }
+}
+
+fn check_and_execute_events(game_world: &mut GameWorld) -> bool {
+    game_world.update_time();
+    core_output::trigger_output(OutputZone::Status, &game_world.format_time());
+
+    let current_time = (
+        game_world.time.day,
+        game_world.time.hour,
+        game_world.time.minute,
+    );
+
+    if current_time == game_world.event_scheduler.last_check_time {
+        return false;
+    }
+
+    game_world.event_scheduler.last_check_time = current_time;
+
+    let events: Vec<crate::event::GameEvent> = game_world
+        .event_manager
+        .list_events()
+        .into_iter()
+        .cloned()
+        .collect();
+
+    let Some(player) = game_world.npc_manager.get_npc(&game_world.current_controlled_id).cloned() else {
+        core_output::trigger_output(OutputZone::Status, "找不到當前控制的角色，無法檢查事件");
+        return false;
+    };
+
+    let mut triggered_event_ids = Vec::new();
+    for event in events {
+        if let Some(runtime_state) = game_world.event_manager.get_runtime_state(&event.id) {
+            if !event.can_trigger(runtime_state) {
+                continue;
+            }
+        }
+
+        if game_world.event_scheduler.check_trigger(&event, game_world)
+            && game_world
+                .event_scheduler
+                .check_conditions(&event, game_world, &player)
+        {
+            triggered_event_ids.push(event.id);
+        }
+    }
+
+    let did_trigger = !triggered_event_ids.is_empty();
+    for event_id in triggered_event_ids {
+        game_world.event_manager.trigger_event(&event_id);
+        if let Some(event) = game_world.event_manager.get_event(&event_id).cloned() {
+            trigger_event_callback("triggered", &event.id);
+            core_output::trigger_output(OutputZone::Log, &format!("🎭 事件: {}", event.name));
+
+            let mut output = core_output::CoreOutputManager::new();
+            if let Err(e) = crate::event_executor::EventExecutor::execute_event(
+                &event,
+                game_world,
+                &mut output,
+            ) {
+                core_output::trigger_output(OutputZone::Log, &format!("⚠️  事件執行錯誤: {e}"));
+            }
+        }
+    }
+
+    did_trigger
+}
+
+fn save_game_world(game_world: &GameWorld) -> Result<(), Box<dyn std::error::Error>> {
+    game_world.save_metadata()?;
+    game_world.save_time()?;
+    game_world.save_item_counter()?;
+
+    let person_dir = format!("{}/persons", game_world.world_dir);
+    game_world.npc_manager.save_all(&person_dir)?;
+
+    for map in game_world.maps.values() {
+        game_world.save_map(map)?;
+    }
+
+    Ok(())
+}
+
 /// 初始化遊戲世界（無 UI 模式）
 /// 返回 0=成功, -1=失敗
 #[no_mangle]
@@ -54,6 +195,7 @@ pub extern "C" fn ratamud_init_game() -> c_int {
     // 載入世界元數據和時間
     let _ = game_world.load_metadata();
     let _ = game_world.load_time();
+    let _ = game_world.load_item_counter();
     
     // 輸出當前時間
     core_output::trigger_output(OutputZone::Status, &game_world.format_time());
@@ -117,6 +259,7 @@ pub extern "C" fn ratamud_init_game() -> c_int {
     }
     
     // 儲存到全局狀態
+    trigger_state_callback(&game_world);
     if let Ok(mut world) = GAME_WORLD.lock() {
         *world = Some(game_world);
         0 // 成功
@@ -155,12 +298,48 @@ pub extern "C" fn ratamud_input_command(command: *const c_char) -> c_int {
     
     // 執行命令
     let should_continue = game_world.execute_command(cmd);
+
+    check_and_execute_events(game_world);
+    trigger_state_callback(game_world);
+
+    if let Err(e) = save_game_world(game_world) {
+        core_output::trigger_output(OutputZone::Status, &format!("存檔失敗: {e}"));
+    }
     
     if should_continue {
         1 // 繼續
     } else {
         0 // 退出
     }
+}
+
+#[no_mangle]
+pub extern "C" fn ratamud_tick() -> c_int {
+    let mut world_guard = match GAME_WORLD.lock() {
+        Ok(guard) => guard,
+        Err(_) => return -1,
+    };
+
+    let game_world = match world_guard.as_mut() {
+        Some(world) => world,
+        None => return -1,
+    };
+
+    let did_trigger_event = check_and_execute_events(game_world);
+    trigger_state_callback(game_world);
+
+    let save_result = if did_trigger_event {
+        save_game_world(game_world)
+    } else {
+        game_world.save_time()
+    };
+
+    if let Err(e) = save_result {
+        core_output::trigger_output(OutputZone::Status, &format!("存檔失敗: {e}"));
+        return -1;
+    }
+
+    0
 }
 
 /// 測試輸出回調功能（無 UI 模式）
@@ -178,6 +357,12 @@ pub extern "C" fn ratamud_test_output_callback() {
     output.set_status("遊戲時間: Day 1 09:00".to_string());
     output.set_side_content("NPC: 商人\n等級: 10\n生命: 100/100".to_string());
     output.add_message("一隻野豬向你衝來！".to_string());
+}
+
+#[cfg(not(feature = "terminal-ui"))]
+#[no_mangle]
+pub extern "C" fn ratamud_start_game() -> c_int {
+    ratamud_init_game()
 }
 
 // Terminal UI mode functions (only available with terminal-ui feature)
