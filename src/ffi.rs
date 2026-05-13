@@ -100,7 +100,6 @@ fn trigger_event_callback(event_type: &str, event_data: &str) {
 
 fn check_and_execute_events(game_world: &mut GameWorld) -> bool {
     game_world.update_time();
-    core_output::trigger_output(OutputZone::Status, &game_world.format_time());
 
     let current_time = (
         game_world.time.day,
