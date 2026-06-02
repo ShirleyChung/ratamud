@@ -38,6 +38,9 @@ void ratamud_register_event_callback(EventCallback callback);
 void ratamud_register_panel_callback(PanelCallback callback);
 void ratamud_clear_panel_callback(void);
 
+// 設定 host 目前開啟的面板（空字串 = 沒有開）。世界變動時引擎會自動重渲染並推回。
+void ratamud_set_active_panel(const char* panel);
+
 // ============= 面板請求 / 交易 API =============
 /// 請求面板內容（透過 panel callback 推回，回傳 0=成功, -1=失敗）
 int ratamud_request_map(void);

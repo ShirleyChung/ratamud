@@ -2,6 +2,7 @@
 
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
 use once_cell::sync::Lazy;
 
@@ -10,6 +11,13 @@ use crate::world::GameWorld;
 
 /// 全局遊戲世界實例（FFI 和其他非 UI 模式共用）
 static GAME_WORLD: Lazy<Mutex<Option<GameWorld>>> = Lazy::new(|| Mutex::new(None));
+
+/// host 目前開啟的面板（由 `ratamud_set_active_panel` 設定）。
+/// 當世界因 NPC 行動或事件而改變時，引擎會自動重新渲染並推回這個面板。
+static ACTIVE_PANEL: Lazy<Mutex<Option<String>>> = Lazy::new(|| Mutex::new(None));
+
+/// tick 計數器（用來節流 NPC AI，避免每秒都動）
+static TICK_COUNT: AtomicU64 = AtomicU64::new(0);
 
 /// 輸出回調函數類型 (C FFI)
 /// 參數: msg_type (類型標記: MAIN/LOG/STATUS/SIDE), content (內容)
@@ -76,6 +84,19 @@ pub extern "C" fn ratamud_clear_panel_callback() {
     if let Ok(mut cb) = PANEL_CALLBACK.lock() {
         *cb = None;
     }
+    if let Ok(mut active) = ACTIVE_PANEL.lock() {
+        *active = None;
+    }
+}
+
+/// 告訴引擎 host 目前開啟的是哪個面板（空字串 = 沒有開）。
+/// 之後當世界因 NPC 行動或事件而改變時，引擎會自動重新渲染並透過 panel callback 推回該面板。
+#[no_mangle]
+pub extern "C" fn ratamud_set_active_panel(panel: *const c_char) {
+    let name = cstr_to_string(panel);
+    if let Ok(mut active) = ACTIVE_PANEL.lock() {
+        *active = if name.is_empty() { None } else { Some(name) };
+    }
 }
 
 /// 把面板內容推回 host
@@ -110,6 +131,85 @@ where
     drop(world_guard);
     trigger_panel(panel, &content);
     0
+}
+
+/// 依面板名稱渲染當前世界內容（給自動刷新用）
+fn render_panel_by_name(world: &GameWorld, panel: &str) -> Option<String> {
+    use crate::panel_render as pr;
+    match panel {
+        "MAP" => Some(pr::render_map(world)),
+        "MINIMAP" => Some(pr::render_minimap(world)),
+        "INVENTORY" => Some(pr::render_inventory(world)),
+        "STATUS" => Some(pr::render_status(world)),
+        // 交易面板會自行偵測當前格的商人
+        "TRADE" => Some(pr::render_trade(world, "")),
+        _ => None,
+    }
+}
+
+/// 取得 host 目前開啟的面板名稱
+fn current_active_panel() -> Option<String> {
+    ACTIVE_PANEL.lock().ok().and_then(|guard| guard.clone())
+}
+
+/// 若有開啟的面板，渲染其最新內容並回傳 (panel, content)。
+/// 渲染需在持有世界鎖時進行，推回（trigger_panel）則應在釋放鎖後執行。
+fn active_panel_content(world: &GameWorld) -> Option<(String, String)> {
+    let panel = current_active_panel()?;
+    let content = render_panel_by_name(world, &panel)?;
+    Some((panel, content))
+}
+
+/// 驅動所有 NPC 的 AI 一回合（FFI/iOS 沒有終端版的 AI 執行緒，必須由 tick 推動）。
+/// 會套用移動／撿物等意圖，並把 NPC 對話與靠近/離開通知輸出到主畫面。
+/// 回傳 true 表示世界有實際變動（需要刷新面板）。
+fn drive_npc_ai(game_world: &mut GameWorld) -> bool {
+    use crate::game_event::GameEvent;
+    use crate::npc_action::NpcAction;
+    use crate::npc_ai::NpcAiController;
+
+    let ai = NpcAiController::new();
+    let views = game_world.build_npc_views();
+    let mut changed = false;
+
+    for (npc_id, view) in views {
+        let Some(action) = ai.decide_action(&view) else { continue };
+        if matches!(action, NpcAction::Idle) {
+            continue;
+        }
+
+        let messages = game_world.apply_event(GameEvent::NpcActions {
+            npc_id,
+            actions: vec![action],
+        });
+
+        for msg in &messages {
+            // 移動之類的訊息屬於日誌，不洗主畫面；NPC 對話等才輸出
+            if !msg.is_log() {
+                core_output::trigger_output(OutputZone::Main, &msg.to_display_text());
+            }
+            changed = true;
+        }
+    }
+
+    // 依玩家位置產生「往這邊走來／離開了」等靠近通知
+    if let Some(player) = game_world
+        .npc_manager
+        .get_npc(&game_world.current_controlled_id)
+        .cloned()
+    {
+        let id = game_world.current_controlled_id.clone();
+        let notifications =
+            game_world
+                .npc_manager
+                .update_proximity(&id, player.x, player.y, &player.map, false);
+        for (_npc_id, message, _should_greet) in notifications {
+            core_output::trigger_output(OutputZone::Main, &message);
+            changed = true;
+        }
+    }
+
+    changed
 }
 
 fn trigger_state_callback(game_world: &GameWorld) {
@@ -359,7 +459,14 @@ pub extern "C" fn ratamud_input_command(command: *const c_char) -> c_int {
     if let Err(e) = save_game_world(game_world) {
         core_output::trigger_output(OutputZone::Status, &format!("存檔失敗: {e}"));
     }
-    
+
+    // 指令可能改變了世界（移動、撿物…），自動刷新 host 目前開啟的面板
+    let panel_push = active_panel_content(game_world);
+    drop(world_guard);
+    if let Some((panel, content)) = panel_push {
+        trigger_panel(&panel, &content);
+    }
+
     if should_continue {
         1 // 繼續
     } else {
@@ -380,13 +487,38 @@ pub extern "C" fn ratamud_tick() -> c_int {
     };
 
     let did_trigger_event = check_and_execute_events(game_world);
+
+    // 驅動 NPC AI（每 2 個 tick 一次，讓 NPC 會走動/反應而不會太吵）
+    let tick = TICK_COUNT.fetch_add(1, Ordering::Relaxed);
+    let npc_changed = if tick % 2 == 0 {
+        drive_npc_ai(game_world)
+    } else {
+        false
+    };
+
     trigger_state_callback(game_world);
 
+    let world_changed = did_trigger_event || npc_changed;
+
+    // 世界有變動時，渲染 host 目前開啟的面板（持鎖時渲染，釋放後再推回）
+    let panel_push = if world_changed {
+        active_panel_content(game_world)
+    } else {
+        None
+    };
+
+    // NPC 走動不寫檔（避免每秒大量磁碟 I/O）；只有事件觸發才整體存檔
     let save_result = if did_trigger_event {
         save_game_world(game_world)
     } else {
         game_world.save_time()
     };
+
+    drop(world_guard);
+
+    if let Some((panel, content)) = panel_push {
+        trigger_panel(&panel, &content);
+    }
 
     if let Err(e) = save_result {
         core_output::trigger_output(OutputZone::Status, &format!("存檔失敗: {e}"));

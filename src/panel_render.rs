@@ -218,3 +218,4 @@ pub fn render_trade(world: &GameWorld, npc_id: &str) -> String {
 
     out
 }
+
