@@ -17,6 +17,7 @@ mod event_executor;
 mod event_loader;
 mod command_handler;  // Command parsing (shared by terminal-ui and FFI)
 mod command_executor; // Command execution (shared by all modes)
+mod panel_render;     // Plain-text panel renderers for FFI (map/inventory/trade)
 mod ffi;
 mod core_output;
 
