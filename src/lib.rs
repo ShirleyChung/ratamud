@@ -17,6 +17,7 @@ pub mod time_thread;
 pub mod settings;
 pub mod command_handler;  // Command parsing (shared by terminal-ui and FFI)
 pub mod command_executor; // Command execution (shared by all modes)
+pub mod panel_render;     // Plain-text panel renderers for FFI (map/inventory/trade)
 pub mod ffi;
 
 // New architecture modules

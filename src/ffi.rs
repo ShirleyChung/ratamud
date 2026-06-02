@@ -16,9 +16,13 @@ static GAME_WORLD: Lazy<Mutex<Option<GameWorld>>> = Lazy::new(|| Mutex::new(None
 pub type OutputCallback = extern "C" fn(*const c_char, *const c_char);
 pub type StateCallback = extern "C" fn(*const c_char);
 pub type EventCallback = extern "C" fn(*const c_char, *const c_char);
+/// 面板回調：(panel_type, ascii_content)
+/// panel_type 可能的值: "MAP", "MINIMAP", "INVENTORY", "STATUS", "TRADE"
+pub type PanelCallback = extern "C" fn(*const c_char, *const c_char);
 
 static STATE_CALLBACK: Lazy<Mutex<Option<StateCallback>>> = Lazy::new(|| Mutex::new(None));
 static EVENT_CALLBACK: Lazy<Mutex<Option<EventCallback>>> = Lazy::new(|| Mutex::new(None));
+static PANEL_CALLBACK: Lazy<Mutex<Option<PanelCallback>>> = Lazy::new(|| Mutex::new(None));
 
 /// 註冊輸出回調（C FFI）
 /// 當遊戲有新輸出時，會調用此回調
@@ -55,6 +59,57 @@ pub extern "C" fn ratamud_register_event_callback(callback: EventCallback) {
     if let Ok(mut cb) = EVENT_CALLBACK.lock() {
         *cb = Some(callback);
     }
+}
+
+/// 註冊面板回調（C FFI）
+/// 當 host 請求某個面板（地圖/背包/交易…）時，引擎會以 ASCII 字串透過此回調推回。
+#[no_mangle]
+pub extern "C" fn ratamud_register_panel_callback(callback: PanelCallback) {
+    if let Ok(mut cb) = PANEL_CALLBACK.lock() {
+        *cb = Some(callback);
+    }
+}
+
+/// 清除面板回調
+#[no_mangle]
+pub extern "C" fn ratamud_clear_panel_callback() {
+    if let Ok(mut cb) = PANEL_CALLBACK.lock() {
+        *cb = None;
+    }
+}
+
+/// 把面板內容推回 host
+fn trigger_panel(panel: &str, content: &str) {
+    let callback = match PANEL_CALLBACK.lock() {
+        Ok(cb) => *cb,
+        Err(_) => None,
+    };
+
+    if let Some(callback) = callback {
+        if let (Ok(panel_c), Ok(content_c)) = (CString::new(panel), CString::new(content)) {
+            callback(panel_c.as_ptr(), content_c.as_ptr());
+        }
+    }
+}
+
+/// 以閉包渲染當前世界並推回指定面板（共用鎖定樣板）
+/// 回傳 0=成功, -1=失敗（無世界/鎖定失敗）
+fn render_and_push<F>(panel: &str, render: F) -> c_int
+where
+    F: FnOnce(&GameWorld) -> String,
+{
+    let world_guard = match GAME_WORLD.lock() {
+        Ok(guard) => guard,
+        Err(_) => return -1,
+    };
+    let game_world = match world_guard.as_ref() {
+        Some(world) => world,
+        None => return -1,
+    };
+    let content = render(game_world);
+    drop(world_guard);
+    trigger_panel(panel, &content);
+    0
 }
 
 fn trigger_state_callback(game_world: &GameWorld) {
@@ -339,6 +394,124 @@ pub extern "C" fn ratamud_tick() -> c_int {
     }
 
     0
+}
+
+// ============= 面板請求（map / minimap / inventory / status / trade）=============
+
+/// 請求大地圖；內容透過 panel callback 以 "MAP" 推回
+#[no_mangle]
+pub extern "C" fn ratamud_request_map() -> c_int {
+    render_and_push("MAP", crate::panel_render::render_map)
+}
+
+/// 請求小地圖；以 "MINIMAP" 推回
+#[no_mangle]
+pub extern "C" fn ratamud_request_minimap() -> c_int {
+    render_and_push("MINIMAP", crate::panel_render::render_minimap)
+}
+
+/// 請求背包；以 "INVENTORY" 推回
+#[no_mangle]
+pub extern "C" fn ratamud_request_inventory() -> c_int {
+    render_and_push("INVENTORY", crate::panel_render::render_inventory)
+}
+
+/// 請求角色狀態；以 "STATUS" 推回
+#[no_mangle]
+pub extern "C" fn ratamud_request_status() -> c_int {
+    render_and_push("STATUS", crate::panel_render::render_status)
+}
+
+/// 請求交易面板；npc 可為空字串（自動偵測當前格的商人）。內容以 "TRADE" 推回。
+#[no_mangle]
+pub extern "C" fn ratamud_request_trade(npc: *const c_char) -> c_int {
+    let npc_name = cstr_to_string(npc);
+    render_and_push("TRADE", move |world| crate::panel_render::render_trade(world, &npc_name))
+}
+
+/// 玩家向 NPC 購買物品。成功後刷新 TRADE 與 INVENTORY 面板並存檔。
+/// 回傳 1=成功, 0=交易失敗, -1=參數/世界錯誤
+#[no_mangle]
+pub extern "C" fn ratamud_trade_buy(npc: *const c_char, item: *const c_char, qty: c_int) -> c_int {
+    execute_trade(npc, item, qty, true)
+}
+
+/// 玩家向 NPC 出售物品。成功後刷新 TRADE 與 INVENTORY 面板並存檔。
+#[no_mangle]
+pub extern "C" fn ratamud_trade_sell(npc: *const c_char, item: *const c_char, qty: c_int) -> c_int {
+    execute_trade(npc, item, qty, false)
+}
+
+/// 把 C 字串安全轉成 Rust String（null/非 UTF-8 → 空字串）
+fn cstr_to_string(ptr: *const c_char) -> String {
+    if ptr.is_null() {
+        return String::new();
+    }
+    unsafe { CStr::from_ptr(ptr) }
+        .to_str()
+        .map(|s| s.to_string())
+        .unwrap_or_default()
+}
+
+/// 交易執行共用邏輯（買/賣）
+fn execute_trade(npc: *const c_char, item: *const c_char, qty: c_int, is_buy: bool) -> c_int {
+    use crate::core_output::OutputZone;
+    use crate::trade::{TradeResult, TradeSystem};
+
+    let item_name = cstr_to_string(item);
+    if item_name.is_empty() || qty <= 0 {
+        return -1;
+    }
+    let quantity = qty as u32;
+    let npc_arg = cstr_to_string(npc);
+
+    let mut world_guard = match GAME_WORLD.lock() {
+        Ok(guard) => guard,
+        Err(_) => return -1,
+    };
+    let game_world = match world_guard.as_mut() {
+        Some(world) => world,
+        None => return -1,
+    };
+
+    // 解析交易對象（空字串 → 自動偵測當前格商人）
+    let Some(npc_name) = crate::panel_render::resolve_trade_npc(game_world, &npc_arg) else {
+        core_output::trigger_output(OutputZone::Status, "這裡沒有可以交易的對象");
+        return -1;
+    };
+
+    let result = if is_buy {
+        let price = TradeSystem::calculate_buy_price(&item_name, quantity);
+        TradeSystem::buy_from_npc(game_world, &npc_name, &item_name, quantity, price)
+    } else {
+        let price = TradeSystem::calculate_sell_price(&item_name, quantity);
+        TradeSystem::sell_to_npc(game_world, &npc_name, &item_name, quantity, price)
+    };
+
+    let success = match result {
+        TradeResult::Success(msg) => {
+            core_output::trigger_output(OutputZone::Main, &msg);
+            true
+        }
+        TradeResult::Failed(reason) => {
+            core_output::trigger_output(OutputZone::Status, &reason);
+            false
+        }
+    };
+
+    // 重新渲染面板（在持鎖狀態下產生字串）
+    let trade_content = crate::panel_render::render_trade(game_world, &npc_name);
+    let inv_content = crate::panel_render::render_inventory(game_world);
+
+    if let Err(e) = save_game_world(game_world) {
+        core_output::trigger_output(OutputZone::Status, &format!("存檔失敗: {e}"));
+    }
+    drop(world_guard);
+
+    trigger_panel("TRADE", &trade_content);
+    trigger_panel("INVENTORY", &inv_content);
+
+    if success { 1 } else { 0 }
 }
 
 /// 測試輸出回調功能（無 UI 模式）
