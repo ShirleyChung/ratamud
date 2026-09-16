@@ -5,6 +5,9 @@ use crate::command_handler::CommandResult;
 use crate::world::GameWorld;
 use crate::person::Person;
 use crate::core_output::{OutputZone, trigger_output};
+// NPC 互動 / 交易 / 任務 / 戰鬥都在共用核心模組裡，終端與 FFI 兩邊共用
+use crate::combat::{handle_combat_skill, handle_escape};
+use crate::command_interact as interact;
 
 /// 執行命令並返回是否應該繼續遊戲
 /// 返回 true=繼續, false=退出
@@ -123,43 +126,96 @@ pub fn execute_command(game_world: &mut GameWorld, command: &str) -> bool {
             handle_wakeup(game_world, &current_id);
             true
         },
-        CommandResult::Punch(_target) => {
-            trigger_output(OutputZone::Log, "戰鬥系統需要在終端 UI 模式中使用");
+        CommandResult::Punch(target) => {
+            handle_combat_skill(game_world, "punch", target);
             true
         },
-        CommandResult::Kick(_target) => {
-            trigger_output(OutputZone::Log, "戰鬥系統需要在終端 UI 模式中使用");
+        CommandResult::Kick(target) => {
+            handle_combat_skill(game_world, "kick", target);
             true
         },
         CommandResult::Escape => {
-            trigger_output(OutputZone::Log, "戰鬥系統需要在終端 UI 模式中使用");
+            handle_escape(game_world);
             true
         },
-        CommandResult::QuestList | CommandResult::QuestActive | 
-        CommandResult::QuestAvailable | CommandResult::QuestCompleted |
-        CommandResult::QuestInfo(_) | CommandResult::QuestStart(_) |
-        CommandResult::QuestComplete(_) | CommandResult::QuestAbandon(_) => {
-            trigger_output(OutputZone::Log, "任務系統需要在終端 UI 模式中使用");
+        CommandResult::QuestList => { interact::handle_quest_list(game_world); true },
+        CommandResult::QuestActive => { interact::handle_quest_active(game_world); true },
+        CommandResult::QuestAvailable => { interact::handle_quest_available(game_world); true },
+        CommandResult::QuestCompleted => { interact::handle_quest_completed(game_world); true },
+        CommandResult::QuestInfo(quest_id) => { interact::handle_quest_info(game_world, &quest_id); true },
+        CommandResult::QuestStart(quest_id) => { interact::handle_quest_start(game_world, &quest_id); true },
+        CommandResult::QuestComplete(quest_id) => { interact::handle_quest_complete(game_world, &quest_id); true },
+        CommandResult::QuestAbandon(quest_id) => { interact::handle_quest_abandon(game_world, &quest_id); true },
+        CommandResult::Trade(npc_name) => {
+            interact::handle_trade(game_world, &npc_name);
             true
         },
-        CommandResult::Trade(_) | CommandResult::Buy(..) | CommandResult::Sell(..) => {
-            trigger_output(OutputZone::Log, "交易系統需要在終端 UI 模式中使用");
+        CommandResult::Buy(npc_name, item, quantity) => {
+            interact::execute_trade(game_world, &npc_name, &item, quantity, true);
             true
         },
-        CommandResult::SetDialogue(..) | CommandResult::SetDialogueWithConditions(..) |
-        CommandResult::SetEagerness(..) | CommandResult::SetRelationship(..) |
-        CommandResult::ChangeRelationship(..) | CommandResult::Talk(..) |
-        CommandResult::Wait(_) | CommandResult::Party(_) | CommandResult::Disband |
-        CommandResult::UseItemOn(..) => {
-            trigger_output(OutputZone::Log, "此功能需要在終端 UI 模式中使用");
+        CommandResult::Sell(npc_name, item, quantity) => {
+            interact::execute_trade(game_world, &npc_name, &item, quantity, false);
             true
         },
-        // UI 相關命令（在無 UI 模式中忽略）
-        CommandResult::ShowMinimap | CommandResult::HideMinimap |
-        CommandResult::ShowLog | CommandResult::HideLog |
-        CommandResult::ShowMap | CommandResult::ToggleTypewriter |
-        CommandResult::AddToSide(_) | CommandResult::ShowHistory(_) => {
+        CommandResult::Talk(npc_name, topic) => {
+            interact::handle_talk(game_world, &current_id, &npc_name, &topic);
+            true
+        },
+        CommandResult::Wait(npc_name) => {
+            interact::handle_wait(game_world, &current_id, &npc_name);
+            true
+        },
+        CommandResult::Party(npc_name) => {
+            interact::handle_party(game_world, &current_id, &npc_name);
+            true
+        },
+        CommandResult::Disband => {
+            interact::handle_disband(game_world);
+            true
+        },
+        CommandResult::UseItemOn(item_name, npc_name) => {
+            interact::handle_use_item_on(game_world, &current_id, &item_name, &npc_name);
+            true
+        },
+        CommandResult::SetDialogue(npc, topic, text) => {
+            interact::handle_set_dialogue(game_world, &npc, &topic, &text, None);
+            true
+        },
+        CommandResult::SetDialogueWithConditions(npc, topic, text, conditions) => {
+            interact::handle_set_dialogue(game_world, &npc, &topic, &text, Some(&conditions));
+            true
+        },
+        CommandResult::SetEagerness(npc, eagerness) => {
+            interact::handle_set_eagerness(game_world, &npc, eagerness);
+            true
+        },
+        CommandResult::SetRelationship(npc, value) => {
+            interact::handle_set_relationship(game_world, &npc, value, false);
+            true
+        },
+        CommandResult::ChangeRelationship(npc, delta) => {
+            interact::handle_set_relationship(game_world, &npc, delta, true);
+            true
+        },
+        // 地圖/背包類「顯示」命令在無 UI 模式改成把面板內容送到 Side 區，
+        // host（iOS）收到後可以直接顯示，不必自己重做一套渲染。
+        CommandResult::ShowMap => {
+            trigger_output(OutputZone::Side, &crate::panel_render::render_map(game_world));
+            true
+        },
+        CommandResult::ShowMinimap => {
+            trigger_output(OutputZone::Side, &crate::panel_render::render_minimap(game_world));
+            true
+        },
+        // 純終端外觀的命令，在無 UI 模式沒有對應行為
+        CommandResult::HideMinimap | CommandResult::ShowLog | CommandResult::HideLog |
+        CommandResult::ToggleTypewriter | CommandResult::ShowHistory(_) => {
             trigger_output(OutputZone::Log, "此命令僅在終端 UI 模式可用");
+            true
+        },
+        CommandResult::AddToSide(msg) => {
+            trigger_output(OutputZone::Side, &msg);
             true
         },
     }
@@ -177,34 +233,113 @@ fn handle_help() {
     }
 }
 
-fn handle_look(game_world: &GameWorld, current_id: &str, _target: Option<String>) {
+fn handle_look(game_world: &GameWorld, current_id: &str, target: Option<String>) {
+    // 指定目標時改成查看該 NPC（與終端版 `look <npc>` 一致）
+    if let Some(npc_name) = target {
+        look_npc(game_world, &npc_name);
+        return;
+    }
+
     // 獲取當前角色位置
-    let (x, y) = if let Some(me) = game_world.npc_manager.get_npc(current_id) {
-        (me.x, me.y)
-    } else {
+    let Some(me) = game_world.npc_manager.get_npc(current_id) else {
         trigger_output(OutputZone::Status, "找不到當前控制的角色");
         return;
     };
-    
+    let (x, y) = (me.x, me.y);
+
     // 顯示當前位置資訊
-    if let Some(map) = game_world.get_current_map() {
-        trigger_output(OutputZone::Main, &format!("📍 {}", map.name));
-        trigger_output(OutputZone::Main, &map.description);
-        trigger_output(OutputZone::Main, &format!("你在 ({}, {})", x, y));
-        
+    let Some(map) = game_world.get_current_map() else { return };
+    trigger_output(OutputZone::Main, &format!("📍 {}", map.name));
+    trigger_output(OutputZone::Main, &map.description);
+
+    if let Some(point) = map.get_point(x, y) {
+        trigger_output(OutputZone::Main, &format!("【當前位置: ({x}, {y})】"));
+        trigger_output(OutputZone::Main, &format!("【{}】", point.description));
+        if !point.name.is_empty() {
+            trigger_output(OutputZone::Main, &format!("此處是【{}】", point.name));
+        }
+
         // 顯示當前位置的物品
-        if let Some(point) = map.get_point(x, y) {
-            if !point.objects.is_empty() {
-                trigger_output(OutputZone::Main, "\n這裡有：");
-                for (item, count) in &point.objects {
-                    trigger_output(OutputZone::Main, &format!("  {} x{}", item, count));
-                }
+        if !point.objects.is_empty() {
+            trigger_output(OutputZone::Main, "🎁 此處物品:");
+            for (item, count) in &point.objects {
+                let display_name = crate::item_registry::get_item_display_name(item);
+                trigger_output(OutputZone::Main, &format!("  • {display_name} x{count}"));
             }
+        }
+    } else {
+        trigger_output(OutputZone::Main, &format!("你在 ({x}, {y})"));
+    }
+
+    // 顯示同格的 NPC，並觸發見面對話（終端版 display_location_npcs 的行為）
+    look_npcs_here(game_world, current_id, me, x, y);
+}
+
+/// 查看單一 NPC 的詳細資料
+fn look_npc(game_world: &GameWorld, npc_name: &str) {
+    let Some(npc) = game_world.npc_manager.get_npc(npc_name) else {
+        trigger_output(OutputZone::Status, &format!("找不到 NPC: {npc_name}"));
+        return;
+    };
+
+    trigger_output(OutputZone::Main, &format!("👤 {}", npc.name));
+    trigger_output(OutputZone::Main, &"═".repeat(20));
+    trigger_output(OutputZone::Main, &format!("📝 {}", npc.description));
+    trigger_output(OutputZone::Main, &format!("📍 位置: ({}, {})", npc.x, npc.y));
+    trigger_output(OutputZone::Main, &format!("💫 狀態: {}", npc.status));
+
+    if !npc.abilities.is_empty() {
+        trigger_output(OutputZone::Main, "✨ 能力:");
+        for ability in &npc.abilities {
+            trigger_output(OutputZone::Main, &format!("  • {ability}"));
+        }
+    }
+
+    if !npc.items.is_empty() {
+        trigger_output(OutputZone::Main, "🎒 攜帶物品:");
+        for (item, count) in &npc.items {
+            let display_name = crate::item_registry::get_item_display_name(item);
+            trigger_output(OutputZone::Main, &format!("  • {display_name} x{count}"));
+        }
+    }
+}
+
+/// 列出同一格的 NPC，並觸發「見面」對話
+fn look_npcs_here(game_world: &GameWorld, current_id: &str, me: &Person, x: usize, y: usize) {
+    let npcs_here = game_world.npc_manager.get_npcs_at_in_map_excluding(
+        &game_world.current_map_name,
+        x,
+        y,
+        current_id,
+    );
+
+    if npcs_here.is_empty() {
+        return;
+    }
+
+    trigger_output(OutputZone::Main, "👥 此處的人物:");
+    for npc in npcs_here {
+        let mut desc = format!("  • {} - {}", npc.name, npc.description);
+        if let Some(ref leader) = npc.party_leader {
+            desc.push_str(&format!(" (已與\"{leader}\"組隊)"));
+        }
+        trigger_output(OutputZone::Main, &desc);
+
+        if let Some(greeting) = npc.try_talk("見面", me) {
+            trigger_output(OutputZone::Main, &format!("💬 {} 說：「{}」", npc.name, greeting));
         }
     }
 }
 
 fn handle_move(game_world: &mut GameWorld, current_id: &str, dx: i32, dy: i32) {
+    use crate::world::CombatState;
+
+    // 戰鬥中無法移動（與終端版一致）
+    if !matches!(game_world.combat_state, CombatState::None) {
+        trigger_output(OutputZone::Main, "戰鬥中無法移動！");
+        return;
+    }
+
     // 獲取當前位置
     let (old_x, old_y) = if let Some(me) = game_world.npc_manager.get_npc(current_id) {
         (me.x, me.y)
@@ -212,43 +347,114 @@ fn handle_move(game_world: &mut GameWorld, current_id: &str, dx: i32, dy: i32) {
         trigger_output(OutputZone::Status, "找不到當前控制的角色");
         return;
     };
-    
+
+    // 往左/上走到 0 會 underflow 成極大值，先擋掉
+    if (dx < 0 && old_x == 0) || (dy < 0 && old_y == 0) {
+        trigger_output(OutputZone::Status, "超出地圖範圍");
+        return;
+    }
     let new_x = (old_x as i32 + dx) as usize;
     let new_y = (old_y as i32 + dy) as usize;
-    
-    // 檢查是否可行走
-    let can_walk = if let Some(map) = game_world.get_current_map() {
-        if let Some(point) = map.get_point(new_x, new_y) {
-            point.walkable
-        } else {
-            false
-        }
-    } else {
-        false
+
+    // 檢查邊界與可行走性
+    let Some(map) = game_world.get_current_map() else {
+        trigger_output(OutputZone::Status, "當前沒有地圖");
+        return;
     };
-    
-    if can_walk {
-        // 更新位置
-        if let Some(me) = game_world.npc_manager.get_npc_mut(current_id) {
-            me.x = new_x;
-            me.y = new_y;
-            
-            let direction = match (dx, dy) {
-                (0, -1) => "北",
-                (0, 1) => "南",
-                (1, 0) => "東",
-                (-1, 0) => "西",
-                _ => "未知方向",
-            };
-            trigger_output(OutputZone::Main, &format!("你向{}移動到 ({}, {})", direction, new_x, new_y));
-            
-            // 保存角色位置
-            let person_dir = format!("{}/persons", game_world.world_dir);
-            let _ = me.save(&person_dir, &format!("{}.json", current_id));
-        }
-    } else {
-        trigger_output(OutputZone::Status, "那個方向無法通行");
+    if new_x >= map.width || new_y >= map.height {
+        trigger_output(OutputZone::Status, "超出地圖範圍");
+        return;
     }
+    let can_walk = map.get_point(new_x, new_y).map(|p| p.walkable).unwrap_or(false);
+    if !can_walk {
+        trigger_output(OutputZone::Status, "前方是牆壁，無法通過");
+        return;
+    }
+
+    // 更新位置
+    let person_dir = format!("{}/persons", game_world.world_dir);
+    if let Some(me) = game_world.npc_manager.get_npc_mut(current_id) {
+        me.x = new_x;
+        me.y = new_y;
+        let _ = me.save(&person_dir, current_id);
+    }
+
+    let direction = match (dx, dy) {
+        (0, -1) => "北",
+        (0, 1) => "南",
+        (1, 0) => "東",
+        (-1, 0) => "西",
+        _ => "未知方向",
+    };
+    trigger_output(OutputZone::Main, &format!("你向{direction}移動到 ({new_x}, {new_y})"));
+
+    // 組隊中的 NPC 跟著走
+    move_party_npcs(game_world, new_x, new_y);
+
+    // 更新靠近/離開狀態（玩家主動移動）
+    report_proximity(game_world, true);
+
+    // 移動後自動 look，讓 host 不必再送一次指令
+    handle_look(game_world, current_id, None);
+}
+
+/// 讓組隊的 NPC 跟隨玩家移動
+fn move_party_npcs(game_world: &mut GameWorld, player_x: usize, player_y: usize) {
+    let current_map = game_world.current_map_name.clone();
+    let person_dir = format!("{}/persons", game_world.world_dir);
+
+    for npc_id in game_world.npc_manager.get_all_npc_ids() {
+        let Some(npc) = game_world.npc_manager.get_npc_mut(&npc_id) else { continue };
+        if npc.party_leader.as_deref() != Some("me") || npc.map != current_map {
+            continue;
+        }
+        npc.x = player_x;
+        npc.y = player_y;
+        let _ = npc.save(&person_dir, &npc_id);
+        trigger_output(OutputZone::Main, &format!("{} 跟隨你移動", npc.name));
+    }
+}
+
+/// 更新玩家與 NPC 的距離，輸出「往這邊走來／離開了」與見面語。
+///
+/// 對應終端版的 `check_and_handle_proximity`。`player_just_moved` 用來區分是
+/// 玩家走過去還是 NPC 走過來，訊息文字不同。
+pub fn report_proximity(game_world: &mut GameWorld, player_just_moved: bool) -> bool {
+    let controlled_id = game_world.current_controlled_id.clone();
+    let Some(controlled) = game_world.npc_manager.get_npc(&controlled_id) else {
+        return false;
+    };
+    let (x, y, map) = (controlled.x, controlled.y, controlled.map.clone());
+
+    let notifications = game_world
+        .npc_manager
+        .update_proximity(&controlled_id, x, y, &map, player_just_moved);
+
+    if notifications.is_empty() {
+        return false;
+    }
+
+    // 對話需要拿當前角色當作條件評估對象，先複製一份避免借用衝突
+    let controlled_snapshot = game_world.npc_manager.get_npc(&controlled_id).cloned();
+
+    for (npc_id, message, should_greet) in notifications {
+        trigger_output(OutputZone::Main, &message);
+
+        if should_greet {
+            if let (Some(npc), Some(ref me)) =
+                (game_world.npc_manager.get_npc(&npc_id), &controlled_snapshot)
+            {
+                if let Some(greeting) = npc.get_weighted_dialogue("見面", me) {
+                    trigger_output(
+                        OutputZone::Main,
+                        &format!("{} 說：「{}」", npc.name, greeting),
+                    );
+                }
+            }
+        }
+    }
+
+    true
 }
 
 fn handle_get(game_world: &mut GameWorld, current_id: &str, item_name: Option<String>, quantity: u32) {
@@ -293,9 +499,9 @@ fn handle_get(game_world: &mut GameWorld, current_id: &str, item_name: Option<St
             trigger_output(OutputZone::Main, &format!("你撿起了 {} x{}", item, count));
         }
         
-        // 保存地圖和角色
-        if let Some(map) = game_world.maps.get(&map_name) {
-            let _ = game_world.save_map(map);
+        // 地圖只標記為已變動（約 2.4MB/張，不能每個指令都寫），角色直接存
+        if let Some(map) = game_world.maps.get_mut(&map_name) {
+            map.mark_dirty();
         }
         let person_dir = format!("{}/persons", game_world.world_dir);
         if let Some(me) = game_world.npc_manager.get_npc(current_id) {
@@ -322,9 +528,9 @@ fn handle_get(game_world: &mut GameWorld, current_id: &str, item_name: Option<St
                 }
                 trigger_output(OutputZone::Main, &format!("你撿起了 {} x{}", resolved_item, to_get));
                 
-                // 保存地圖和角色
-                if let Some(map) = game_world.maps.get(&map_name) {
-                    let _ = game_world.save_map(map);
+                // 地圖只標記為已變動（約 2.4MB/張，不能每個指令都寫），角色直接存
+                if let Some(map) = game_world.maps.get_mut(&map_name) {
+                    map.mark_dirty();
                 }
                 let person_dir = format!("{}/persons", game_world.world_dir);
                 if let Some(me) = game_world.npc_manager.get_npc(current_id) {
@@ -372,9 +578,9 @@ fn handle_drop(game_world: &mut GameWorld, current_id: &str, item_name: String, 
     
     trigger_output(OutputZone::Main, &format!("你放下了 {} x{}", resolved_item, to_drop));
     
-    // 保存地圖和角色
-    if let Some(map) = game_world.maps.get(&map_name) {
-        let _ = game_world.save_map(map);
+    // 地圖只標記為已變動（約 2.4MB/張，不能每個指令都寫），角色直接存
+    if let Some(map) = game_world.maps.get_mut(&map_name) {
+        map.mark_dirty();
     }
     let person_dir = format!("{}/persons", game_world.world_dir);
     if let Some(me) = game_world.npc_manager.get_npc(current_id) {
@@ -511,9 +717,9 @@ fn handle_conquer(game_world: &mut GameWorld, current_id: &str, direction: Strin
             point.walkable = true;
             trigger_output(OutputZone::Main, &format!("你征服了 {} 方向，現在可以通行了", direction));
             
-            // 保存地圖
-            if let Some(map) = game_world.maps.get(&map_name) {
-                let _ = game_world.save_map(map);
+            // 地圖只標記為已變動，實際寫檔交給節流存檔
+            if let Some(map) = game_world.maps.get_mut(&map_name) {
+                map.mark_dirty();
             }
         } else {
             trigger_output(OutputZone::Status, "該位置超出地圖範圍");
@@ -571,9 +777,9 @@ fn handle_namehere(game_world: &mut GameWorld, current_id: &str, name: String) {
             point.name = name.clone();
             trigger_output(OutputZone::Main, &format!("你將這裡命名為「{}」", name));
             
-            // 保存地圖
-            if let Some(map) = game_world.maps.get(&map_name) {
-                let _ = game_world.save_map(map);
+            // 地圖只標記為已變動，實際寫檔交給節流存檔
+            if let Some(map) = game_world.maps.get_mut(&map_name) {
+                map.mark_dirty();
             }
         }
     }
@@ -621,9 +827,9 @@ fn handle_destroy(game_world: &mut GameWorld, current_id: &str, target: String) 
             if point.objects.remove(&resolved_item).is_some() {
                 trigger_output(OutputZone::Main, &format!("你刪除了物品 {}", target));
                 
-                // 保存地圖
-                if let Some(map) = game_world.maps.get(&map_name) {
-                    let _ = game_world.save_map(map);
+                // 地圖只標記為已變動，實際寫檔交給節流存檔
+                if let Some(map) = game_world.maps.get_mut(&map_name) {
+                    map.mark_dirty();
                 }
                 return;
             }
@@ -668,9 +874,9 @@ fn handle_create(game_world: &mut GameWorld, current_id: &str, obj_type: String,
                     *point.objects.entry(item_name.clone()).or_insert(0) += 1;
                     trigger_output(OutputZone::Main, &format!("你創建了物品「{}」", item_name));
                     
-                    // 保存地圖
-                    if let Some(map) = game_world.maps.get(&map_name) {
-                        let _ = game_world.save_map(map);
+                    // 地圖只標記為已變動，實際寫檔交給節流存檔
+                    if let Some(map) = game_world.maps.get_mut(&map_name) {
+                        map.mark_dirty();
                     }
                 }
             }

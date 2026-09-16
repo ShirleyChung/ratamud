@@ -284,6 +284,13 @@ pub struct Map {
     pub description: String,         // 地圖描述
     #[serde(default)]
     pub properties: HashMap<String, String>,  // 地圖自定義屬性（例如：天氣）
+    /// 自上次存檔以來內容是否被改過。
+    ///
+    /// 一張 100x100 的地圖序列化後約 2.4MB，五張就將近 10MB。以前每下一個指令
+    /// 都把全部地圖重寫一次，在 iOS 上等於每個動作卡好幾秒。有了這個旗標就只
+    /// 寫真正變動過的地圖。`#[serde(skip)]` 讓它不會寫進存檔。
+    #[serde(skip)]
+    pub dirty: bool,
 }
 
 impl Map {
@@ -321,6 +328,7 @@ impl Map {
             points,
             description,
             properties: HashMap::new(),
+            dirty: true,  // 新地圖尚未寫入磁碟
         }
     }
 
@@ -349,12 +357,19 @@ impl Map {
     }
 
     // 可變地獲取指定位置的Point
+    // 取得可變 Point 就視為要改內容，直接標記為 dirty
     pub fn get_point_mut(&mut self, x: usize, y: usize) -> Option<&mut Point> {
         if x < self.width && y < self.height {
+            self.dirty = true;
             Some(&mut self.points[y][x])
         } else {
             None
         }
+    }
+
+    /// 標記地圖內容已變動（需要存檔）
+    pub fn mark_dirty(&mut self) {
+        self.dirty = true;
     }
 
     // 獲取周圍的Point（3x3範圍，包括中心點）
@@ -458,6 +473,7 @@ impl Map {
     // 設定地圖屬性
     pub fn set_property(&mut self, key: String, value: String) {
         self.properties.insert(key, value);
+        self.dirty = true;
     }
 
     // 獲取地圖屬性

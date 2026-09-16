@@ -1,4 +1,5 @@
 // Core game modules (always available)
+pub mod paths;           // 資料根目錄解析（iOS 沙盒必要）
 pub mod map;
 pub mod item;
 pub mod item_registry;
@@ -17,6 +18,8 @@ pub mod time_thread;
 pub mod settings;
 pub mod command_handler;  // Command parsing (shared by terminal-ui and FFI)
 pub mod command_executor; // Command execution (shared by all modes)
+pub mod command_interact; // NPC interaction / trade / quest (shared by all modes)
+pub mod combat;           // Turn-based combat (shared by all modes)
 pub mod panel_render;     // Plain-text panel renderers for FFI (map/inventory/trade)
 pub mod ffi;
 

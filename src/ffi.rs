@@ -2,8 +2,10 @@
 
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
+use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Mutex;
+use std::time::{Duration, Instant};
 use once_cell::sync::Lazy;
 
 use crate::core_output::{self, OutputZone};
@@ -16,8 +18,22 @@ static GAME_WORLD: Lazy<Mutex<Option<GameWorld>>> = Lazy::new(|| Mutex::new(None
 /// 當世界因 NPC 行動或事件而改變時，引擎會自動重新渲染並推回這個面板。
 static ACTIVE_PANEL: Lazy<Mutex<Option<String>>> = Lazy::new(|| Mutex::new(None));
 
+/// 面板的視窗大小（由 `ratamud_set_map_view_size` 設定，0 = 用預設值）。
+/// 自動刷新地圖時會沿用 host 指定的大小。
+static MAP_VIEW_SIZE: Lazy<Mutex<(usize, usize)>> = Lazy::new(|| Mutex::new((0, 0)));
+
 /// tick 計數器（用來節流 NPC AI，避免每秒都動）
 static TICK_COUNT: AtomicU64 = AtomicU64::new(0);
+
+/// 上一次推進戰鬥回合的時間（對應終端版主迴圈的每 3 秒一回合）
+static LAST_COMBAT_ROUND: Lazy<Mutex<Option<Instant>>> = Lazy::new(|| Mutex::new(None));
+
+/// 上一次把地圖寫回磁碟的時間
+static LAST_MAP_SAVE: Lazy<Mutex<Option<Instant>>> = Lazy::new(|| Mutex::new(None));
+
+/// 地圖節流存檔間隔。一張 100x100 的地圖 JSON 約 2.4MB，五張接近 10MB；
+/// 以前每個指令都全部重寫一次，這正是 iOS 上 event loop 會卡死的主因。
+const MAP_SAVE_INTERVAL: Duration = Duration::from_secs(30);
 
 /// 輸出回調函數類型 (C FFI)
 /// 參數: msg_type (類型標記: MAIN/LOG/STATUS/SIDE), content (內容)
@@ -136,8 +152,10 @@ where
 /// 依面板名稱渲染當前世界內容（給自動刷新用）
 fn render_panel_by_name(world: &GameWorld, panel: &str) -> Option<String> {
     use crate::panel_render as pr;
+    let (view_w, view_h) = map_view_size();
     match panel {
-        "MAP" => Some(pr::render_map(world)),
+        "MAP" => Some(pr::render_map_view(world, view_w, view_h)),
+        "MAP_JSON" => Some(pr::render_map_json(world, view_w, view_h)),
         "MINIMAP" => Some(pr::render_minimap(world)),
         "INVENTORY" => Some(pr::render_inventory(world)),
         "STATUS" => Some(pr::render_status(world)),
@@ -145,6 +163,11 @@ fn render_panel_by_name(world: &GameWorld, panel: &str) -> Option<String> {
         "TRADE" => Some(pr::render_trade(world, "")),
         _ => None,
     }
+}
+
+/// host 指定的地圖視窗大小（0 表示用引擎預設值）
+fn map_view_size() -> (usize, usize) {
+    MAP_VIEW_SIZE.lock().map(|size| *size).unwrap_or((0, 0))
 }
 
 /// 取得 host 目前開啟的面板名稱
@@ -165,6 +188,7 @@ fn active_panel_content(world: &GameWorld) -> Option<(String, String)> {
 /// 回傳 true 表示世界有實際變動（需要刷新面板）。
 fn drive_npc_ai(game_world: &mut GameWorld) -> bool {
     use crate::game_event::GameEvent;
+    use crate::message::Message;
     use crate::npc_action::NpcAction;
     use crate::npc_ai::NpcAiController;
 
@@ -183,30 +207,36 @@ fn drive_npc_ai(game_world: &mut GameWorld) -> bool {
             actions: vec![action],
         });
 
-        for msg in &messages {
-            // 移動之類的訊息屬於日誌，不洗主畫面；NPC 對話等才輸出
-            if !msg.is_log() {
-                core_output::trigger_output(OutputZone::Main, &msg.to_display_text());
-            }
+        for msg in messages {
             changed = true;
+
+            match &msg {
+                // 戰鬥動作必須真的結算傷害與冷卻，否則 NPC 的攻擊等於沒發生
+                // （終端版在主迴圈裡處理，FFI 以前只把文字印出來就算了）
+                Message::CombatAction { attacker_id, skill_name, target_id, damage, .. } => {
+                    if let Some(target) = game_world.npc_manager.get_npc_mut(target_id) {
+                        target.check_hp(-damage);
+                        let (hp, max_hp) = (target.hp, target.max_hp);
+                        core_output::trigger_output(
+                            OutputZone::Main,
+                            &format!("{} 剩餘 HP: {}/{}", msg.to_display_text(), hp, max_hp),
+                        );
+                    }
+                    if let Some(attacker) = game_world.npc_manager.get_npc_mut(attacker_id) {
+                        let _ = attacker.practice_skill(skill_name, true);
+                    }
+                    crate::combat::check_combat_end(game_world);
+                }
+                // 移動之類的訊息屬於日誌，不洗主畫面；NPC 對話等才輸出
+                _ if msg.is_log() => {}
+                _ => core_output::trigger_output(OutputZone::Main, &msg.to_display_text()),
+            }
         }
     }
 
-    // 依玩家位置產生「往這邊走來／離開了」等靠近通知
-    if let Some(player) = game_world
-        .npc_manager
-        .get_npc(&game_world.current_controlled_id)
-        .cloned()
-    {
-        let id = game_world.current_controlled_id.clone();
-        let notifications =
-            game_world
-                .npc_manager
-                .update_proximity(&id, player.x, player.y, &player.map, false);
-        for (_npc_id, message, _should_greet) in notifications {
-            core_output::trigger_output(OutputZone::Main, &message);
-            changed = true;
-        }
+    // 依玩家位置產生「往這邊走來／離開了」與見面語
+    if crate::command_executor::report_proximity(game_world, false) {
+        changed = true;
     }
 
     changed
@@ -219,19 +249,57 @@ fn trigger_state_callback(game_world: &GameWorld) {
     };
 
     if let Some(callback) = callback {
+        use crate::world::{CombatState, InteractionState};
+
         let current_player = game_world.npc_manager.get_npc(&game_world.current_controlled_id);
+
+        // host 需要這些才畫得出狀態列，也才知道現在是不是在戰鬥/交易中
+        let combat = match &game_world.combat_state {
+            CombatState::None => serde_json::json!({ "in_combat": false }),
+            CombatState::InCombat { participants, round } => serde_json::json!({
+                "in_combat": true,
+                "round": round,
+                "participants": participants,
+            }),
+        };
+
+        let interaction = match &game_world.interaction_state {
+            InteractionState::None => serde_json::Value::Null,
+            InteractionState::Trading { npc_name } => {
+                serde_json::json!({ "kind": "trading", "npc": npc_name })
+            }
+            InteractionState::Buying { npc_name } => {
+                serde_json::json!({ "kind": "buying", "npc": npc_name })
+            }
+            InteractionState::Selling { npc_name } => {
+                serde_json::json!({ "kind": "selling", "npc": npc_name })
+            }
+        };
+
         let state_json = serde_json::json!({
             "world": game_world.metadata.name,
             "current_map": game_world.current_map_name,
             "time": game_world.format_time(),
+            "day": game_world.time.day,
+            "hour": game_world.time.hour,
+            "minute": game_world.time.minute,
             "player": current_player.map(|player| serde_json::json!({
                 "id": game_world.current_controlled_id,
                 "name": player.name,
                 "x": player.x,
                 "y": player.y,
+                "map": player.map,
                 "hp": player.hp,
-                "max_hp": player.max_hp
-            }))
+                "max_hp": player.max_hp,
+                "mp": player.mp,
+                "max_mp": player.max_mp,
+                "gold": player.items.get("金幣").copied().unwrap_or(0),
+                "status": player.status,
+                "is_sleeping": player.is_sleeping,
+                "combat_exp": player.combat_exp,
+            })),
+            "combat": combat,
+            "interaction": interaction,
         });
 
         if let Ok(state_c) = CString::new(state_json.to_string()) {
@@ -318,7 +386,11 @@ fn check_and_execute_events(game_world: &mut GameWorld) -> bool {
     did_trigger
 }
 
-fn save_game_world(game_world: &GameWorld) -> Result<(), Box<dyn std::error::Error>> {
+/// 輕量存檔：世界中繼資料、時間、物品流水號、所有角色。
+///
+/// 這些檔案加起來只有幾十 KB，隨時寫都不會卡。地圖**不在**這裡，因為它動輒
+/// 10MB；地圖改由 [`save_maps_throttled`] 或 [`ratamud_save`] 處理。
+fn save_game_light(game_world: &GameWorld) -> Result<(), Box<dyn std::error::Error>> {
     game_world.save_metadata()?;
     game_world.save_time()?;
     game_world.save_item_counter()?;
@@ -326,11 +398,152 @@ fn save_game_world(game_world: &GameWorld) -> Result<(), Box<dyn std::error::Err
     let person_dir = format!("{}/persons", game_world.world_dir);
     game_world.npc_manager.save_all(&person_dir)?;
 
-    for map in game_world.maps.values() {
-        game_world.save_map(map)?;
+    Ok(())
+}
+
+/// 節流寫入有變動的地圖：有 dirty 地圖、且距離上次寫入超過
+/// [`MAP_SAVE_INTERVAL`] 才真的寫。
+fn save_maps_throttled(game_world: &mut GameWorld) -> Result<(), Box<dyn std::error::Error>> {
+    if !game_world.has_dirty_maps() {
+        return Ok(());
     }
 
+    let now = Instant::now();
+    {
+        let Ok(mut last) = LAST_MAP_SAVE.lock() else { return Ok(()) };
+        match *last {
+            Some(prev) if now.duration_since(prev) < MAP_SAVE_INTERVAL => return Ok(()),
+            _ => *last = Some(now),
+        }
+    }
+
+    game_world.save_dirty_maps()?;
     Ok(())
+}
+
+/// 完整存檔：輕量存檔 + 所有有變動的地圖，不受節流限制。
+/// host 應該在進背景／關閉前呼叫 `ratamud_save()`。
+fn save_game_full(game_world: &mut GameWorld) -> Result<(), Box<dyn std::error::Error>> {
+    save_game_light(game_world)?;
+    game_world.save_dirty_maps()?;
+    if let Ok(mut last) = LAST_MAP_SAVE.lock() {
+        *last = Some(Instant::now());
+    }
+    Ok(())
+}
+
+// ============= 資料目錄（iOS 沙盒必要）=============
+
+/// 設定資料根目錄。所有 `worlds/...` 都會相對於它。
+///
+/// iOS 的行程工作目錄是唯讀的，也不是 app bundle 所在位置，所以引擎預設的
+/// 相對路徑 `worlds/beginWorld` 一定會失敗——地圖載不進來、狀態也存不起來。
+/// host 必須在 `ratamud_init_game()` **之前**把可寫目錄（通常是
+/// `FileManager.default.urls(for: .documentDirectory, ...)`）傳進來。
+///
+/// 回傳 0=成功, -1=路徑無效或無法建立。
+#[no_mangle]
+pub extern "C" fn ratamud_set_data_dir(path: *const c_char) -> c_int {
+    let dir = cstr_to_string(path);
+    if dir.is_empty() {
+        return -1;
+    }
+
+    if let Err(e) = std::fs::create_dir_all(&dir) {
+        core_output::trigger_output(
+            OutputZone::Status,
+            &format!("無法建立資料目錄 {dir}: {e}"),
+        );
+        return -1;
+    }
+
+    crate::paths::set_data_root(&dir);
+    core_output::trigger_output(OutputZone::Log, &format!("資料目錄: {dir}"));
+    0
+}
+
+/// 取得目前的資料根目錄（唯讀，供除錯用）。回傳的字串由呼叫端以
+/// `ratamud_free_string()` 釋放；失敗時回傳 NULL。
+#[no_mangle]
+pub extern "C" fn ratamud_get_data_dir() -> *mut c_char {
+    let root = crate::paths::data_root().to_string_lossy().into_owned();
+    match CString::new(root) {
+        Ok(s) => s.into_raw(),
+        Err(_) => std::ptr::null_mut(),
+    }
+}
+
+/// 釋放本模組回傳的字串。
+///
+/// # Safety
+/// `ptr` 必須是本模組（例如 `ratamud_get_data_dir`）回傳、且尚未釋放的指標。
+#[no_mangle]
+pub unsafe extern "C" fn ratamud_free_string(ptr: *mut c_char) {
+    if !ptr.is_null() {
+        drop(unsafe { CString::from_raw(ptr) });
+    }
+}
+
+/// 把 app bundle 內的唯讀世界資料安裝到可寫的資料目錄。
+///
+/// `bundle_dir` 應該是包含 `worlds/` 的那一層（iOS 上通常是
+/// `Bundle.main.resourcePath`）。**不會覆蓋**已存在的檔案，所以可以每次啟動
+/// 都呼叫，玩家的存檔不會被初始資料蓋掉。
+///
+/// 回傳實際複製的檔案數量，失敗回傳 -1。
+#[no_mangle]
+pub extern "C" fn ratamud_seed_data_dir(bundle_dir: *const c_char) -> c_int {
+    let bundle = cstr_to_string(bundle_dir);
+    if bundle.is_empty() {
+        return -1;
+    }
+
+    let src = Path::new(&bundle).join("worlds");
+    if !src.is_dir() {
+        core_output::trigger_output(
+            OutputZone::Status,
+            &format!("找不到 bundle 內的世界資料: {}", src.display()),
+        );
+        return -1;
+    }
+
+    let dst = crate::paths::data_root().join("worlds");
+    match crate::paths::copy_tree_if_missing(&src, &dst) {
+        Ok(count) => {
+            if count > 0 {
+                core_output::trigger_output(
+                    OutputZone::Log,
+                    &format!("已安裝 {count} 個世界資料檔到 {}", dst.display()),
+                );
+            }
+            count as c_int
+        }
+        Err(e) => {
+            core_output::trigger_output(OutputZone::Status, &format!("安裝世界資料失敗: {e}"));
+            -1
+        }
+    }
+}
+
+/// 一次做完 iOS 需要的三件事：設定可寫目錄 → 從 bundle 安裝資料 → 初始化世界。
+///
+/// `bundle_dir` 可傳 NULL 或空字串表示不需要安裝（資料已經在可寫目錄裡）。
+/// 回傳 0=成功, -1=失敗。
+#[no_mangle]
+pub extern "C" fn ratamud_init_game_with_dir(
+    data_dir: *const c_char,
+    bundle_dir: *const c_char,
+) -> c_int {
+    if ratamud_set_data_dir(data_dir) != 0 {
+        return -1;
+    }
+
+    if !bundle_dir.is_null() && !cstr_to_string(bundle_dir).is_empty() {
+        // 安裝失敗不一定是致命的（資料可能已經在了），讓 init 自己去判斷
+        let _ = ratamud_seed_data_dir(bundle_dir);
+    }
+
+    ratamud_init_game()
 }
 
 /// 初始化遊戲世界（無 UI 模式）
@@ -456,7 +669,15 @@ pub extern "C" fn ratamud_input_command(command: *const c_char) -> c_int {
     check_and_execute_events(game_world);
     trigger_state_callback(game_world);
 
-    if let Err(e) = save_game_world(game_world) {
+    // 退出時做完整存檔；其餘只寫小檔案，地圖走節流。
+    // （以前每個指令都把五張 100x100 的地圖重寫一次 ≈ 10MB，
+    //   在 iOS 上等於每個動作都卡住好幾秒。）
+    let save_result = if should_continue {
+        save_game_light(game_world).and_then(|_| save_maps_throttled(game_world))
+    } else {
+        save_game_full(game_world)
+    };
+    if let Err(e) = save_result {
         core_output::trigger_output(OutputZone::Status, &format!("存檔失敗: {e}"));
     }
 
@@ -474,6 +695,29 @@ pub extern "C" fn ratamud_input_command(command: *const c_char) -> c_int {
     }
 }
 
+/// 立刻把目前狀態完整寫回磁碟（含有變動的地圖）。
+///
+/// iOS host 應該在 `scenePhase` 變成 `.background`／`.inactive` 時呼叫，
+/// 因為 app 隨時可能被系統終止。回傳 0=成功, -1=失敗。
+#[no_mangle]
+pub extern "C" fn ratamud_save() -> c_int {
+    let Ok(mut world_guard) = GAME_WORLD.lock() else { return -1 };
+    let Some(game_world) = world_guard.as_mut() else { return -1 };
+
+    match save_game_full(game_world) {
+        Ok(()) => 0,
+        Err(e) => {
+            core_output::trigger_output(OutputZone::Status, &format!("存檔失敗: {e}"));
+            -1
+        }
+    }
+}
+
+/// 推進遊戲世界一次。
+///
+/// 這是 iOS 版的「主迴圈」，對應終端版 `app::run_main_loop` 每一幀做的事：
+/// 推進時間、更新角色狀態、檢查世界事件、驅動 NPC AI、推進戰鬥回合，最後刷新
+/// host 開啟的面板。host 大約每秒呼叫一次即可。
 #[no_mangle]
 pub extern "C" fn ratamud_tick() -> c_int {
     let mut world_guard = match GAME_WORLD.lock() {
@@ -486,19 +730,34 @@ pub extern "C" fn ratamud_tick() -> c_int {
         None => return -1,
     };
 
+    // --- 1. 時間與世界事件（check_and_execute_events 內部會先 update_time）---
     let did_trigger_event = check_and_execute_events(game_world);
 
-    // 驅動 NPC AI（每 2 個 tick 一次，讓 NPC 會走動/反應而不會太吵）
+    // --- 2. 更新玩家自己的時間狀態（飢餓扣 HP、睡眠回 MP…）---
+    // 終端版每一幀都做這件事，FFI 以前完全漏掉，所以 iOS 上玩家狀態永遠不變。
+    {
+        use crate::time_updatable::TimeUpdatable;
+        let time_info = game_world.get_time_info();
+        let id = game_world.current_controlled_id.clone();
+        if let Some(me) = game_world.npc_manager.get_npc_mut(&id) {
+            me.on_time_update(&time_info);
+        }
+    }
+
+    // --- 3. 驅動 NPC AI（每 2 個 tick 一次，讓 NPC 會走動/反應而不會太吵）---
     let tick = TICK_COUNT.fetch_add(1, Ordering::Relaxed);
-    let npc_changed = if tick % 2 == 0 {
+    let npc_changed = if tick.is_multiple_of(2) {
         drive_npc_ai(game_world)
     } else {
         false
     };
 
+    // --- 4. 自動戰鬥回合（對應終端版的每 3 秒一回合）---
+    let combat_changed = drive_combat_round(game_world);
+
     trigger_state_callback(game_world);
 
-    let world_changed = did_trigger_event || npc_changed;
+    let world_changed = did_trigger_event || npc_changed || combat_changed;
 
     // 世界有變動時，渲染 host 目前開啟的面板（持鎖時渲染，釋放後再推回）
     let panel_push = if world_changed {
@@ -507,9 +766,9 @@ pub extern "C" fn ratamud_tick() -> c_int {
         None
     };
 
-    // NPC 走動不寫檔（避免每秒大量磁碟 I/O）；只有事件觸發才整體存檔
-    let save_result = if did_trigger_event {
-        save_game_world(game_world)
+    // 世界有變動才寫小檔案；地圖永遠走節流，避免每秒大量磁碟 I/O
+    let save_result = if world_changed {
+        save_game_light(game_world).and_then(|_| save_maps_throttled(game_world))
     } else {
         game_world.save_time()
     };
@@ -528,12 +787,66 @@ pub extern "C" fn ratamud_tick() -> c_int {
     0
 }
 
+/// 在戰鬥中時，每隔 `COMBAT_ROUND_INTERVAL_SECS` 推進一個回合。
+/// 回傳 true 表示這次 tick 真的推進了一回合。
+fn drive_combat_round(game_world: &mut GameWorld) -> bool {
+    use crate::world::CombatState;
+
+    if matches!(game_world.combat_state, CombatState::None) {
+        // 不在戰鬥中就重置計時器，下次開打才會從頭計時
+        if let Ok(mut last) = LAST_COMBAT_ROUND.lock() {
+            *last = None;
+        }
+        return false;
+    }
+
+    let interval = Duration::from_secs(crate::combat::COMBAT_ROUND_INTERVAL_SECS);
+    let now = Instant::now();
+    {
+        let Ok(mut last) = LAST_COMBAT_ROUND.lock() else { return false };
+        match *last {
+            Some(prev) if now.duration_since(prev) < interval => return false,
+            // 開戰後的第一回合已經由玩家那一擊帶過，這裡只起算計時器，
+            // 下一個自動回合要等滿一個間隔才來
+            None => {
+                *last = Some(now);
+                return false;
+            }
+            _ => *last = Some(now),
+        }
+    }
+
+    crate::combat::execute_combat_round(game_world)
+}
+
 // ============= 面板請求（map / minimap / inventory / status / trade）=============
 
-/// 請求大地圖；內容透過 panel callback 以 "MAP" 推回
+/// 設定大地圖視窗大小（以玩家為中心的格數）。傳 0 表示使用引擎預設值。
+///
+/// 整張地圖是 100x100，一次吐一萬個字元給 host 既慢又沒辦法顯示；改由 host
+/// 依畫面寬高指定要看多大一塊。
+#[no_mangle]
+pub extern "C" fn ratamud_set_map_view_size(width: c_int, height: c_int) {
+    let width = if width > 0 { width as usize } else { 0 };
+    let height = if height > 0 { height as usize } else { 0 };
+    if let Ok(mut size) = MAP_VIEW_SIZE.lock() {
+        *size = (width, height);
+    }
+}
+
+/// 請求大地圖（以玩家為中心的視窗）；內容透過 panel callback 以 "MAP" 推回
 #[no_mangle]
 pub extern "C" fn ratamud_request_map() -> c_int {
-    render_and_push("MAP", crate::panel_render::render_map)
+    let (w, h) = map_view_size();
+    render_and_push("MAP", move |world| crate::panel_render::render_map_view(world, w, h))
+}
+
+/// 請求結構化的地圖資料（JSON）；以 "MAP_JSON" 推回。
+/// 想自己畫格子而不是顯示 ASCII 的 host 用這個。
+#[no_mangle]
+pub extern "C" fn ratamud_request_map_json() -> c_int {
+    let (w, h) = map_view_size();
+    render_and_push("MAP_JSON", move |world| crate::panel_render::render_map_json(world, w, h))
 }
 
 /// 請求小地圖；以 "MINIMAP" 推回
@@ -585,11 +898,10 @@ fn cstr_to_string(ptr: *const c_char) -> String {
         .unwrap_or_default()
 }
 
-/// 交易執行共用邏輯（買/賣）
+/// 交易執行共用邏輯（買/賣）。
+/// 規則本身在 `command_interact::execute_trade`（與終端版共用），這裡只負責
+/// FFI 的字串轉換、鎖管理與面板推送。
 fn execute_trade(npc: *const c_char, item: *const c_char, qty: c_int, is_buy: bool) -> c_int {
-    use crate::core_output::OutputZone;
-    use crate::trade::{TradeResult, TradeSystem};
-
     let item_name = cstr_to_string(item);
     if item_name.is_empty() || qty <= 0 {
         return -1;
@@ -612,32 +924,13 @@ fn execute_trade(npc: *const c_char, item: *const c_char, qty: c_int, is_buy: bo
         return -1;
     };
 
-    let result = if is_buy {
-        let price = TradeSystem::calculate_buy_price(&item_name, quantity);
-        TradeSystem::buy_from_npc(game_world, &npc_name, &item_name, quantity, price)
-    } else {
-        let price = TradeSystem::calculate_sell_price(&item_name, quantity);
-        TradeSystem::sell_to_npc(game_world, &npc_name, &item_name, quantity, price)
-    };
-
-    let success = match result {
-        TradeResult::Success(msg) => {
-            core_output::trigger_output(OutputZone::Main, &msg);
-            true
-        }
-        TradeResult::Failed(reason) => {
-            core_output::trigger_output(OutputZone::Status, &reason);
-            false
-        }
-    };
+    let success =
+        crate::command_interact::execute_trade(game_world, &npc_name, &item_name, quantity, is_buy);
 
     // 重新渲染面板（在持鎖狀態下產生字串）
     let trade_content = crate::panel_render::render_trade(game_world, &npc_name);
     let inv_content = crate::panel_render::render_inventory(game_world);
-
-    if let Err(e) = save_game_world(game_world) {
-        core_output::trigger_output(OutputZone::Status, &format!("存檔失敗: {e}"));
-    }
+    trigger_state_callback(game_world);
     drop(world_guard);
 
     trigger_panel("TRADE", &trade_content);

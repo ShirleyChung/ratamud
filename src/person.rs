@@ -44,7 +44,7 @@ pub struct HealthStatusRange {
 
 impl PersonDescriptions {
     pub fn load() -> Result<Self, Box<dyn std::error::Error>> {
-        let json_path = "worlds/person_descriptions.json";
+        let json_path = crate::paths::resolve("worlds/person_descriptions.json");
         let json_str = fs::read_to_string(json_path)?;
         let descriptions: PersonDescriptions = serde_json::from_str(&json_str)?;
         Ok(descriptions)

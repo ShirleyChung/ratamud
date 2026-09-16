@@ -26,8 +26,8 @@ typedef void (*StateCallback)(const char* state_json);
 typedef void (*EventCallback)(const char* event_type, const char* event_data);
 
 /// 面板回調函數類型
-/// panel_type: "MAP", "MINIMAP", "INVENTORY", "STATUS", "TRADE"
-/// content: ASCII 純文字面板內容
+/// panel_type: "MAP", "MAP_JSON", "MINIMAP", "INVENTORY", "STATUS", "TRADE"
+/// content: 面板內容（"MAP_JSON" 是 JSON，其餘是 ASCII 純文字）
 typedef void (*PanelCallback)(const char* panel_type, const char* content);
 
 // ============= 回調註冊函數 =============
@@ -42,8 +42,15 @@ void ratamud_clear_panel_callback(void);
 void ratamud_set_active_panel(const char* panel);
 
 // ============= 面板請求 / 交易 API =============
+
+/// 設定大地圖視窗大小（以玩家為中心的格數），傳 0 使用引擎預設值 (41x21)。
+/// 整張地圖是 100x100，不建議一次全部取回。
+void ratamud_set_map_view_size(int width, int height);
+
 /// 請求面板內容（透過 panel callback 推回，回傳 0=成功, -1=失敗）
 int ratamud_request_map(void);
+/// 結構化地圖資料（JSON），以 "MAP_JSON" 推回，適合自己畫格子的 host
+int ratamud_request_map_json(void);
 int ratamud_request_minimap(void);
 int ratamud_request_inventory(void);
 int ratamud_request_status(void);
@@ -53,16 +60,45 @@ int ratamud_request_trade(const char* npc);
 int ratamud_trade_buy(const char* npc, const char* item, int qty);
 int ratamud_trade_sell(const char* npc, const char* item, int qty);
 
+// ============= 資料目錄（iOS 沙盒必要）=============
+//
+// 引擎預設用相對路徑 "worlds/..."，在 iOS 上一定失敗（工作目錄唯讀，也不是
+// app bundle 的位置）。host 必須先設定可寫目錄，否則地圖載不進來、狀態也存
+// 不起來。典型用法：
+//
+//   let docs = FileManager.default.urls(for: .documentDirectory,
+//                                       in: .userDomainMask)[0].path
+//   ratamud_init_game_with_dir(docs, Bundle.main.resourcePath)
+//
+/// 設定資料根目錄（必須在 ratamud_init_game() 之前）。回傳 0=成功, -1=失敗
+int ratamud_set_data_dir(const char* path);
+/// 取得目前的資料根目錄；用完請以 ratamud_free_string() 釋放，失敗回傳 NULL
+char* ratamud_get_data_dir(void);
+/// 釋放本函式庫回傳的字串
+void ratamud_free_string(char* ptr);
+/// 把 bundle_dir/worlds 複製到資料目錄（不覆蓋既有檔案，可重複呼叫）。
+/// 回傳複製的檔案數，失敗回傳 -1
+int ratamud_seed_data_dir(const char* bundle_dir);
+/// set_data_dir + seed_data_dir + init_game 一次完成（bundle_dir 可為 NULL）
+int ratamud_init_game_with_dir(const char* data_dir, const char* bundle_dir);
+
 // ============= 遊戲引擎 API（推薦使用）=============
 
 /// 處理命令（返回 1=繼續, 0=退出, -1=錯誤）
 int ratamud_input_command(const char* command);
 
 /// 初始化無 UI 遊戲世界（返回 0=成功, -1=失敗）
+/// iOS 請改用 ratamud_init_game_with_dir()
 int ratamud_init_game(void);
 
-/// 推進無 UI 遊戲循環一次（返回 0=成功, -1=失敗）
+/// 推進遊戲世界一次：時間、世界事件、NPC AI、戰鬥回合、面板刷新。
+/// host 大約每秒呼叫一次。（返回 0=成功, -1=失敗）
 int ratamud_tick(void);
+
+/// 立刻把狀態完整寫回磁碟（含有變動的地圖）。
+/// iOS 請在 scenePhase 變成 .background / .inactive 時呼叫。
+/// 返回 0=成功, -1=失敗
+int ratamud_save(void);
 
 int ratamud_start_game(void);
 

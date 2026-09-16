@@ -152,8 +152,8 @@ impl Default for GameWorld {
 
 impl GameWorld {
     pub fn new() -> Self {
-        // 建立世界資料夾
-        let world_dir = "worlds/beginWorld".to_string();
+        // 建立世界資料夾（相對於資料根目錄；iOS 會指到可寫的 Documents/）
+        let world_dir = crate::paths::resolve("worlds/beginWorld");
         let _ = fs::create_dir_all(&world_dir);
 
         // 創建世界元數據
@@ -228,6 +228,46 @@ impl GameWorld {
         Ok(())
     }
 
+    /// 只保存內容真的變動過的地圖，回傳寫入的地圖數量。
+    ///
+    /// 每張地圖序列化後約 1.5~2.4MB，全部寫一次接近 10MB；在 iOS 上這種 I/O
+    /// 量一旦放進每個指令裡就會讓遊戲卡住。改成只寫 dirty 的地圖之後，一般的
+    /// 移動／對話指令完全不會碰到地圖檔。
+    pub fn save_dirty_maps(&mut self) -> Result<usize, Box<dyn std::error::Error>> {
+        let dirty_names: Vec<String> = self
+            .maps
+            .iter()
+            .filter(|(_, map)| map.dirty)
+            .map(|(name, _)| name.clone())
+            .collect();
+
+        if dirty_names.is_empty() {
+            return Ok(0);
+        }
+
+        let maps_dir = self.get_maps_dir();
+        std::fs::create_dir_all(&maps_dir)?;
+
+        for name in &dirty_names {
+            if let Some(map) = self.maps.get(name) {
+                map.save(&format!("{}/{}.json", maps_dir, map.name))?;
+            }
+        }
+        // 全部寫完才清旗標，中途失敗時下次還會重試
+        for name in &dirty_names {
+            if let Some(map) = self.maps.get_mut(name) {
+                map.dirty = false;
+            }
+        }
+
+        Ok(dirty_names.len())
+    }
+
+    /// 是否有地圖待存檔
+    pub fn has_dirty_maps(&self) -> bool {
+        self.maps.values().any(|map| map.dirty)
+    }
+
     // 從檔案載入地圖
     #[allow(dead_code)]
     pub fn load_map(&mut self, map_name: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -272,6 +312,7 @@ impl GameWorld {
                 new_map.initialize_items();
                 // 保存新地圖
                 new_map.save(&map_path)?;
+                new_map.dirty = false;  // 剛寫入磁碟，不需要再存一次
                 new_map
             };
             

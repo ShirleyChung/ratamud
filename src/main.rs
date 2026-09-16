@@ -1,4 +1,5 @@
 // Core game modules
+mod paths;
 mod world;
 mod person;
 mod npc_manager;
@@ -17,6 +18,8 @@ mod event_executor;
 mod event_loader;
 mod command_handler;  // Command parsing (shared by terminal-ui and FFI)
 mod command_executor; // Command execution (shared by all modes)
+mod command_interact; // NPC interaction / trade / quest (shared by all modes)
+mod combat;           // Turn-based combat (shared by all modes)
 mod panel_render;     // Plain-text panel renderers for FFI (map/inventory/trade)
 mod ffi;
 mod core_output;

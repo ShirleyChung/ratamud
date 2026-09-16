@@ -58,6 +58,25 @@ impl NpcManager {
         self.npcs.values().find(|npc| npc.name.to_lowercase() == key)
     }
 
+    /// 把名稱或別名解析成唯一的 NPC ID。
+    ///
+    /// 世界裡可能有多個 NPC 同名（例如 `merchant` 和 `商人` 的 name 都是「商人」），
+    /// 所以任何要拿來當 key 用的地方都必須先換成 ID，不能直接傳名稱。
+    pub fn resolve_id(&self, name_or_id: &str) -> Option<String> {
+        let key = name_or_id.to_lowercase();
+
+        if let Some(id) = self.npc_aliases.get(&key) {
+            if self.npcs.contains_key(id) {
+                return Some(id.clone());
+            }
+        }
+
+        self.npcs
+            .iter()
+            .find(|(_, npc)| npc.name.to_lowercase() == key)
+            .map(|(id, _)| id.clone())
+    }
+
     /// 通過 ID 或別名獲取可變 NPC
     pub fn get_npc_mut(&mut self, name_or_id: &str) -> Option<&mut Person> {
         let key = name_or_id.to_lowercase();

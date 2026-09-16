@@ -21,15 +21,21 @@ impl Default for GameSettings {
 }
 
 impl GameSettings {
-    // 設定文件路徑
-    const SETTINGS_DIR: &'static str = "worlds";
-    const SETTINGS_FILE: &'static str = "worlds/settings.json";
+    // 設定文件路徑（相對於資料根目錄，見 crate::paths）
+    fn settings_dir() -> String {
+        crate::paths::resolve("worlds")
+    }
+
+    fn settings_file() -> String {
+        crate::paths::resolve("worlds/settings.json")
+    }
 
     // 從文件載入設定
     pub fn load() -> Self {
+        let settings_file = Self::settings_file();
         // 如果設定文件存在，嘗試加載它
-        if Path::new(Self::SETTINGS_FILE).exists() {
-            match fs::read_to_string(Self::SETTINGS_FILE) {
+        if Path::new(&settings_file).exists() {
+            match fs::read_to_string(&settings_file) {
                 Ok(content) => {
                     match serde_json::from_str(&content) {
                         Ok(settings) => return settings,
@@ -47,12 +53,12 @@ impl GameSettings {
     // 保存設定到文件
     pub fn save(&self) -> std::io::Result<()> {
         // 確保目錄存在
-        fs::create_dir_all(Self::SETTINGS_DIR)?;
-        
+        fs::create_dir_all(Self::settings_dir())?;
+
         // 序列化並寫入文件
         let json = serde_json::to_string_pretty(self)
             .map_err(std::io::Error::other)?;
-        fs::write(Self::SETTINGS_FILE, json)?;
+        fs::write(Self::settings_file(), json)?;
         Ok(())
     }
 }
